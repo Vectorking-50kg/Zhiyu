@@ -25,6 +25,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,7 +37,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageItem
@@ -46,30 +47,26 @@ fun UsageCard(usageInfo: UsageInfo) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            // Header
             CardHeader(platform = usageInfo.platform, maxPercent = maxPercent)
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Progress items
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                usageInfo.items.forEach { item ->
-                    ProgressItem(item = item)
+            if (usageInfo.items.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    usageInfo.items.forEach { item ->
+                        ProgressItem(item = item)
+                    }
                 }
             }
 
-            // Footer with reset info
             usageInfo.resetInfo?.let { resetInfo ->
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Outlined.CalendarMonth,
@@ -97,7 +94,6 @@ private fun CardHeader(platform: Platform, maxPercent: Float) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Platform icon
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -107,8 +103,8 @@ private fun CardHeader(platform: Platform, maxPercent: Float) {
             ) {
                 Text(
                     text = getPlatformIconText(platform),
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Black,
-                    fontSize = 14.sp,
                     color = getPlatformIconColor(platform)
                 )
             }
@@ -119,27 +115,29 @@ private fun CardHeader(platform: Platform, maxPercent: Float) {
                 Text(
                     text = platform.displayName,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(getPlatformTagBg(platform))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = getPlanLabel(platform),
-                        fontSize = 10.sp,
-                        color = getPlatformTagColor(platform)
-                    )
-                }
+                SuggestionChip(
+                    onClick = {},
+                    label = {
+                        Text(
+                            text = getPlanLabel(platform),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    },
+                    colors = SuggestionChipDefaults.suggestionChipColors(
+                        containerColor = getPlatformChipBg(platform),
+                        labelColor = getPlatformChipColor(platform)
+                    ),
+                    border = null
+                )
             }
         }
 
         Text(
             text = "${maxPercent.toInt()}%",
-            fontSize = 30.sp,
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = getSemanticColor(maxPercent)
         )
@@ -167,7 +165,7 @@ private fun ProgressItem(item: UsageItem) {
         ) {
             Text(
                 text = item.label,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
@@ -175,7 +173,7 @@ private fun ProgressItem(item: UsageItem) {
                     append("${item.percent.toInt()}%")
                     item.resetCountdown?.let { append(" · $it") }
                 },
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -186,8 +184,8 @@ private fun ProgressItem(item: UsageItem) {
             progress = { (item.percent / 100f).coerceIn(0f, 1f) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(4.dp))
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
                 .alpha(if (isDanger) alpha else 1f),
             color = getSemanticColor(item.percent),
             trackColor = MaterialTheme.colorScheme.surfaceVariant
@@ -220,17 +218,17 @@ private fun getPlatformIconText(platform: Platform): String = when (platform) {
 }
 
 @Composable
-private fun getPlatformTagBg(platform: Platform): Color = when (platform) {
+private fun getPlatformChipBg(platform: Platform): Color = when (platform) {
     Platform.CLAUDE -> MaterialTheme.colorScheme.surfaceVariant
-    Platform.CHATGPT -> Color(0xFF10A37F).copy(alpha = 0.1f)
-    Platform.CURSOR -> Color(0xFF3D72E1).copy(alpha = 0.1f)
+    Platform.CHATGPT -> Color(0xFF10A37F).copy(alpha = 0.12f)
+    Platform.CURSOR -> Color(0xFF3D72E1).copy(alpha = 0.12f)
 }
 
 @Composable
-private fun getPlatformTagColor(platform: Platform): Color = when (platform) {
+private fun getPlatformChipColor(platform: Platform): Color = when (platform) {
     Platform.CLAUDE -> MaterialTheme.colorScheme.onSurfaceVariant
-    Platform.CHATGPT -> Color(0xFF10A37F)
-    Platform.CURSOR -> Color(0xFF3D72E1)
+    Platform.CHATGPT -> Color(0xFF0D8C6B)
+    Platform.CURSOR -> Color(0xFF2B5DC4)
 }
 
 private fun getPlanLabel(platform: Platform): String = when (platform) {
