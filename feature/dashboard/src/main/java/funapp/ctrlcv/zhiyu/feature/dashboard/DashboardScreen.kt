@@ -8,9 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -23,19 +21,20 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import funapp.ctrlcv.zhiyu.feature.dashboard.components.UsageCard
 
@@ -46,45 +45,40 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     val infiniteTransition = rememberInfiniteTransition(label = "refresh")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
+            animation = tween(1000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "rotation"
     )
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = {
-                Text(
-                    text = "知余",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            actions = {
-                IconButton(onClick = { viewModel.refresh() }) {
-                    Icon(
-                        imageVector = Icons.Outlined.Refresh,
-                        contentDescription = "刷新",
-                        modifier = if (uiState.isRefreshing) Modifier.rotate(rotation) else Modifier
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.background
+    Scaffold(
+        topBar = {
+            DashboardTopBar(
+                isRefreshing = uiState.isRefreshing,
+                rotation = rotation,
+                onRefresh = { viewModel.refresh() },
+                scrollBehavior = scrollBehavior
             )
-        )
-
+        }
+    ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = innerPadding.calculateTopPadding() + 8.dp,
+                bottom = innerPadding.calculateBottomPadding() + 8.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(uiState.usageList, key = { "${it.platform.key}_${it.updatedAt}" }) { usage ->
                 UsageCard(usageInfo = usage)
@@ -99,7 +93,7 @@ fun DashboardScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "暂无数据，请先登录平台账号",
+                            text = "暂无数据，请先在设置中登录平台账号",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -112,7 +106,7 @@ fun DashboardScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 4.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -124,13 +118,13 @@ fun DashboardScreen(
                 }
             }
 
-            item {
-                if (uiState.lastUpdated > 0) {
-                    Row(
+            if (uiState.lastUpdated > 0) {
+                item {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.Center
+                            .padding(top = 4.dp, bottom = 8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "上次更新：${formatTimeSince(uiState.lastUpdated)}",
@@ -147,24 +141,50 @@ fun DashboardScreen(
         AlertDialog(
             onDismissRequest = { viewModel.dismissAuthRequired() },
             title = { Text("${platform.displayName} 登录已失效") },
-            text = {
-                Text("无法获取使用数据，请重新登录 ${platform.displayName} 以继续同步额度。")
-            },
+            text = { Text("无法获取使用数据，请重新登录 ${platform.displayName} 以继续同步额度。") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.dismissAuthRequired()
                     onNavigateToAuth(platform.key)
-                }) {
-                    Text("去登录")
-                }
+                }) { Text("去登录") }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.dismissAuthRequired() }) {
-                    Text("稍后")
-                }
+                TextButton(onClick = { viewModel.dismissAuthRequired() }) { Text("稍后") }
             }
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DashboardTopBar(
+    isRefreshing: Boolean,
+    rotation: Float,
+    onRefresh: () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior
+) {
+    TopAppBar(
+        title = {
+            Text(
+                text = "知余",
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
+        actions = {
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = "刷新",
+                    modifier = if (isRefreshing) Modifier.rotate(rotation) else Modifier
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface
+        ),
+        scrollBehavior = scrollBehavior
+    )
 }
 
 private fun formatTimeSince(timestamp: Long): String {
