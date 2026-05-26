@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">知余</string>
+    <string name="widget_name">用量监控</string>
+    <string name="widget_description">实时展示 AI 平台用量</string>
+</resources>

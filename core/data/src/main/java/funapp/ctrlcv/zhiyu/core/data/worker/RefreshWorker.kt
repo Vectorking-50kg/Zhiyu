@@ -1,0 +1,75 @@
+package funapp.ctrlcv.zhiyu.core.data.worker
+
+import android.content.Context
+import androidx.hilt.work.HiltWorker
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.WorkerParameters
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
+import funapp.ctrlcv.zhiyu.core.domain.usecase.UsageRepository
+import funapp.ctrlcv.zhiyu.core.storage.AccountStore
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import java.util.concurrent.TimeUnit
+
+@HiltWorker
+class RefreshWorker @AssistedInject constructor(
+    @Assisted ctx: Context,
+    @Assisted params: WorkerParameters,
+    private val repository: UsageRepository,
+    private val accountStore: AccountStore
+) : CoroutineWorker(ctx, params) {
+
+    override suspend fun doWork(): Result = coroutineScope {
+        val accounts = accountStore.getAllAccounts()
+        if (accounts.isEmpty()) return@coroutineScope Result.success()
+
+        val results = accounts.map { account ->
+            async {
+                repository.getUsage(account.platform, account.id)
+            }
+        }.awaitAll()
+
+        if (results.all { it.isSuccess }) Result.success()
+        else Result.retry()
+    }
+
+    companion object {
+        private const val WORK_NAME = "usage_refresh"
+
+        fun schedule(ctx: Context) {
+            val request = PeriodicWorkRequestBuilder<RefreshWorker>(15, TimeUnit.MINUTES)
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                )
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
+                .build()
+
+            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
+                WORK_NAME,
+                ExistingPeriodicWorkPolicy.KEEP,
+                request
+            )
+        }
+
+        fun refreshNow(ctx: Context) {
+            val request = androidx.work.OneTimeWorkRequestBuilder<RefreshWorker>()
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                )
+                .build()
+            WorkManager.getInstance(ctx).enqueue(request)
+        }
+    }
+}
