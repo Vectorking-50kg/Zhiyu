@@ -72,7 +72,13 @@ class DashboardViewModel @Inject constructor(
             sessionEventBus.events.collect { event ->
                 when (event) {
                     is SessionEvent.SessionExpired -> {
-                        _uiState.update { it.copy(authRequired = event.platform) }
+                        if (!event.platform.requiresApiKey) {
+                            _uiState.update { it.copy(authRequired = event.platform) }
+                        } else {
+                            _uiState.update {
+                                it.copy(error = "${event.platform.displayName} API 密钥无效，请在设置中重新配置")
+                            }
+                        }
                     }
                     is SessionEvent.RefreshCompleted -> {
                         if (event.success) loadUsage()

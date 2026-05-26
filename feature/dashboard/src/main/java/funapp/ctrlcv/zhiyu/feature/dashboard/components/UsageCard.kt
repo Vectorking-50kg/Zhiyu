@@ -43,7 +43,8 @@ import funapp.ctrlcv.zhiyu.core.domain.model.UsageItem
 
 @Composable
 fun UsageCard(usageInfo: UsageInfo) {
-    val maxPercent = usageInfo.items.maxOfOrNull { it.percent } ?: 0f
+    // null 表示没有百分比条目（如 DeepSeek 全余额展示），不在卡片右上角显示 xx%
+    val maxPercent: Float? = usageInfo.items.filter { it.percent >= 0f }.maxOfOrNull { it.percent }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -58,7 +59,11 @@ fun UsageCard(usageInfo: UsageInfo) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     usageInfo.items.forEach { item ->
-                        ProgressItem(item = item)
+                        if (item.percent >= 0f) {
+                            ProgressItem(item = item)
+                        } else {
+                            InfoItem(item = item)
+                        }
                     }
                 }
             }
@@ -87,7 +92,7 @@ fun UsageCard(usageInfo: UsageInfo) {
 }
 
 @Composable
-private fun CardHeader(platform: Platform, maxPercent: Float) {
+private fun CardHeader(platform: Platform, maxPercent: Float?) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -135,12 +140,14 @@ private fun CardHeader(platform: Platform, maxPercent: Float) {
             }
         }
 
-        Text(
-            text = "${maxPercent.toInt()}%",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = getSemanticColor(maxPercent)
-        )
+        maxPercent?.let {
+            Text(
+                text = "${it.toInt()}%",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = getSemanticColor(it)
+            )
+        }
     }
 }
 
@@ -190,6 +197,37 @@ private fun ProgressItem(item: UsageItem) {
             color = getSemanticColor(item.percent),
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
+
+        item.valueText?.let { value ->
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** 纯信息行：用于余额、次数等不需要进度条的展示（percent == -1f） */
+@Composable
+private fun InfoItem(item: UsageItem) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = item.label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = item.valueText ?: "--",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -203,18 +241,27 @@ private fun getPlatformIconBg(platform: Platform): Color = when (platform) {
     Platform.CLAUDE -> Color(0xFFFFFFFF)
     Platform.CHATGPT -> Color(0xFF10A37F)
     Platform.CURSOR -> Color(0xFF3D72E1)
+    Platform.MINIMAX -> Color(0xFF1A1A2E)
+    Platform.AIHUBMIX -> Color(0xFF6C47FF)
+    Platform.DEEPSEEK -> Color(0xFF4D6BFE)
 }
 
 private fun getPlatformIconColor(platform: Platform): Color = when (platform) {
     Platform.CLAUDE -> Color(0xFF1A1A1A)
     Platform.CHATGPT -> Color.White
     Platform.CURSOR -> Color.White
+    Platform.MINIMAX -> Color.White
+    Platform.AIHUBMIX -> Color.White
+    Platform.DEEPSEEK -> Color.White
 }
 
 private fun getPlatformIconText(platform: Platform): String = when (platform) {
     Platform.CLAUDE -> "AI\\"
     Platform.CHATGPT -> "GP"
     Platform.CURSOR -> "Cu"
+    Platform.MINIMAX -> "MM"
+    Platform.AIHUBMIX -> "AH"
+    Platform.DEEPSEEK -> "DS"
 }
 
 @Composable
@@ -222,6 +269,9 @@ private fun getPlatformChipBg(platform: Platform): Color = when (platform) {
     Platform.CLAUDE -> MaterialTheme.colorScheme.surfaceVariant
     Platform.CHATGPT -> Color(0xFF10A37F).copy(alpha = 0.12f)
     Platform.CURSOR -> Color(0xFF3D72E1).copy(alpha = 0.12f)
+    Platform.MINIMAX -> Color(0xFF1A1A2E).copy(alpha = 0.12f)
+    Platform.AIHUBMIX -> Color(0xFF6C47FF).copy(alpha = 0.12f)
+    Platform.DEEPSEEK -> Color(0xFF4D6BFE).copy(alpha = 0.12f)
 }
 
 @Composable
@@ -229,10 +279,16 @@ private fun getPlatformChipColor(platform: Platform): Color = when (platform) {
     Platform.CLAUDE -> MaterialTheme.colorScheme.onSurfaceVariant
     Platform.CHATGPT -> Color(0xFF0D8C6B)
     Platform.CURSOR -> Color(0xFF2B5DC4)
+    Platform.MINIMAX -> Color(0xFF1A1A2E)
+    Platform.AIHUBMIX -> Color(0xFF5535D4)
+    Platform.DEEPSEEK -> Color(0xFF3A52D4)
 }
 
 private fun getPlanLabel(platform: Platform): String = when (platform) {
     Platform.CLAUDE -> "Pro"
     Platform.CHATGPT -> "Plus"
     Platform.CURSOR -> "Pro"
+    Platform.MINIMAX -> "API"
+    Platform.AIHUBMIX -> "API"
+    Platform.DEEPSEEK -> "API"
 }
