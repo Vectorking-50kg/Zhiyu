@@ -14,8 +14,7 @@ import javax.inject.Inject
 
 data class ApiKeyDialogState(
     val platform: Platform,
-    val apiKey: String = "",
-    val groupId: String = ""   // 仅 MiniMax 需要
+    val apiKey: String = ""
 )
 
 data class SettingsUiState(
@@ -51,11 +50,8 @@ class SettingsViewModel @Inject constructor(
 
     fun showApiKeyDialog(platform: Platform) {
         val existingKey = tokenStore.get(platform, "default") ?: ""
-        val existingGroupId = if (platform == Platform.MINIMAX) {
-            tokenStore.getExtra(platform, "default", "group_id") ?: ""
-        } else ""
         _uiState.update {
-            it.copy(apiKeyDialog = ApiKeyDialogState(platform, existingKey, existingGroupId))
+            it.copy(apiKeyDialog = ApiKeyDialogState(platform, existingKey))
         }
     }
 
@@ -63,15 +59,10 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(apiKeyDialog = null) }
     }
 
-    fun updateApiKeyDialogField(apiKey: String? = null, groupId: String? = null) {
+    fun updateApiKey(apiKey: String) {
         _uiState.update { state ->
             val dialog = state.apiKeyDialog ?: return@update state
-            state.copy(
-                apiKeyDialog = dialog.copy(
-                    apiKey = apiKey ?: dialog.apiKey,
-                    groupId = groupId ?: dialog.groupId
-                )
-            )
+            state.copy(apiKeyDialog = dialog.copy(apiKey = apiKey))
         }
     }
 
@@ -79,15 +70,10 @@ class SettingsViewModel @Inject constructor(
         val dialog = _uiState.value.apiKeyDialog ?: return
         val platform = dialog.platform
         val apiKey = dialog.apiKey.trim()
-        val groupId = dialog.groupId.trim()
 
         if (apiKey.isEmpty()) return
-        if (platform == Platform.MINIMAX && groupId.isEmpty()) return
 
         tokenStore.save(platform, "default", apiKey)
-        if (platform == Platform.MINIMAX) {
-            tokenStore.saveExtra(platform, "default", "group_id", groupId)
-        }
 
         accountStore.saveAccount(
             Account(
@@ -104,9 +90,6 @@ class SettingsViewModel @Inject constructor(
 
     fun clearApiKey(platform: Platform) {
         tokenStore.clear(platform, "default")
-        if (platform == Platform.MINIMAX) {
-            tokenStore.clearExtra(platform, "default", "group_id")
-        }
         accountStore.removeAccount(platform, "default")
         loadAccounts()
     }

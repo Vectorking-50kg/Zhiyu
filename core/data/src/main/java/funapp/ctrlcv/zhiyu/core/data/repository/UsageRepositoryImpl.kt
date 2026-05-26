@@ -53,9 +53,7 @@ class UsageRepositoryImpl @Inject constructor(
     override suspend fun getMiniMaxUsage(accountId: String): Result<UsageInfo> = runCatching {
         val apiKey = tokenStore.get(Platform.MINIMAX, accountId)
             ?: throw NoCookieException(Platform.MINIMAX)
-        val groupId = tokenStore.getExtra(Platform.MINIMAX, accountId, "group_id")
-            ?: throw NoCookieException(Platform.MINIMAX)
-        val usage = api.getMiniMaxUsage(apiKey, groupId)
+        val usage = api.getMiniMaxUsage(apiKey)
         cache.save(Platform.MINIMAX, usage)
         usage
     }.recoverCatching { e ->

@@ -195,13 +195,13 @@ class UsageApiService @Inject constructor(
     }
 
     // ── MiniMax ──────────────────────────────────────────────────────────────
-    // Docs: https://platform.minimaxi.com/document/Tokens
-    // GET https://api.minimax.chat/v1/token/plan?GroupId={group_id}
-    // Authorization: Bearer {api_key}
-    suspend fun getMiniMaxUsage(apiKey: String, groupId: String): UsageInfo = withContext(Dispatchers.IO) {
-        val url = "https://api.minimax.chat/v1/token/plan?GroupId=$groupId"
+    // Docs: https://www.minimaxi.com/v1/token_plan/remains
+    // 注意：此处使用 Token Plan 专属 API Key，非普通按量 API Key
+    // GET https://www.minimaxi.com/v1/token_plan/remains
+    // Authorization: Bearer {token_plan_api_key}
+    suspend fun getMiniMaxUsage(apiKey: String): UsageInfo = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url(url)
+            .url("https://www.minimaxi.com/v1/token_plan/remains")
             .header("Authorization", "Bearer $apiKey")
             .header("Content-Type", "application/json")
             .tag(Platform::class.java, Platform.MINIMAX)
@@ -219,31 +219,47 @@ class UsageApiService @Inject constructor(
                     throw ApiStructureChangedException(Platform.MINIMAX, "API error $statusCode: $msg")
                 }
 
-                val plan = json.getAsJsonObject("token_plan")
-                    ?: throw ApiStructureChangedException(Platform.MINIMAX, "Missing token_plan field")
+                // 优先从 token_plan / 根级别读取 remains 与 total
+                val planNode = json.getAsJsonObject("token_plan")
+                    ?: json.getAsJsonObject("token_plan_remains")
+                    ?: json
 
-                val total = plan.get("total_token")?.asFloat ?: plan.get("totalToken")?.asFloat ?: 1f
-                val used = plan.get("used_token")?.asFloat ?: plan.get("usedToken")?.asFloat ?: 0f
-                val percent = if (total > 0) (used / total * 100f).coerceIn(0f, 100f) else 0f
+                val remains = planNode.get("remains")?.takeUnless { it.isJsonNull }?.asLong
+                    ?: planNode.get("remain_tokens")?.takeUnless { it.isJsonNull }?.asLong
+                    ?: 0L
+                val total = planNode.get("total")?.takeUnless { it.isJsonNull }?.asLong
+                    ?: planNode.get("total_tokens")?.takeUnless { it.isJsonNull }?.asLong
+                    ?: planNode.get("total_token")?.takeUnless { it.isJsonNull }?.asLong
+                    ?: 0L
 
-                val expireTime = plan.get("expire_time")?.takeUnless { it.isJsonNull }?.asString
-                    ?: plan.get("expireTime")?.takeUnless { it.isJsonNull }?.asString
+                val expireTime = planNode.get("expire_time")?.takeUnless { it.isJsonNull }?.asString
+                    ?: planNode.get("expireTime")?.takeUnless { it.isJsonNull }?.asString
+                    ?: json.get("expire_time")?.takeUnless { it.isJsonNull }?.asString
 
-                val items = listOf(
-                    UsageItem(
+                val items = mutableListOf<UsageItem>()
+                if (total > 0) {
+                    val used = total - remains
+                    val percent = (used.toFloat() / total * 100f).coerceIn(0f, 100f)
+                    items.add(UsageItem(
                         label = "Token Plan 用量",
                         percent = percent,
-                        resetCountdown = expireTime?.let { formatResetTime(it) }
-                    )
-                )
-
-                val totalFmt = formatTokenCount(total.toLong())
-                val usedFmt = formatTokenCount(used.toLong())
+                        resetCountdown = expireTime?.let { formatResetTime(it) },
+                        valueText = "剩余 ${formatTokenCount(remains)}"
+                    ))
+                } else {
+                    // 只拿到 remains，无 total，以信息行展示
+                    items.add(UsageItem(
+                        label = "Token Plan 剩余",
+                        percent = -1f,
+                        resetCountdown = expireTime?.let { formatResetTime(it) },
+                        valueText = "${formatTokenCount(remains)} tokens"
+                    ))
+                }
 
                 UsageInfo(
                     platform = Platform.MINIMAX,
                     items = items,
-                    resetInfo = "已用 $usedFmt / 共 $totalFmt tokens",
+                    resetInfo = if (total > 0) "共 ${formatTokenCount(total)} tokens" else null,
                     updatedAt = System.currentTimeMillis()
                 )
             } catch (e: Exception) {
@@ -254,13 +270,14 @@ class UsageApiService @Inject constructor(
     }
 
     // ── AIHubMix ─────────────────────────────────────────────────────────────
-    // Docs: https://doc.aihubmix.com
+    // Docs: https://docs.aihubmix.com/cn/api/Cli
     // GET https://aihubmix.com/api/user/self
-    // Authorization: Bearer {token}
+    // Authorization: {token}  （无 Bearer 前缀）
+    // 余额（CNY）= quota / 500000
     suspend fun getAiHubMixUsage(token: String): UsageInfo = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("https://aihubmix.com/api/user/self")
-            .header("Authorization", "Bearer $token")
+            .header("Authorization", token)          // 无 Bearer 前缀
             .header("Content-Type", "application/json")
             .tag(Platform::class.java, Platform.AIHUBMIX)
             .build()
@@ -284,11 +301,15 @@ class UsageApiService @Inject constructor(
                 val total = quota + usedQuota
                 val percent = if (total > 0) (usedQuota.toFloat() / total * 100f).coerceIn(0f, 100f) else 0f
 
+                // 1 CNY = 500000 quota 单位
+                val remainingCny = quota / 500000.0
+                val balanceText = "剩余 ¥${String.format("%.4f", remainingCny)}"
+
                 val items = mutableListOf<UsageItem>()
                 items.add(UsageItem(
                     label = "额度用量",
                     percent = percent,
-                    valueText = "剩余 ${formatQuota(quota)}"
+                    valueText = balanceText
                 ))
                 items.add(UsageItem(
                     label = "累计请求次数",

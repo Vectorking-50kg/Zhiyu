@@ -183,8 +183,7 @@ fun SettingsScreen(
         ApiKeyDialog(
             state = dialog,
             onDismiss = { viewModel.dismissApiKeyDialog() },
-            onApiKeyChange = { viewModel.updateApiKeyDialogField(apiKey = it) },
-            onGroupIdChange = { viewModel.updateApiKeyDialogField(groupId = it) },
+            onApiKeyChange = { viewModel.updateApiKey(it) },
             onConfirm = { viewModel.saveApiKey() }
         )
     }
@@ -195,52 +194,30 @@ private fun ApiKeyDialog(
     state: ApiKeyDialogState,
     onDismiss: () -> Unit,
     onApiKeyChange: (String) -> Unit,
-    onGroupIdChange: (String) -> Unit,
     onConfirm: () -> Unit
 ) {
     val platform = state.platform
-    val needsGroupId = platform == Platform.MINIMAX
-    val canConfirm = state.apiKey.isNotBlank() && (!needsGroupId || state.groupId.isNotBlank())
+    val hint = when (platform) {
+        Platform.MINIMAX ->
+            "请使用 Token Plan 专属 API Key（在 MiniMax 开放平台「Token Plan」页面获取，与普通按量 API Key 不同）"
+        Platform.AIHUBMIX ->
+            "在 AIHubMix 控制台的「令牌」页面创建访问令牌"
+        Platform.DEEPSEEK ->
+            "在 DeepSeek 开放平台的「API Keys」页面创建"
+        else -> "请粘贴您的 API 密钥"
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("${platform.displayName} API 配置") },
         text = {
             Column {
-                if (needsGroupId) {
-                    Text(
-                        text = "请在 MiniMax 开放平台获取 Group ID 和 API Key",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = state.groupId,
-                        onValueChange = onGroupIdChange,
-                        label = { Text("Group ID") },
-                        placeholder = { Text("例：1234567890") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Next
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                } else {
-                    val hint = when (platform) {
-                        Platform.AIHUBMIX -> "在 AIHubMix 控制台的「令牌」页面创建"
-                        Platform.DEEPSEEK -> "在 DeepSeek 开放平台的「API Keys」页面创建"
-                        else -> "请粘贴您的 API 密钥"
-                    }
-                    Text(
-                        text = hint,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
                     value = state.apiKey,
                     onValueChange = onApiKeyChange,
@@ -259,7 +236,7 @@ private fun ApiKeyDialog(
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
-                enabled = canConfirm
+                enabled = state.apiKey.isNotBlank()
             ) {
                 Text("保存")
             }
