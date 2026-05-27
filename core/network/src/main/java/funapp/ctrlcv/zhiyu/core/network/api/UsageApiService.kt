@@ -129,7 +129,9 @@ class UsageApiService @Inject constructor(
         val request = Request.Builder()
             .url("https://chatgpt.com/backend-api/wham/usage")
             .header("Authorization", "Bearer $accessToken")
+            .header("Cookie", "__Secure-next-auth.session-token=$cookie")
             .header("User-Agent", USER_AGENT)
+            .header("Accept", "*/*")
             .header("Referer", "https://chatgpt.com/")
             .header("Origin", "https://chatgpt.com")
             .tag(Platform::class.java, Platform.CHATGPT)
@@ -344,9 +346,12 @@ class UsageApiService @Inject constructor(
         client.newCall(request).execute().use { response ->
             val body = readOrThrow(response, Platform.CURSOR)
             val json = gson.fromJson(body, JsonObject::class.java)
+            // Usage numbers are nested under "planUsage"; fall back to top-level for safety.
+            val usage = json.getAsJsonObject("planUsage") ?: json
 
             if (items.none { it.label == "会员类型" }) {
-                val planName = json.get("planName")?.takeUnless { it.isJsonNull }?.asString
+                val planName = usage.get("planName")?.takeUnless { it.isJsonNull }?.asString
+                    ?: json.get("planName")?.takeUnless { it.isJsonNull }?.asString
                     ?: json.get("planType")?.takeUnless { it.isJsonNull }?.asString
                 if (planName != null) {
                     items.add(UsageItem(
@@ -357,9 +362,10 @@ class UsageApiService @Inject constructor(
                 }
             }
 
-            val spendCents = json.get("totalSpend")?.takeUnless { it.isJsonNull }?.asDouble
-            val limitCents = json.get("limit")?.takeUnless { it.isJsonNull }?.asDouble
-            val totalPercent = json.get("totalPercentUsed")?.takeUnless { it.isJsonNull }?.asFloat
+            val spendCents = (usage.get("used") ?: usage.get("totalSpend"))
+                ?.takeUnless { it.isJsonNull }?.asDouble
+            val limitCents = usage.get("limit")?.takeUnless { it.isJsonNull }?.asDouble
+            val totalPercent = usage.get("totalPercentUsed")?.takeUnless { it.isJsonNull }?.asFloat
             val percent = totalPercent
                 ?: if (limitCents != null && limitCents > 0 && spendCents != null) {
                     (spendCents / limitCents * 100.0).toFloat()
@@ -369,8 +375,9 @@ class UsageApiService @Inject constructor(
                 val valueText = if (spendCents != null && limitCents != null && limitCents > 0) {
                     "\$${String.format("%.2f", spendCents / 100.0)} / \$${String.format("%.2f", limitCents / 100.0)}"
                 } else null
-                val reset = json.get("billingCycleEnd")?.takeUnless { it.isJsonNull }
-                    ?.asString?.toLongOrNull()?.let { formatResetTimestampMs(it) }
+                val reset = (json.get("billingCycleEnd") ?: usage.get("billingCycleEnd"))
+                    ?.takeUnless { it.isJsonNull }?.asString?.toLongOrNull()
+                    ?.let { formatResetTimestampMs(it) }
                 items.add(UsageItem(
                     label = "本周期用量",
                     percent = percent.coerceIn(0f, 100f),
@@ -379,10 +386,10 @@ class UsageApiService @Inject constructor(
                 ))
             }
 
-            json.get("autoPercentUsed")?.takeUnless { it.isJsonNull }?.asFloat?.let {
+            usage.get("autoPercentUsed")?.takeUnless { it.isJsonNull }?.asFloat?.let {
                 items.add(UsageItem(label = "Auto 用量", percent = it.coerceIn(0f, 100f)))
             }
-            json.get("apiPercentUsed")?.takeUnless { it.isJsonNull }?.asFloat?.let {
+            usage.get("apiPercentUsed")?.takeUnless { it.isJsonNull }?.asFloat?.let {
                 items.add(UsageItem(label = "API 用量", percent = it.coerceIn(0f, 100f)))
             }
         }
