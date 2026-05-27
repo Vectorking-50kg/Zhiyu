@@ -170,9 +170,19 @@ class UsageApiService @Inject constructor(
     }
 
     suspend fun getCursorUsage(cookie: String): UsageInfo = withContext(Dispatchers.IO) {
-        // WorkosCursorSessionToken value format: "userId::accessJwt"
-        // Extract the JWT part for Bearer auth; keep full cookie as fallback.
-        val accessToken = if ("::" in cookie) cookie.substringAfter("::") else cookie
+        // WebView may store the cookie value URL-encoded (%3A%3A instead of ::).
+        // Decode first so we can correctly split the "userId::accessJwt" format.
+        val decodedCookie = try {
+            java.net.URLDecoder.decode(cookie, "UTF-8")
+        } catch (e: Exception) {
+            cookie
+        }
+        val accessToken = when {
+            decodedCookie.startsWith("eyJ") -> decodedCookie           // already a bare JWT
+            "::" in decodedCookie -> decodedCookie.substringAfter("::") // userId::jwt (decoded)
+            "::" in cookie -> cookie.substringAfter("::")               // jwt not encoded, :: is raw
+            else -> cookie                                               // unknown format, pass through
+        }
 
         val request = Request.Builder()
             .url("https://api2.cursor.sh/auth/full_stripe_profile")

@@ -3,9 +3,12 @@ package funapp.ctrlcv.zhiyu.core.data.repository
 import funapp.ctrlcv.zhiyu.core.data.cache.UsageCache
 import funapp.ctrlcv.zhiyu.core.domain.model.NoCookieException
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
+import funapp.ctrlcv.zhiyu.core.domain.model.SessionExpiredException
+import funapp.ctrlcv.zhiyu.core.domain.model.SessionEvent
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.usecase.UsageRepository
 import funapp.ctrlcv.zhiyu.core.network.api.UsageApiService
+import funapp.ctrlcv.zhiyu.core.network.interceptor.SessionEventBus
 import funapp.ctrlcv.zhiyu.core.storage.AccountStore
 import funapp.ctrlcv.zhiyu.core.storage.SecureTokenStore
 import javax.inject.Inject
@@ -16,7 +19,8 @@ class UsageRepositoryImpl @Inject constructor(
     private val api: UsageApiService,
     private val tokenStore: SecureTokenStore,
     private val accountStore: AccountStore,
-    private val cache: UsageCache
+    private val cache: UsageCache,
+    private val sessionEventBus: SessionEventBus
 ) : UsageRepository {
 
     override suspend fun getClaudeUsage(accountId: String): Result<UsageInfo> = runCatching {
@@ -94,7 +98,14 @@ class UsageRepositoryImpl @Inject constructor(
     override suspend fun getAllUsage(): List<UsageInfo> {
         val results = mutableListOf<UsageInfo>()
         for (account in accountStore.getAllAccounts()) {
-            getUsage(account.platform, account.id).getOrNull()?.let { results.add(it) }
+            val result = getUsage(account.platform, account.id)
+            result.getOrNull()?.let { results.add(it) }
+            // Surface auth failures: emit SessionExpired so the UI can prompt re-login.
+            // getOrNull() would silently swallow these, leaving the user with no card and no hint.
+            val error = result.exceptionOrNull()
+            if (error is SessionExpiredException && !account.platform.requiresApiKey) {
+                sessionEventBus.emit(SessionEvent.SessionExpired(account.platform))
+            }
         }
         return results.ifEmpty { cache.getAll() }
     }
