@@ -301,9 +301,9 @@ class UsageApiService @Inject constructor(
                 val total = quota + usedQuota
                 val percent = if (total > 0) (usedQuota.toFloat() / total * 100f).coerceIn(0f, 100f) else 0f
 
-                // 1 CNY = 500000 quota 单位
-                val remainingCny = quota / 500000.0
-                val balanceText = "剩余 ¥${String.format("%.4f", remainingCny)}"
+                // 1 USD = 500000 quota 单位
+                val remainingUsd = quota / 500000.0
+                val balanceText = "剩余 \$${String.format("%.4f", remainingUsd)}"
 
                 val items = mutableListOf<UsageItem>()
                 items.add(UsageItem(
