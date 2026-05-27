@@ -10,18 +10,22 @@ import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import javax.inject.Inject
 import javax.inject.Singleton
+
+data class ClaudeOrgInfo(val orgId: String, val planTier: String?)
 
 @Singleton
 class UsageApiService @Inject constructor(
     private val client: OkHttpClient,
     private val gson: Gson
 ) {
-    suspend fun getClaudeOrganizationId(cookie: String): String = withContext(Dispatchers.IO) {
+    suspend fun getClaudeOrgInfo(cookie: String): ClaudeOrgInfo = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("https://claude.ai/api/organizations")
             .header("Cookie", "sessionKey=$cookie")
@@ -33,8 +37,20 @@ class UsageApiService @Inject constructor(
             val body = readOrThrow(response, Platform.CLAUDE)
             try {
                 val orgs = gson.fromJson<List<JsonObject>>(body, object : TypeToken<List<JsonObject>>() {}.type)
-                orgs.firstOrNull()?.get("uuid")?.asString
+                val org = orgs.firstOrNull()
                     ?: throw ApiStructureChangedException(Platform.CLAUDE, "No organization found")
+                val orgId = org.get("uuid")?.asString
+                    ?: throw ApiStructureChangedException(Platform.CLAUDE, "No organization found")
+                val planTier = org.getAsJsonArray("capabilities")
+                    ?.asSequence()
+                    ?.mapNotNull { it.takeUnless { el -> el.isJsonNull }?.asString }
+                    ?.firstOrNull { cap ->
+                        cap.startsWith("claude_pro") || cap.startsWith("claude_max") ||
+                        cap.startsWith("claude_team") || cap.startsWith("claude_enterprise") ||
+                        cap == "free"
+                    }
+                    ?: org.get("plan_tier")?.takeUnless { it.isJsonNull }?.asString
+                ClaudeOrgInfo(orgId, planTier)
             } catch (e: Exception) {
                 if (e is ApiStructureChangedException || e is SessionExpiredException) throw e
                 throw ApiStructureChangedException(Platform.CLAUDE, "Failed to parse organizations: ${e.message}")
@@ -42,9 +58,9 @@ class UsageApiService @Inject constructor(
         }
     }
 
-    suspend fun getClaudeUsage(cookie: String, orgId: String): UsageInfo = withContext(Dispatchers.IO) {
+    suspend fun getClaudeUsage(cookie: String, orgInfo: ClaudeOrgInfo): UsageInfo = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("https://claude.ai/api/organizations/$orgId/usage")
+            .url("https://claude.ai/api/organizations/${orgInfo.orgId}/usage")
             .header("Cookie", "sessionKey=$cookie")
             .header("User-Agent", USER_AGENT)
             .tag(Platform::class.java, Platform.CLAUDE)
@@ -57,14 +73,15 @@ class UsageApiService @Inject constructor(
                 val items = mutableListOf<UsageItem>()
 
                 parseClaudeBucket(json, "five_hour", "5 小时限额")?.let(items::add)
-                parseClaudeBucket(json, "seven_day", "周限额 · 所有模型")?.let(items::add)
-                parseClaudeBucket(json, "seven_day_opus", "周限额 · Opus")?.let(items::add)
-                parseClaudeBucket(json, "seven_day_sonnet", "周限额 · Sonnet")?.let(items::add)
-                parseClaudeBucket(json, "seven_day_omelette", "周限额 · Omelette")?.let(items::add)
+                parseClaudeBucket(json, "seven_day", "周限额｜所有模型")?.let(items::add)
+                parseClaudeBucket(json, "seven_day_opus", "周限额｜Opus")?.let(items::add)
+                parseClaudeBucket(json, "seven_day_sonnet", "周限额｜Sonnet")?.let(items::add)
+                parseClaudeBucket(json, "seven_day_omelette", "周限额｜Claude Design")?.let(items::add)
 
                 UsageInfo(
                     platform = Platform.CLAUDE,
                     items = items,
+                    planLabel = orgInfo.planTier?.let { formatClaudePlan(it) },
                     updatedAt = System.currentTimeMillis()
                 )
             } catch (e: Exception) {
@@ -72,6 +89,16 @@ class UsageApiService @Inject constructor(
                 throw ApiStructureChangedException(Platform.CLAUDE, "Failed to parse usage: ${e.message}")
             }
         }
+    }
+
+    private fun formatClaudePlan(tier: String): String = when (tier.lowercase()) {
+        "free" -> "Free"
+        "pro", "claude_pro" -> "Pro"
+        "claude_max_5" -> "Max 5×"
+        "claude_max_20" -> "Max 20×"
+        "team", "claude_team" -> "Team"
+        "enterprise" -> "Enterprise"
+        else -> tier.replaceFirstChar { it.uppercase() }
     }
 
     private fun parseClaudeBucket(root: JsonObject, key: String, label: String): UsageItem? {
@@ -89,108 +116,316 @@ class UsageApiService @Inject constructor(
         )
     }
 
-    suspend fun getChatGptUsage(cookie: String): UsageInfo = withContext(Dispatchers.IO) {
+    // Step 1: exchange the long-lived session cookie for a short-lived access token.
+    // ChatGPT backend-api endpoints require "Authorization: Bearer <accessToken>", not the
+    // raw session cookie, which is a NextAuth.js server-side credential only.
+    private suspend fun getOpenAIAccessToken(sessionCookie: String): String {
         val request = Request.Builder()
-            .url("https://chatgpt.com/backend-api/accounts/check/v4-2023-04-27")
-            .header("Cookie", "__Secure-next-auth.session-token=$cookie")
+            .url("https://chatgpt.com/api/auth/session")
+            .header("Cookie", "__Secure-next-auth.session-token=$sessionCookie")
             .header("User-Agent", USER_AGENT)
-            .tag(Platform::class.java, Platform.CHATGPT)
             .build()
 
         client.newCall(request).execute().use { response ->
+            if (response.code == 401 || response.code == 403) {
+                throw SessionExpiredException(Platform.CHATGPT)
+            }
+            val body = response.body?.string()
+                ?: throw SessionExpiredException(Platform.CHATGPT)
+            if (!response.isSuccessful) {
+                throw SessionExpiredException(Platform.CHATGPT)
+            }
+            val json = try {
+                gson.fromJson(body, JsonObject::class.java)
+            } catch (e: Exception) {
+                throw SessionExpiredException(Platform.CHATGPT)
+            }
+            return json.get("accessToken")?.asString
+                ?: throw SessionExpiredException(Platform.CHATGPT)
+        }
+    }
+
+    suspend fun getChatGptUsage(cookie: String): UsageInfo = withContext(Dispatchers.IO) {
+        val accessToken = getOpenAIAccessToken(cookie)
+        val items = mutableListOf<UsageItem>()
+
+        // Step 2: real usage windows. /backend-api/wham/usage returns rate_limit with
+        // primary_window (5h) and secondary_window (weekly) used_percent, plus plan_type.
+        val request = Request.Builder()
+            .url("https://chatgpt.com/backend-api/wham/usage")
+            .header("Authorization", "Bearer $accessToken")
+            .header("Cookie", "__Secure-next-auth.session-token=$cookie")
+            .header("User-Agent", USER_AGENT)
+            .header("Accept", "*/*")
+            .header("Referer", "https://chatgpt.com/")
+            .header("Origin", "https://chatgpt.com")
+            .tag(Platform::class.java, Platform.CHATGPT)
+            .build()
+
+        val planFromUsage = client.newCall(request).execute().use { response ->
             val body = readOrThrow(response, Platform.CHATGPT)
             try {
                 val json = gson.fromJson(body, JsonObject::class.java)
-                val items = mutableListOf<UsageItem>()
-
-                json.getAsJsonArray("rate_limits")?.forEach { element ->
-                    val limit = element.asJsonObject
-                    val id = limit.get("id")?.asString ?: return@forEach
-                    val total = limit.get("limit")?.asFloat ?: 1f
-                    val remaining = limit.get("remaining")?.asFloat ?: 0f
-                    val used = total - remaining
-                    val percent = if (total > 0) (used / total * 100f) else 0f
-                    val resetTimestamp = limit.get("reset_timestamp")?.asLong
-
-                    items.add(UsageItem(
-                        label = id,
-                        percent = percent,
-                        resetCountdown = resetTimestamp?.let { formatResetTimestamp(it) }
-                    ))
-                }
-
-                if (items.isEmpty()) {
-                    throw ApiStructureChangedException(
-                        Platform.CHATGPT,
-                        "Response missing rate_limits field (endpoint may have changed)"
-                    )
-                }
-
-                UsageInfo(
-                    platform = Platform.CHATGPT,
-                    items = items,
-                    updatedAt = System.currentTimeMillis()
-                )
+                val rateLimit = json.optObject("rate_limit")
+                parseChatGptWindow(rateLimit, "primary_window", "5 小时限额")?.let(items::add)
+                parseChatGptWindow(rateLimit, "secondary_window", "周限额")?.let(items::add)
+                val codeReview = json.optObject("code_review_rate_limit")
+                parseChatGptWindow(codeReview, "primary_window", "Code Review｜5 小时")?.let(items::add)
+                parseChatGptWindow(codeReview, "secondary_window", "Code Review｜周")?.let(items::add)
+                json.get("plan_type")?.takeUnless { it.isJsonNull }?.asString
             } catch (e: Exception) {
                 if (e is ApiStructureChangedException || e is SessionExpiredException) throw e
                 throw ApiStructureChangedException(Platform.CHATGPT, "Failed to parse usage: ${e.message}")
             }
         }
+
+        // Plan type + renewal date come from accounts/check (best-effort; never fails the card).
+        val planInfo = fetchChatGptPlanInfo(accessToken)
+        val planType = planInfo?.planType ?: planFromUsage
+        planInfo?.renewIso?.let { iso ->
+            val text = formatRenewDate(iso)
+            if (text.isNotBlank()) {
+                items.add(UsageItem(
+                    label = if (planInfo.hasActive) "续订时间" else "到期时间",
+                    percent = -1f,
+                    valueText = text
+                ))
+            }
+        }
+
+        if (items.isEmpty()) {
+            throw ApiStructureChangedException(
+                Platform.CHATGPT,
+                "wham/usage returned no rate_limit windows or plan info"
+            )
+        }
+
+        UsageInfo(
+            platform = Platform.CHATGPT,
+            items = items,
+            planLabel = planType?.let { formatChatGptPlan(it) },
+            updatedAt = System.currentTimeMillis()
+        )
+    }
+
+    private data class ChatGptPlanInfo(
+        val planType: String?,
+        val hasActive: Boolean,
+        val renewIso: String?
+    )
+
+    // Best-effort fetch of subscription plan + renewal date from accounts/check.
+    // Returns null on any failure so it never blocks the usage card.
+    private fun fetchChatGptPlanInfo(accessToken: String): ChatGptPlanInfo? {
+        return try {
+            val request = Request.Builder()
+                .url("https://chatgpt.com/backend-api/accounts/check/v4-2023-04-27")
+                .header("Authorization", "Bearer $accessToken")
+                .header("User-Agent", USER_AGENT)
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val body = response.body?.string() ?: return null
+                val json = gson.fromJson(body, JsonObject::class.java)
+                val accounts = json.getAsJsonObject("accounts") ?: return null
+                val orderedId = json.getAsJsonArray("account_ordering")
+                    ?.firstOrNull()?.takeUnless { it.isJsonNull }?.asString
+                val accountNode = (orderedId?.let { accounts.getAsJsonObject(it) }
+                    ?: accounts.getAsJsonObject("default")) ?: return null
+                val account = accountNode.getAsJsonObject("account")
+                val entitlement = accountNode.getAsJsonObject("entitlement")
+                val planType = account?.get("plan_type")?.takeUnless { it.isJsonNull }?.asString
+                    ?: entitlement?.get("subscription_plan")?.takeUnless { it.isJsonNull }?.asString
+                val hasActive = entitlement?.get("has_active_subscription")?.asBoolean ?: false
+                val renewIso = entitlement?.get("renews_at")?.takeUnless { it.isJsonNull }?.asString
+                    ?: entitlement?.get("expires_at")?.takeUnless { it.isJsonNull }?.asString
+                ChatGptPlanInfo(planType, hasActive, renewIso)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // Safe object accessor: getAsJsonObject does an unchecked cast that throws
+    // ClassCastException when the member is present but JSON null (e.g. "code_review_rate_limit": null).
+    private fun JsonObject.optObject(key: String): JsonObject? =
+        get(key)?.takeIf { it.isJsonObject }?.asJsonObject
+
+    private fun parseChatGptWindow(rateLimit: JsonObject?, key: String, label: String): UsageItem? {
+        val node = rateLimit?.get(key)
+        if (node == null || node.isJsonNull) return null
+        val obj = node.asJsonObject
+        val percentEl = obj.get("used_percent")
+        if (percentEl == null || percentEl.isJsonNull) return null
+        val percent = percentEl.asFloat.coerceIn(0f, 100f)
+        val resetCountdown = obj.get("reset_after_seconds")?.takeUnless { it.isJsonNull }?.asLong
+            ?.let { formatResetSeconds(it) }
+            ?: obj.get("reset_at")?.takeUnless { it.isJsonNull }?.let { el ->
+                runCatching { formatResetTimestamp(el.asLong) }.getOrNull()
+                    ?: runCatching { formatResetTime(el.asString) }.getOrNull()
+            }
+        return UsageItem(label = label, percent = percent, resetCountdown = resetCountdown)
     }
 
     suspend fun getCursorUsage(cookie: String): UsageInfo = withContext(Dispatchers.IO) {
+        val accessToken = extractCursorToken(cookie)
+        val items = mutableListOf<UsageItem>()
+        var sawSessionExpired = false
+        var cursorPlanLabel: String? = null
+
+        // 1) Membership / subscription info (full_stripe_profile). This already worked, so
+        // fetch it first to guarantee the card always has content even if usage RPC changes.
+        try {
+            cursorPlanLabel = fetchCursorMembership(accessToken, cookie, items)
+        } catch (e: SessionExpiredException) {
+            sawSessionExpired = true
+        } catch (e: Exception) {
+            // ignore: usage RPC below may still succeed
+        }
+
+        // 2) Real period usage from the dashboard RPC (Connect protocol, JSON).
+        try {
+            fetchCursorPeriodUsage(accessToken, cookie, items)
+        } catch (e: SessionExpiredException) {
+            sawSessionExpired = true
+        } catch (e: Exception) {
+            // ignore: membership info above may already be present
+        }
+
+        if (items.isEmpty()) {
+            if (sawSessionExpired) throw SessionExpiredException(Platform.CURSOR)
+            throw ApiStructureChangedException(
+                Platform.CURSOR,
+                "No membership or usage data returned (endpoint structure may have changed)"
+            )
+        }
+
+        UsageInfo(
+            platform = Platform.CURSOR,
+            items = items,
+            planLabel = cursorPlanLabel,
+            updatedAt = System.currentTimeMillis()
+        )
+    }
+
+    // WebView may store the cookie value URL-encoded (%3A%3A instead of ::).
+    // Decode first so we can correctly split the "userId::accessJwt" format.
+    private fun extractCursorToken(cookie: String): String {
+        val decoded = try {
+            java.net.URLDecoder.decode(cookie, "UTF-8")
+        } catch (e: Exception) {
+            cookie
+        }
+        return when {
+            decoded.startsWith("eyJ") -> decoded            // already a bare JWT
+            "::" in decoded -> decoded.substringAfter("::")  // userId::jwt (decoded)
+            "::" in cookie -> cookie.substringAfter("::")    // jwt not encoded, :: is raw
+            else -> cookie                                    // unknown format, pass through
+        }
+    }
+
+    private fun fetchCursorMembership(accessToken: String, cookie: String, items: MutableList<UsageItem>): String? {
         val request = Request.Builder()
             .url("https://api2.cursor.sh/auth/full_stripe_profile")
             .header("Cookie", "WorkosCursorSessionToken=$cookie")
+            .header("Authorization", "Bearer $accessToken")
             .header("User-Agent", USER_AGENT)
             .tag(Platform::class.java, Platform.CURSOR)
             .build()
 
         client.newCall(request).execute().use { response ->
             val body = readOrThrow(response, Platform.CURSOR)
-            try {
-                val json = gson.fromJson(body, JsonObject::class.java)
-                val items = mutableListOf<UsageItem>()
+            val json = gson.fromJson(body, JsonObject::class.java)
+            val membership = json.get("membershipType")?.takeUnless { it.isJsonNull }?.asString
+                ?: json.get("individualMembershipType")?.takeUnless { it.isJsonNull }?.asString
+            val status = json.get("subscriptionStatus")?.takeUnless { it.isJsonNull }?.asString
+            return membership?.let { formatCursorMembership(it) }
+        }
+    }
 
-                json.getAsJsonObject("memberCredits")?.let { credits ->
-                    val used = credits.get("used")?.asFloat ?: 0f
-                    val limit = credits.get("limit")?.asFloat ?: 1f
-                    val percent = if (limit > 0) (used / limit * 100f) else 0f
-                    items.add(UsageItem(
-                        label = "套餐总量",
-                        percent = percent,
-                        resetCountdown = null
-                    ))
-                }
+    // GetCurrentPeriodUsage is a unary Connect-RPC call: POST empty JSON body, Bearer auth.
+    // Response carries spend (cents) / limit (cents) and per-mode used percentages.
+    private fun fetchCursorPeriodUsage(accessToken: String, cookie: String, items: MutableList<UsageItem>) {
+        val request = Request.Builder()
+            .url("https://api2.cursor.sh/aiserver.v1.DashboardService/GetCurrentPeriodUsage")
+            .post("{}".toRequestBody("application/json".toMediaType()))
+            .header("Authorization", "Bearer $accessToken")
+            .header("Cookie", "WorkosCursorSessionToken=$cookie")
+            .header("Connect-Protocol-Version", "1")
+            .header("User-Agent", USER_AGENT)
+            .tag(Platform::class.java, Platform.CURSOR)
+            .build()
 
-                json.getAsJsonObject("autoUsage")?.let { auto ->
-                    val percent = auto.get("percent")?.asFloat ?: 0f
-                    items.add(UsageItem(
-                        label = "Auto",
-                        percent = percent,
-                        resetCountdown = null
-                    ))
-                }
+        client.newCall(request).execute().use { response ->
+            val body = readOrThrow(response, Platform.CURSOR)
+            val json = gson.fromJson(body, JsonObject::class.java)
+            // Usage numbers are nested under "planUsage"; fall back to top-level for safety.
+            val usage = json.optObject("planUsage") ?: json
+            val spendCents = (usage.get("used") ?: usage.get("totalSpend"))
+                ?.takeUnless { it.isJsonNull }?.asDouble
+            val limitCents = usage.get("limit")?.takeUnless { it.isJsonNull }?.asDouble
+            val totalPercent = usage.get("totalPercentUsed")?.takeUnless { it.isJsonNull }?.asFloat
+            val percent = totalPercent
+                ?: if (limitCents != null && limitCents > 0 && spendCents != null) {
+                    (spendCents / limitCents * 100.0).toFloat()
+                } else null
 
-                json.getAsJsonObject("apiUsage")?.let { api ->
-                    val percent = api.get("percent")?.asFloat ?: 0f
-                    items.add(UsageItem(
-                        label = "API",
-                        percent = percent,
-                        resetCountdown = null
-                    ))
-                }
-
-                UsageInfo(
-                    platform = Platform.CURSOR,
-                    items = items,
-                    resetInfo = null,
-                    updatedAt = System.currentTimeMillis()
-                )
-            } catch (e: Exception) {
-                if (e is ApiStructureChangedException || e is SessionExpiredException) throw e
-                throw ApiStructureChangedException(Platform.CURSOR, "Failed to parse usage: ${e.message}")
+            if (percent != null) {
+                val valueText = if (spendCents != null && limitCents != null && limitCents > 0) {
+                    "\$${String.format("%.2f", spendCents / 100.0)} / \$${String.format("%.2f", limitCents / 100.0)}"
+                } else null
+                val reset = (json.get("billingCycleEnd") ?: usage.get("billingCycleEnd"))
+                    ?.takeUnless { it.isJsonNull }?.asString?.toLongOrNull()
+                    ?.let { formatResetTimestampMs(it) }
+                items.add(UsageItem(
+                    label = "本周期用量",
+                    percent = percent.coerceIn(0f, 100f),
+                    valueText = valueText,
+                    resetCountdown = reset
+                ))
             }
+
+            usage.get("autoPercentUsed")?.takeUnless { it.isJsonNull }?.asFloat?.let {
+                items.add(UsageItem(label = "Auto 用量", percent = it.coerceIn(0f, 100f)))
+            }
+            usage.get("apiPercentUsed")?.takeUnless { it.isJsonNull }?.asFloat?.let {
+                items.add(UsageItem(label = "API 用量", percent = it.coerceIn(0f, 100f)))
+            }
+        }
+    }
+
+    private fun formatChatGptPlan(plan: String): String = when (plan.lowercase()) {
+        "plus", "chatgptplusplan" -> "Plus"
+        "pro", "chatgptproplan" -> "Pro"
+        "free", "chatgptfreeplan" -> "Free"
+        "team", "chatgptteamplan" -> "Team"
+        "go", "chatgptgoplan" -> "Go"
+        else -> plan.replaceFirstChar { it.uppercase() }
+    }
+
+    private fun formatCursorMembership(type: String): String = when (type.lowercase()) {
+        "pro" -> "Pro"
+        "free" -> "Free"
+        "free_trial" -> "免费试用"
+        "pro_plus", "pro-plus" -> "Pro+"
+        "ultra" -> "Ultra"
+        "enterprise" -> "Enterprise"
+        else -> type.replaceFirstChar { it.uppercase() }
+    }
+
+    private fun formatRenewDate(iso: String): String {
+        return try {
+            val target = java.time.OffsetDateTime.parse(iso)
+            val now = java.time.OffsetDateTime.now()
+            val days = java.time.Duration.between(now, target).toDays()
+            when {
+                days > 1 -> "${days}天后"
+                days == 1L -> "明天"
+                days == 0L -> "今日"
+                else -> "已过期"
+            }
+        } catch (e: Exception) {
+            ""
         }
     }
 
@@ -485,6 +720,34 @@ class UsageApiService @Inject constructor(
                 hours > 0 -> "${hours}小时${if (minutes > 0) "${minutes}分钟" else ""}后重置"
                 minutes > 0 -> "${minutes}分钟后重置"
                 else -> "即将重置"
+            }
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    private fun formatResetSeconds(seconds: Long): String {
+        if (seconds <= 0) return "即将重置"
+        val hours = seconds / 3600
+        val minutes = (seconds % 3600) / 60
+        return when {
+            hours > 24 -> "${hours / 24}天后重置"
+            hours > 0 -> "${hours}小时${if (minutes > 0) "${minutes}分钟" else ""}后重置"
+            minutes > 0 -> "${minutes}分钟后重置"
+            else -> "即将重置"
+        }
+    }
+
+    private fun formatResetTimestampMs(ms: Long): String {
+        return try {
+            val target = java.time.Instant.ofEpochMilli(ms)
+            val now = java.time.Instant.now()
+            val days = java.time.Duration.between(now, target).toDays()
+            when {
+                days > 1 -> "${days}天后重置"
+                days == 1L -> "明天重置"
+                days == 0L -> "今日重置"
+                else -> "已结束"
             }
         } catch (e: Exception) {
             ""

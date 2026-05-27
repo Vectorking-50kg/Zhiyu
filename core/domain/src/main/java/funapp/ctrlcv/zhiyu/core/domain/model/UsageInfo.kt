@@ -3,6 +3,7 @@ package funapp.ctrlcv.zhiyu.core.domain.model
 data class UsageInfo(
     val platform: Platform,
     val items: List<UsageItem>,
+    val planLabel: String? = null,
     val resetInfo: String? = null,
     val updatedAt: Long = System.currentTimeMillis(),
     val stale: Boolean = false

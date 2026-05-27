@@ -22,7 +22,10 @@ enum class Platform(
     CURSOR(
         key = "cursor",
         displayName = "Cursor",
-        loginUrl = "https://authenticator.cursor.sh",
+        // authenticator.cursor.sh 是桌面 App 的深链接入口，需要 App 预先生成带
+        // context 参数的 WorkOS URL，WebView 直接打开时 context 为空会返回 404。
+        // 改为从 cursor.com 的 Web 登录页发起，由服务端正确生成 WorkOS 跳转链接。
+        loginUrl = "https://cursor.com/login",
         baseUrl = "https://api2.cursor.sh"
     ),
     MINIMAX(
@@ -68,7 +71,7 @@ enum class Platform(
     fun getCookieDomains(): List<String> = when (this) {
         CLAUDE -> listOf("https://claude.ai")
         CHATGPT -> listOf("https://chatgpt.com", "https://chat.openai.com")
-        CURSOR -> listOf("https://cursor.sh", "https://authenticator.cursor.sh", "https://api2.cursor.sh", "https://www.cursor.com")
+        CURSOR -> listOf("https://cursor.sh", "https://authenticator.cursor.sh", "https://api2.cursor.sh", "https://www.cursor.com", "https://cursor.com")
         MINIMAX, AIHUBMIX, DEEPSEEK -> emptyList()
     }
 }
