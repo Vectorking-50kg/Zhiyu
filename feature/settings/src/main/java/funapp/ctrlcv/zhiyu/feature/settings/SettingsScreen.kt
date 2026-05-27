@@ -79,7 +79,7 @@ fun SettingsScreen(
                     headlineContent = { Text(platform.displayName) },
                     supportingContent = {
                         Text(
-                            text = if (hasAccount) "已登录" else "未登录 · 点击登录",
+                            text = if (hasAccount) "已登录" else "未登录｜点击登录",
                             color = if (hasAccount)
                                 MaterialTheme.colorScheme.primary
                             else
@@ -119,7 +119,7 @@ fun SettingsScreen(
                     headlineContent = { Text(platform.displayName) },
                     supportingContent = {
                         Text(
-                            text = if (isConfigured) "已配置 · 点击修改" else "未配置 · 点击添加 API 密钥",
+                            text = if (isConfigured) "已配置｜点击修改" else "未配置｜点击添加 API 密钥",
                             color = if (isConfigured)
                                 MaterialTheme.colorScheme.primary
                             else

@@ -1,11 +1,6 @@
 package funapp.ctrlcv.zhiyu.feature.dashboard.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,7 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -208,18 +202,6 @@ private fun CardHeader(usageInfo: UsageInfo, maxPercent: Float?, balanceText: St
 
 @Composable
 private fun ProgressItem(item: UsageItem) {
-    val isDanger = item.percent >= 90f
-    val infiniteTransition = rememberInfiniteTransition(label = "breathe")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (isDanger) 0.4f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "breatheAlpha"
-    )
-
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -236,7 +218,7 @@ private fun ProgressItem(item: UsageItem) {
                 } else {
                     buildString {
                         append("${item.percent.toInt()}%")
-                        item.resetCountdown?.let { append(" · $it") }
+                        item.resetCountdown?.let { append("｜$it") }
                     }
                 },
                 style = MaterialTheme.typography.labelMedium,
@@ -251,9 +233,8 @@ private fun ProgressItem(item: UsageItem) {
             progress = { (item.percent / 100f).coerceIn(0f, 1f) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(7.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .alpha(if (isDanger) alpha else 1f),
+                .height(10.dp)
+                .clip(RoundedCornerShape(5.dp)),
             color = getSemanticColor(item.percent),
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
             drawStopIndicator = {}
@@ -313,8 +294,8 @@ private fun InfoItem(item: UsageItem) {
 }
 
 fun getSemanticColor(percent: Float): Color = when {
-    percent < 75f -> Color(0xFF4A9D6F)
-    percent < 95f -> Color(0xFFD4A027)
+    percent < 70f -> Color(0xFF4A9D6F)
+    percent < 90f -> Color(0xFFD4A027)
     else -> Color(0xFFD94F4F)
 }
 

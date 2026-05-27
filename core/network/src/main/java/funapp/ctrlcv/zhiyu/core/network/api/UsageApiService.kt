@@ -73,10 +73,10 @@ class UsageApiService @Inject constructor(
                 val items = mutableListOf<UsageItem>()
 
                 parseClaudeBucket(json, "five_hour", "5 小时限额")?.let(items::add)
-                parseClaudeBucket(json, "seven_day", "周限额 · 所有模型")?.let(items::add)
-                parseClaudeBucket(json, "seven_day_opus", "周限额 · Opus")?.let(items::add)
-                parseClaudeBucket(json, "seven_day_sonnet", "周限额 · Sonnet")?.let(items::add)
-                parseClaudeBucket(json, "seven_day_omelette", "周限额 · Claude Design")?.let(items::add)
+                parseClaudeBucket(json, "seven_day", "周限额｜所有模型")?.let(items::add)
+                parseClaudeBucket(json, "seven_day_opus", "周限额｜Opus")?.let(items::add)
+                parseClaudeBucket(json, "seven_day_sonnet", "周限额｜Sonnet")?.let(items::add)
+                parseClaudeBucket(json, "seven_day_omelette", "周限额｜Claude Design")?.let(items::add)
 
                 UsageInfo(
                     platform = Platform.CLAUDE,
@@ -170,8 +170,8 @@ class UsageApiService @Inject constructor(
                 parseChatGptWindow(rateLimit, "primary_window", "5 小时限额")?.let(items::add)
                 parseChatGptWindow(rateLimit, "secondary_window", "周限额")?.let(items::add)
                 val codeReview = json.optObject("code_review_rate_limit")
-                parseChatGptWindow(codeReview, "primary_window", "Code Review · 5 小时")?.let(items::add)
-                parseChatGptWindow(codeReview, "secondary_window", "Code Review · 周")?.let(items::add)
+                parseChatGptWindow(codeReview, "primary_window", "Code Review｜5 小时")?.let(items::add)
+                parseChatGptWindow(codeReview, "secondary_window", "Code Review｜周")?.let(items::add)
                 json.get("plan_type")?.takeUnless { it.isJsonNull }?.asString
             } catch (e: Exception) {
                 if (e is ApiStructureChangedException || e is SessionExpiredException) throw e
@@ -339,13 +339,6 @@ class UsageApiService @Inject constructor(
             val membership = json.get("membershipType")?.takeUnless { it.isJsonNull }?.asString
                 ?: json.get("individualMembershipType")?.takeUnless { it.isJsonNull }?.asString
             val status = json.get("subscriptionStatus")?.takeUnless { it.isJsonNull }?.asString
-            if (status != null && items.none { it.label == "订阅状态" }) {
-                items.add(UsageItem(
-                    label = "订阅状态",
-                    percent = -1f,
-                    valueText = if (status == "active") "有效" else status
-                ))
-            }
             return membership?.let { formatCursorMembership(it) }
         }
     }
