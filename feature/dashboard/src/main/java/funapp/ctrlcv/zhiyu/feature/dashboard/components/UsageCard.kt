@@ -338,7 +338,7 @@ private fun getPlatformIconBg(platform: Platform): Color = when (platform) {
 }
 
 private fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platform) {
-    Platform.CLAUDE -> usageInfo.planLabel ?: "Pro"
+    Platform.CLAUDE -> usageInfo.planLabel ?: "Unknown"
     Platform.CHATGPT -> usageInfo.planLabel ?: "Unknown"
     Platform.CURSOR -> usageInfo.planLabel ?: "Unknown"
     Platform.MINIMAX -> "Token Plan"
