@@ -68,7 +68,7 @@ enum class Platform(
     fun getCookieDomains(): List<String> = when (this) {
         CLAUDE -> listOf("https://claude.ai")
         CHATGPT -> listOf("https://chatgpt.com", "https://chat.openai.com")
-        CURSOR -> listOf("https://cursor.sh", "https://authenticator.cursor.sh", "https://api2.cursor.sh", "https://www.cursor.com")
+        CURSOR -> listOf("https://cursor.sh", "https://authenticator.cursor.sh", "https://api2.cursor.sh", "https://www.cursor.com", "https://cursor.com")
         MINIMAX, AIHUBMIX, DEEPSEEK -> emptyList()
     }
 }

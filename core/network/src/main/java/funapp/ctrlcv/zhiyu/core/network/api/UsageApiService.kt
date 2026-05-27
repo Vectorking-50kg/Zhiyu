@@ -89,10 +89,41 @@ class UsageApiService @Inject constructor(
         )
     }
 
+    // Step 1: exchange the long-lived session cookie for a short-lived access token.
+    // ChatGPT backend-api endpoints require "Authorization: Bearer <accessToken>", not the
+    // raw session cookie, which is a NextAuth.js server-side credential only.
+    private suspend fun getOpenAIAccessToken(sessionCookie: String): String {
+        val request = Request.Builder()
+            .url("https://chatgpt.com/api/auth/session")
+            .header("Cookie", "__Secure-next-auth.session-token=$sessionCookie")
+            .header("User-Agent", USER_AGENT)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (response.code == 401 || response.code == 403) {
+                throw SessionExpiredException(Platform.CHATGPT)
+            }
+            val body = response.body?.string()
+                ?: throw SessionExpiredException(Platform.CHATGPT)
+            if (!response.isSuccessful) {
+                throw SessionExpiredException(Platform.CHATGPT)
+            }
+            val json = try {
+                gson.fromJson(body, JsonObject::class.java)
+            } catch (e: Exception) {
+                throw SessionExpiredException(Platform.CHATGPT)
+            }
+            return json.get("accessToken")?.asString
+                ?: throw SessionExpiredException(Platform.CHATGPT)
+        }
+    }
+
     suspend fun getChatGptUsage(cookie: String): UsageInfo = withContext(Dispatchers.IO) {
+        val accessToken = getOpenAIAccessToken(cookie)
+
         val request = Request.Builder()
             .url("https://chatgpt.com/backend-api/accounts/check/v4-2023-04-27")
-            .header("Cookie", "__Secure-next-auth.session-token=$cookie")
+            .header("Authorization", "Bearer $accessToken")
             .header("User-Agent", USER_AGENT)
             .tag(Platform::class.java, Platform.CHATGPT)
             .build()
@@ -139,9 +170,14 @@ class UsageApiService @Inject constructor(
     }
 
     suspend fun getCursorUsage(cookie: String): UsageInfo = withContext(Dispatchers.IO) {
+        // WorkosCursorSessionToken value format: "userId::accessJwt"
+        // Extract the JWT part for Bearer auth; keep full cookie as fallback.
+        val accessToken = if ("::" in cookie) cookie.substringAfter("::") else cookie
+
         val request = Request.Builder()
             .url("https://api2.cursor.sh/auth/full_stripe_profile")
             .header("Cookie", "WorkosCursorSessionToken=$cookie")
+            .header("Authorization", "Bearer $accessToken")
             .header("User-Agent", USER_AGENT)
             .tag(Platform::class.java, Platform.CURSOR)
             .build()
@@ -179,6 +215,13 @@ class UsageApiService @Inject constructor(
                         percent = percent,
                         resetCountdown = null
                     ))
+                }
+
+                if (items.isEmpty()) {
+                    throw ApiStructureChangedException(
+                        Platform.CURSOR,
+                        "Response missing usage fields (endpoint structure may have changed)"
+                    )
                 }
 
                 UsageInfo(
