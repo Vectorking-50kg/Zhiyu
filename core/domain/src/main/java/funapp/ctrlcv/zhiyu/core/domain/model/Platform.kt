@@ -22,7 +22,10 @@ enum class Platform(
     CURSOR(
         key = "cursor",
         displayName = "Cursor",
-        loginUrl = "https://authenticator.cursor.sh",
+        // authenticator.cursor.sh 是桌面 App 的深链接入口，需要 App 预先生成带
+        // context 参数的 WorkOS URL，WebView 直接打开时 context 为空会返回 404。
+        // 改为从 cursor.com 的 Web 登录页发起，由服务端正确生成 WorkOS 跳转链接。
+        loginUrl = "https://cursor.com/login",
         baseUrl = "https://api2.cursor.sh"
     ),
     MINIMAX(
