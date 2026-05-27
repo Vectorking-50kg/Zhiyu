@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import funapp.ctrlcv.zhiyu.feature.dashboard.components.UsageCard
@@ -66,7 +67,8 @@ fun DashboardScreen(
                 onRefresh = { viewModel.refresh() },
                 scrollBehavior = scrollBehavior
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -75,11 +77,22 @@ fun DashboardScreen(
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                top = innerPadding.calculateTopPadding() + 8.dp,
-                bottom = innerPadding.calculateBottomPadding() + 8.dp
+                top = innerPadding.calculateTopPadding() + 4.dp,
+                bottom = innerPadding.calculateBottomPadding() + 16.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            if (uiState.lastUpdated > 0) {
+                item(key = "last_updated") {
+                    Text(
+                        text = "上次更新：${formatTimeSince(uiState.lastUpdated)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 2.dp, bottom = 4.dp)
+                    )
+                }
+            }
+
             items(uiState.usageList, key = { "${it.platform.key}_${it.updatedAt}" }) { usage ->
                 UsageCard(usageInfo = usage)
             }
@@ -94,7 +107,7 @@ fun DashboardScreen(
                     ) {
                         Text(
                             text = "暂无数据，请先在设置中登录平台账号",
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -113,23 +126,6 @@ fun DashboardScreen(
                             text = uiState.error.orEmpty(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-
-            if (uiState.lastUpdated > 0) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp, bottom = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "上次更新：${formatTimeSince(uiState.lastUpdated)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -167,7 +163,9 @@ private fun DashboardTopBar(
         title = {
             Text(
                 text = "知余",
-                style = MaterialTheme.typography.headlineSmall
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
             )
         },
         actions = {
@@ -175,13 +173,14 @@ private fun DashboardTopBar(
                 Icon(
                     imageVector = Icons.Outlined.Refresh,
                     contentDescription = "刷新",
-                    modifier = if (isRefreshing) Modifier.rotate(rotation) else Modifier
+                    modifier = if (isRefreshing) Modifier.rotate(rotation) else Modifier,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.background,
-            scrolledContainerColor = MaterialTheme.colorScheme.surface
+            scrolledContainerColor = MaterialTheme.colorScheme.background
         ),
         scrollBehavior = scrollBehavior
     )
@@ -192,7 +191,7 @@ private fun formatTimeSince(timestamp: Long): String {
     val minutes = diff / 60_000
     return when {
         minutes < 1 -> "刚刚"
-        minutes < 60 -> "${minutes}分钟前"
-        else -> "${minutes / 60}小时前"
+        minutes < 60 -> "${minutes} 分钟前"
+        else -> "${minutes / 60} 小时前"
     }
 }

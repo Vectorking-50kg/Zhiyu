@@ -1,5 +1,6 @@
 package funapp.ctrlcv.zhiyu.feature.dashboard.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -28,8 +29,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,8 +40,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import funapp.ctrlcv.zhiyu.feature.dashboard.R
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageItem
@@ -57,16 +58,20 @@ fun UsageCard(usageInfo: UsageInfo) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
             CardHeader(platform = usageInfo.platform, maxPercent = maxPercent)
 
             if (normalItems.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     normalItems.forEach { item ->
                         if (item.percent >= 0f) ProgressItem(item = item) else InfoItem(item = item)
                     }
@@ -97,7 +102,7 @@ fun UsageCard(usageInfo: UsageInfo) {
                     )
                 }
                 if (expanded) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         collapsibleItems.forEach { item ->
                             ProgressItem(item = item)
                         }
@@ -114,10 +119,10 @@ fun UsageCard(usageInfo: UsageInfo) {
                     Icon(
                         imageVector = Icons.Outlined.CalendarMonth,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(13.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(5.dp))
                     Text(
                         text = resetInfo,
                         style = MaterialTheme.typography.labelSmall,
@@ -139,16 +144,16 @@ private fun CardHeader(platform: Platform, maxPercent: Float?) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(10.dp))
                     .background(getPlatformIconBg(platform)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = getPlatformIconText(platform),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Black,
-                    color = getPlatformIconColor(platform)
+                Icon(
+                    painter = painterResource(id = getPlatformIconRes(platform)),
+                    contentDescription = platform.displayName,
+                    modifier = Modifier.size(22.dp),
+                    tint = Color.White
                 )
             }
 
@@ -158,22 +163,14 @@ private fun CardHeader(platform: Platform, maxPercent: Float?) {
                 Text(
                     text = platform.displayName,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                SuggestionChip(
-                    onClick = {},
-                    label = {
-                        Text(
-                            text = getPlanLabel(platform),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = getPlatformChipBg(platform),
-                        labelColor = getPlatformChipColor(platform)
-                    ),
-                    border = null
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = getPlanLabel(platform),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -215,7 +212,7 @@ private fun ProgressItem(item: UsageItem) {
             )
             Text(
                 text = if (item.usageCount != null && item.totalCount != null) {
-                    "用量: ${item.usageCount}/${item.totalCount}  已使用 ${item.percent.toInt()}%"
+                    "${item.usageCount}/${item.totalCount}  ${item.percent.toInt()}%"
                 } else {
                     buildString {
                         append("${item.percent.toInt()}%")
@@ -223,18 +220,19 @@ private fun ProgressItem(item: UsageItem) {
                     }
                 },
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(7.dp))
 
         LinearProgressIndicator(
             progress = { (item.percent / 100f).coerceIn(0f, 1f) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(3.dp))
+                .height(7.dp)
+                .clip(RoundedCornerShape(4.dp))
                 .alpha(if (isDanger) alpha else 1f),
             color = getSemanticColor(item.percent),
             trackColor = MaterialTheme.colorScheme.surfaceVariant
@@ -272,7 +270,6 @@ private fun ProgressItem(item: UsageItem) {
     }
 }
 
-/** 纯信息行：用于余额、次数等不需要进度条的展示（percent == -1f） */
 @Composable
 private fun InfoItem(item: UsageItem) {
     Row(
@@ -295,63 +292,35 @@ private fun InfoItem(item: UsageItem) {
 }
 
 fun getSemanticColor(percent: Float): Color = when {
-    percent < 80f -> Color(0xFF22C55E)
-    percent < 90f -> Color(0xFFEAB308)
-    else -> Color(0xFFEF4444)
+    percent < 80f -> Color(0xFF4A9D6F)
+    percent < 90f -> Color(0xFFD4A027)
+    else -> Color(0xFFD94F4F)
+}
+
+@DrawableRes
+private fun getPlatformIconRes(platform: Platform): Int = when (platform) {
+    Platform.CLAUDE -> R.drawable.ic_brand_anthropic
+    Platform.CHATGPT -> R.drawable.ic_brand_openai
+    Platform.CURSOR -> R.drawable.ic_brand_cursor
+    Platform.MINIMAX -> R.drawable.ic_brand_minimax
+    Platform.AIHUBMIX -> R.drawable.ic_brand_aihubmix
+    Platform.DEEPSEEK -> R.drawable.ic_brand_deepseek
 }
 
 private fun getPlatformIconBg(platform: Platform): Color = when (platform) {
-    Platform.CLAUDE -> Color(0xFFFFFFFF)
+    Platform.CLAUDE -> Color(0xFFCC785C)
     Platform.CHATGPT -> Color(0xFF10A37F)
-    Platform.CURSOR -> Color(0xFF3D72E1)
-    Platform.MINIMAX -> Color(0xFF1A1A2E)
-    Platform.AIHUBMIX -> Color(0xFF6C47FF)
-    Platform.DEEPSEEK -> Color(0xFF4D6BFE)
-}
-
-private fun getPlatformIconColor(platform: Platform): Color = when (platform) {
-    Platform.CLAUDE -> Color(0xFF1A1A1A)
-    Platform.CHATGPT -> Color.White
-    Platform.CURSOR -> Color.White
-    Platform.MINIMAX -> Color.White
-    Platform.AIHUBMIX -> Color.White
-    Platform.DEEPSEEK -> Color.White
-}
-
-private fun getPlatformIconText(platform: Platform): String = when (platform) {
-    Platform.CLAUDE -> "AI\\"
-    Platform.CHATGPT -> "GP"
-    Platform.CURSOR -> "Cu"
-    Platform.MINIMAX -> "MM"
-    Platform.AIHUBMIX -> "AH"
-    Platform.DEEPSEEK -> "DS"
-}
-
-@Composable
-private fun getPlatformChipBg(platform: Platform): Color = when (platform) {
-    Platform.CLAUDE -> MaterialTheme.colorScheme.surfaceVariant
-    Platform.CHATGPT -> Color(0xFF10A37F).copy(alpha = 0.12f)
-    Platform.CURSOR -> Color(0xFF3D72E1).copy(alpha = 0.12f)
-    Platform.MINIMAX -> Color(0xFF1A1A2E).copy(alpha = 0.12f)
-    Platform.AIHUBMIX -> Color(0xFF6C47FF).copy(alpha = 0.12f)
-    Platform.DEEPSEEK -> Color(0xFF4D6BFE).copy(alpha = 0.12f)
-}
-
-@Composable
-private fun getPlatformChipColor(platform: Platform): Color = when (platform) {
-    Platform.CLAUDE -> MaterialTheme.colorScheme.onSurfaceVariant
-    Platform.CHATGPT -> Color(0xFF0D8C6B)
-    Platform.CURSOR -> Color(0xFF2B5DC4)
-    Platform.MINIMAX -> Color(0xFF1A1A2E)
-    Platform.AIHUBMIX -> Color(0xFF5535D4)
-    Platform.DEEPSEEK -> Color(0xFF3A52D4)
+    Platform.CURSOR -> Color(0xFF1A1A1A)
+    Platform.MINIMAX -> Color(0xFF2D2D2D)
+    Platform.AIHUBMIX -> Color(0xFF5B4FCF)
+    Platform.DEEPSEEK -> Color(0xFF4362D6)
 }
 
 private fun getPlanLabel(platform: Platform): String = when (platform) {
-    Platform.CLAUDE -> "Pro"
-    Platform.CHATGPT -> "Plus"
-    Platform.CURSOR -> "Pro"
-    Platform.MINIMAX -> "API"
-    Platform.AIHUBMIX -> "API"
-    Platform.DEEPSEEK -> "API"
+    Platform.CLAUDE -> "Claude Pro"
+    Platform.CHATGPT -> "Codex API"
+    Platform.CURSOR -> "Cursor Pro"
+    Platform.MINIMAX -> "MiniMax API"
+    Platform.AIHUBMIX -> "AIHubMix API"
+    Platform.DEEPSEEK -> "DeepSeek API"
 }
