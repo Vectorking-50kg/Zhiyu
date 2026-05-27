@@ -211,6 +211,7 @@ class UsageApiService @Inject constructor(
             try {
                 val json = gson.fromJson(body, JsonObject::class.java)
                 val items = mutableListOf<UsageItem>()
+                val collapsibleItems = mutableListOf<UsageItem>()
                 val seenLabels = mutableSetOf<String>()
 
                 // 优先展示 category_remains（大类聚合，有 display_name）
@@ -226,18 +227,20 @@ class UsageApiService @Inject constructor(
                     if (!seenLabels.add(label)) return@forEach
                     val startMs = obj.get("start_time")?.asLong
                     val endMs = obj.get("end_time")?.asLong
-                    items.add(UsageItem(
+                    val isCollapsible = label in MINIMAX_COLLAPSIBLE_LABELS
+                    val item = UsageItem(
                         label = label,
                         percent = percent,
                         resetCountdown = endMs?.let { formatMinimaxResetTime(it) },
                         usageCount = used,
                         totalCount = total,
-                        timeRange = if (startMs != null && endMs != null) formatMinimaxTimeRange(startMs, endMs) else null
-                    ))
+                        timeRange = if (startMs != null && endMs != null) formatMinimaxTimeRange(startMs, endMs) else null,
+                        collapsible = isCollapsible
+                    )
+                    if (isCollapsible) collapsibleItems.add(item) else items.add(item)
                 }
 
                 // 再追加 model_remains：先展示常用模型（MCP 等），再追加折叠的创作工具
-                val collapsibleItems = mutableListOf<UsageItem>()
                 json.getAsJsonArray("model_remains")?.forEach { element ->
                     val obj = element.asJsonObject
                     val total = obj.get("current_interval_total_count")?.asInt ?: 0
@@ -250,6 +253,7 @@ class UsageApiService @Inject constructor(
                     if (!seenLabels.add(label)) return@forEach
                     val startMs = obj.get("start_time")?.asLong
                     val endMs = obj.get("end_time")?.asLong
+                    val isCollapsible = label in MINIMAX_COLLAPSIBLE_LABELS
                     val item = UsageItem(
                         label = label,
                         percent = percent,
@@ -257,9 +261,9 @@ class UsageApiService @Inject constructor(
                         usageCount = used,
                         totalCount = total,
                         timeRange = if (startMs != null && endMs != null) formatMinimaxTimeRange(startMs, endMs) else null,
-                        collapsible = isMinimaxCollapsibleModel(modelName)
+                        collapsible = isCollapsible
                     )
-                    if (item.collapsible) collapsibleItems.add(item) else items.add(item)
+                    if (isCollapsible) collapsibleItems.add(item) else items.add(item)
                 }
                 items.addAll(collapsibleItems)
 
@@ -280,10 +284,8 @@ class UsageApiService @Inject constructor(
         modelName == "speech-hd" ||
         modelName.startsWith("MiniMax-Hailuo")
 
-    private fun isMinimaxCollapsibleModel(modelName: String): Boolean = when (modelName) {
-        "music-2.5", "music-2.6", "music-cover", "lyrics_generation" -> true
-        else -> false
-    }
+    private fun isMinimaxCollapsibleModel(modelName: String): Boolean =
+        getMinimaxModelDisplayName(modelName) in MINIMAX_COLLAPSIBLE_LABELS
 
     private fun getMinimaxModelDisplayName(modelName: String): String = when (modelName) {
         "music-2.5", "music-2.6" -> "音乐生成"
@@ -521,5 +523,6 @@ class UsageApiService @Inject constructor(
 
     companion object {
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+        val MINIMAX_COLLAPSIBLE_LABELS = setOf("歌词生成", "音乐生成", "音乐翻唱")
     }
 }

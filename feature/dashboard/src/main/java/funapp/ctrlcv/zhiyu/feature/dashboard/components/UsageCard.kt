@@ -85,7 +85,7 @@ fun UsageCard(usageInfo: UsageInfo) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "创作工具配额",
+                        text = "其它配额",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
