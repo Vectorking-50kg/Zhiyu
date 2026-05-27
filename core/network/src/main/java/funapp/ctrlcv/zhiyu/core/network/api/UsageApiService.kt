@@ -131,35 +131,52 @@ class UsageApiService @Inject constructor(
         client.newCall(request).execute().use { response ->
             val body = readOrThrow(response, Platform.CHATGPT)
             try {
+                // accounts/check returns subscription/plan info (no rate_limits array).
+                // Display plan type, subscription status and renewal date.
                 val json = gson.fromJson(body, JsonObject::class.java)
+                val accounts = json.getAsJsonObject("accounts")
+                    ?: throw ApiStructureChangedException(Platform.CHATGPT, "Missing accounts field")
+                val orderedId = json.getAsJsonArray("account_ordering")
+                    ?.firstOrNull()?.takeUnless { it.isJsonNull }?.asString
+                val accountNode = (orderedId?.let { accounts.getAsJsonObject(it) }
+                    ?: accounts.getAsJsonObject("default"))
+                    ?: throw ApiStructureChangedException(Platform.CHATGPT, "No account entry found")
+                val account = accountNode.getAsJsonObject("account")
+                val entitlement = accountNode.getAsJsonObject("entitlement")
+
+                val planType = account?.get("plan_type")?.takeUnless { it.isJsonNull }?.asString
+                    ?: entitlement?.get("subscription_plan")?.takeUnless { it.isJsonNull }?.asString
+                    ?: "unknown"
+                val hasActive = entitlement?.get("has_active_subscription")?.asBoolean ?: false
+                val renewsAt = entitlement?.get("renews_at")?.takeUnless { it.isJsonNull }?.asString
+                val expiresAt = entitlement?.get("expires_at")?.takeUnless { it.isJsonNull }?.asString
+
                 val items = mutableListOf<UsageItem>()
-
-                json.getAsJsonArray("rate_limits")?.forEach { element ->
-                    val limit = element.asJsonObject
-                    val id = limit.get("id")?.asString ?: return@forEach
-                    val total = limit.get("limit")?.asFloat ?: 1f
-                    val remaining = limit.get("remaining")?.asFloat ?: 0f
-                    val used = total - remaining
-                    val percent = if (total > 0) (used / total * 100f) else 0f
-                    val resetTimestamp = limit.get("reset_timestamp")?.asLong
-
-                    items.add(UsageItem(
-                        label = id,
-                        percent = percent,
-                        resetCountdown = resetTimestamp?.let { formatResetTimestamp(it) }
-                    ))
-                }
-
-                if (items.isEmpty()) {
-                    throw ApiStructureChangedException(
-                        Platform.CHATGPT,
-                        "Response missing rate_limits field (endpoint may have changed)"
-                    )
+                items.add(UsageItem(
+                    label = "套餐类型",
+                    percent = -1f,
+                    valueText = formatChatGptPlan(planType)
+                ))
+                items.add(UsageItem(
+                    label = "订阅状态",
+                    percent = -1f,
+                    valueText = if (hasActive) "有效" else "未订阅"
+                ))
+                (renewsAt ?: expiresAt)?.let { iso ->
+                    val text = formatRenewDate(iso)
+                    if (text.isNotBlank()) {
+                        items.add(UsageItem(
+                            label = if (hasActive) "续订时间" else "到期时间",
+                            percent = -1f,
+                            valueText = text
+                        ))
+                    }
                 }
 
                 UsageInfo(
                     platform = Platform.CHATGPT,
                     items = items,
+                    resetInfo = null,
                     updatedAt = System.currentTimeMillis()
                 )
             } catch (e: Exception) {
@@ -195,42 +212,39 @@ class UsageApiService @Inject constructor(
         client.newCall(request).execute().use { response ->
             val body = readOrThrow(response, Platform.CURSOR)
             try {
+                // full_stripe_profile returns membership/subscription info, not usage credits.
                 val json = gson.fromJson(body, JsonObject::class.java)
                 val items = mutableListOf<UsageItem>()
 
-                json.getAsJsonObject("memberCredits")?.let { credits ->
-                    val used = credits.get("used")?.asFloat ?: 0f
-                    val limit = credits.get("limit")?.asFloat ?: 1f
-                    val percent = if (limit > 0) (used / limit * 100f) else 0f
-                    items.add(UsageItem(
-                        label = "套餐总量",
-                        percent = percent,
-                        resetCountdown = null
-                    ))
-                }
+                val membership = json.get("membershipType")?.takeUnless { it.isJsonNull }?.asString
+                    ?: json.get("individualMembershipType")?.takeUnless { it.isJsonNull }?.asString
+                val status = json.get("subscriptionStatus")?.takeUnless { it.isJsonNull }?.asString
+                val isOnBillableAuto = json.get("isOnBillableAuto")?.asBoolean ?: false
 
-                json.getAsJsonObject("autoUsage")?.let { auto ->
-                    val percent = auto.get("percent")?.asFloat ?: 0f
+                if (membership != null) {
                     items.add(UsageItem(
-                        label = "Auto",
-                        percent = percent,
-                        resetCountdown = null
+                        label = "会员类型",
+                        percent = -1f,
+                        valueText = formatCursorMembership(membership)
                     ))
                 }
-
-                json.getAsJsonObject("apiUsage")?.let { api ->
-                    val percent = api.get("percent")?.asFloat ?: 0f
+                if (status != null) {
                     items.add(UsageItem(
-                        label = "API",
-                        percent = percent,
-                        resetCountdown = null
+                        label = "订阅状态",
+                        percent = -1f,
+                        valueText = if (status == "active") "有效" else status
                     ))
                 }
+                items.add(UsageItem(
+                    label = "Auto 用量计费",
+                    percent = -1f,
+                    valueText = if (isOnBillableAuto) "已开启" else "未开启"
+                ))
 
                 if (items.isEmpty()) {
                     throw ApiStructureChangedException(
                         Platform.CURSOR,
-                        "Response missing usage fields (endpoint structure may have changed)"
+                        "Response missing membership fields (endpoint structure may have changed)"
                     )
                 }
 
@@ -244,6 +258,41 @@ class UsageApiService @Inject constructor(
                 if (e is ApiStructureChangedException || e is SessionExpiredException) throw e
                 throw ApiStructureChangedException(Platform.CURSOR, "Failed to parse usage: ${e.message}")
             }
+        }
+    }
+
+    private fun formatChatGptPlan(plan: String): String = when (plan.lowercase()) {
+        "plus", "chatgptplusplan" -> "Plus"
+        "pro", "chatgptproplan" -> "Pro"
+        "free", "chatgptfreeplan" -> "Free"
+        "team", "chatgptteamplan" -> "Team"
+        "go", "chatgptgoplan" -> "Go"
+        else -> plan.replaceFirstChar { it.uppercase() }
+    }
+
+    private fun formatCursorMembership(type: String): String = when (type.lowercase()) {
+        "pro" -> "Pro"
+        "free" -> "Free"
+        "free_trial" -> "免费试用"
+        "pro_plus", "pro-plus" -> "Pro+"
+        "ultra" -> "Ultra"
+        "enterprise" -> "Enterprise"
+        else -> type.replaceFirstChar { it.uppercase() }
+    }
+
+    private fun formatRenewDate(iso: String): String {
+        return try {
+            val target = java.time.OffsetDateTime.parse(iso)
+            val now = java.time.OffsetDateTime.now()
+            val days = java.time.Duration.between(now, target).toDays()
+            when {
+                days > 1 -> "${days}天后"
+                days == 1L -> "明天"
+                days == 0L -> "今日"
+                else -> "已过期"
+            }
+        } catch (e: Exception) {
+            ""
         }
     }
 
