@@ -254,7 +254,8 @@ private fun ProgressItem(item: UsageItem) {
                 .clip(RoundedCornerShape(4.dp))
                 .alpha(if (isDanger) alpha else 1f),
             color = getSemanticColor(item.percent),
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            drawStopIndicator = {}
         )
 
         if (item.timeRange != null || (item.usageCount != null && item.resetCountdown != null)) {
