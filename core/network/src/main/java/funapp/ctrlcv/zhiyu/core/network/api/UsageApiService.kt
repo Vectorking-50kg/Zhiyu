@@ -41,7 +41,15 @@ class UsageApiService @Inject constructor(
                     ?: throw ApiStructureChangedException(Platform.CLAUDE, "No organization found")
                 val orgId = org.get("uuid")?.asString
                     ?: throw ApiStructureChangedException(Platform.CLAUDE, "No organization found")
-                val planTier = org.get("plan_tier")?.takeUnless { it.isJsonNull }?.asString
+                val planTier = org.getAsJsonArray("capabilities")
+                    ?.asSequence()
+                    ?.mapNotNull { it.takeUnless { el -> el.isJsonNull }?.asString }
+                    ?.firstOrNull { cap ->
+                        cap.startsWith("claude_pro") || cap.startsWith("claude_max") ||
+                        cap.startsWith("claude_team") || cap.startsWith("claude_enterprise") ||
+                        cap == "free"
+                    }
+                    ?: org.get("plan_tier")?.takeUnless { it.isJsonNull }?.asString
                 ClaudeOrgInfo(orgId, planTier)
             } catch (e: Exception) {
                 if (e is ApiStructureChangedException || e is SessionExpiredException) throw e
