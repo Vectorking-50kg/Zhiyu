@@ -18,12 +18,14 @@ import okhttp3.Response
 import javax.inject.Inject
 import javax.inject.Singleton
 
+data class ClaudeOrgInfo(val orgId: String, val planTier: String?)
+
 @Singleton
 class UsageApiService @Inject constructor(
     private val client: OkHttpClient,
     private val gson: Gson
 ) {
-    suspend fun getClaudeOrganizationId(cookie: String): String = withContext(Dispatchers.IO) {
+    suspend fun getClaudeOrgInfo(cookie: String): ClaudeOrgInfo = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("https://claude.ai/api/organizations")
             .header("Cookie", "sessionKey=$cookie")
@@ -35,8 +37,12 @@ class UsageApiService @Inject constructor(
             val body = readOrThrow(response, Platform.CLAUDE)
             try {
                 val orgs = gson.fromJson<List<JsonObject>>(body, object : TypeToken<List<JsonObject>>() {}.type)
-                orgs.firstOrNull()?.get("uuid")?.asString
+                val org = orgs.firstOrNull()
                     ?: throw ApiStructureChangedException(Platform.CLAUDE, "No organization found")
+                val orgId = org.get("uuid")?.asString
+                    ?: throw ApiStructureChangedException(Platform.CLAUDE, "No organization found")
+                val planTier = org.get("plan_tier")?.takeUnless { it.isJsonNull }?.asString
+                ClaudeOrgInfo(orgId, planTier)
             } catch (e: Exception) {
                 if (e is ApiStructureChangedException || e is SessionExpiredException) throw e
                 throw ApiStructureChangedException(Platform.CLAUDE, "Failed to parse organizations: ${e.message}")
@@ -44,9 +50,9 @@ class UsageApiService @Inject constructor(
         }
     }
 
-    suspend fun getClaudeUsage(cookie: String, orgId: String): UsageInfo = withContext(Dispatchers.IO) {
+    suspend fun getClaudeUsage(cookie: String, orgInfo: ClaudeOrgInfo): UsageInfo = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("https://claude.ai/api/organizations/$orgId/usage")
+            .url("https://claude.ai/api/organizations/${orgInfo.orgId}/usage")
             .header("Cookie", "sessionKey=$cookie")
             .header("User-Agent", USER_AGENT)
             .tag(Platform::class.java, Platform.CLAUDE)
@@ -64,6 +70,10 @@ class UsageApiService @Inject constructor(
                 parseClaudeBucket(json, "seven_day_sonnet", "周限额 · Sonnet")?.let(items::add)
                 parseClaudeBucket(json, "seven_day_omelette", "周限额 · Omelette")?.let(items::add)
 
+                orgInfo.planTier?.let { tier ->
+                    items.add(UsageItem(label = "套餐类型", percent = -1f, valueText = formatClaudePlan(tier)))
+                }
+
                 UsageInfo(
                     platform = Platform.CLAUDE,
                     items = items,
@@ -74,6 +84,16 @@ class UsageApiService @Inject constructor(
                 throw ApiStructureChangedException(Platform.CLAUDE, "Failed to parse usage: ${e.message}")
             }
         }
+    }
+
+    private fun formatClaudePlan(tier: String): String = when (tier.lowercase()) {
+        "free" -> "Free"
+        "pro", "claude_pro" -> "Pro"
+        "claude_max_5" -> "Max 5×"
+        "claude_max_20" -> "Max 20×"
+        "team", "claude_team" -> "Team"
+        "enterprise" -> "Enterprise"
+        else -> tier.replaceFirstChar { it.uppercase() }
     }
 
     private fun parseClaudeBucket(root: JsonObject, key: String, label: String): UsageItem? {

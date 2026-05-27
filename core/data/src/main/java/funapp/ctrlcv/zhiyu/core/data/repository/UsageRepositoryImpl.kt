@@ -26,8 +26,8 @@ class UsageRepositoryImpl @Inject constructor(
     override suspend fun getClaudeUsage(accountId: String): Result<UsageInfo> = runCatching {
         val cookie = tokenStore.get(Platform.CLAUDE, accountId)
             ?: throw NoCookieException(Platform.CLAUDE)
-        val orgId = api.getClaudeOrganizationId(cookie)
-        val usage = api.getClaudeUsage(cookie, orgId)
+        val orgInfo = api.getClaudeOrgInfo(cookie)
+        val usage = api.getClaudeUsage(cookie, orgInfo)
         cache.save(Platform.CLAUDE, usage)
         usage
     }.recoverCatching { e ->
