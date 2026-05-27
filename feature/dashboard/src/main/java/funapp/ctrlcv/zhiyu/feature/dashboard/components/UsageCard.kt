@@ -6,6 +6,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,6 +33,9 @@ import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -43,8 +49,11 @@ import funapp.ctrlcv.zhiyu.core.domain.model.UsageItem
 
 @Composable
 fun UsageCard(usageInfo: UsageInfo) {
-    // null 表示没有百分比条目（如 DeepSeek 全余额展示），不在卡片右上角显示 xx%
-    val maxPercent: Float? = usageInfo.items.filter { it.percent >= 0f }.maxOfOrNull { it.percent }
+    val normalItems = usageInfo.items.filter { !it.collapsible }
+    val collapsibleItems = usageInfo.items.filter { it.collapsible }
+    val maxPercent: Float? = normalItems.filter { it.percent >= 0f }.maxOfOrNull { it.percent }
+        ?: usageInfo.items.filter { it.percent >= 0f }.maxOfOrNull { it.percent }
+    var expanded by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -55,16 +64,45 @@ fun UsageCard(usageInfo: UsageInfo) {
         Column(modifier = Modifier.padding(20.dp)) {
             CardHeader(platform = usageInfo.platform, maxPercent = maxPercent)
 
-            if (usageInfo.items.isNotEmpty()) {
+            if (normalItems.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    usageInfo.items.forEach { item ->
-                        if (item.percent >= 0f) {
+                    normalItems.forEach { item ->
+                        if (item.percent >= 0f) ProgressItem(item = item) else InfoItem(item = item)
+                    }
+                }
+            }
+
+            if (collapsibleItems.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { expanded = !expanded }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "其它配额",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Icon(
+                        imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                        contentDescription = if (expanded) "收起" else "展开",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (expanded) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        collapsibleItems.forEach { item ->
                             ProgressItem(item = item)
-                        } else {
-                            InfoItem(item = item)
                         }
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
             }
 
@@ -176,9 +214,13 @@ private fun ProgressItem(item: UsageItem) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = buildString {
-                    append("${item.percent.toInt()}%")
-                    item.resetCountdown?.let { append(" · $it") }
+                text = if (item.usageCount != null && item.totalCount != null) {
+                    "用量: ${item.usageCount}/${item.totalCount}  已使用 ${item.percent.toInt()}%"
+                } else {
+                    buildString {
+                        append("${item.percent.toInt()}%")
+                        item.resetCountdown?.let { append(" · $it") }
+                    }
                 },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -198,13 +240,34 @@ private fun ProgressItem(item: UsageItem) {
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
 
-        item.valueText?.let { value ->
+        if (item.timeRange != null || (item.usageCount != null && item.resetCountdown != null)) {
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = item.timeRange ?: "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+                item.resetCountdown?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        } else {
+            item.valueText?.let { value ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
