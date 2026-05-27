@@ -303,13 +303,18 @@ class UsageApiService @Inject constructor(
 
                 // 1 USD = 500000 quota 单位
                 val remainingUsd = quota / 500000.0
-                val balanceText = "剩余 \$${String.format("%.4f", remainingUsd)}"
+                val spentUsd = usedQuota / 500000.0
 
                 val items = mutableListOf<UsageItem>()
                 items.add(UsageItem(
                     label = "额度用量",
                     percent = percent,
-                    valueText = balanceText
+                    valueText = "剩余 \$${String.format("%.4f", remainingUsd)}"
+                ))
+                items.add(UsageItem(
+                    label = "已消费",
+                    percent = -1f,
+                    valueText = "\$${String.format("%.4f", spentUsd)}"
                 ))
                 items.add(UsageItem(
                     label = "累计请求次数",
