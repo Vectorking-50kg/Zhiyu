@@ -68,15 +68,12 @@ class UsageApiService @Inject constructor(
                 parseClaudeBucket(json, "seven_day", "周限额 · 所有模型")?.let(items::add)
                 parseClaudeBucket(json, "seven_day_opus", "周限额 · Opus")?.let(items::add)
                 parseClaudeBucket(json, "seven_day_sonnet", "周限额 · Sonnet")?.let(items::add)
-                parseClaudeBucket(json, "seven_day_omelette", "周限额 · Omelette")?.let(items::add)
-
-                orgInfo.planTier?.let { tier ->
-                    items.add(UsageItem(label = "套餐类型", percent = -1f, valueText = formatClaudePlan(tier)))
-                }
+                parseClaudeBucket(json, "seven_day_omelette", "周限额 · Claude Design")?.let(items::add)
 
                 UsageInfo(
                     platform = Platform.CLAUDE,
                     items = items,
+                    planLabel = orgInfo.planTier?.let { formatClaudePlan(it) },
                     updatedAt = System.currentTimeMillis()
                 )
             } catch (e: Exception) {
@@ -177,13 +174,6 @@ class UsageApiService @Inject constructor(
         // Plan type + renewal date come from accounts/check (best-effort; never fails the card).
         val planInfo = fetchChatGptPlanInfo(accessToken)
         val planType = planInfo?.planType ?: planFromUsage
-        if (planType != null) {
-            items.add(UsageItem(
-                label = "套餐类型",
-                percent = -1f,
-                valueText = formatChatGptPlan(planType)
-            ))
-        }
         planInfo?.renewIso?.let { iso ->
             val text = formatRenewDate(iso)
             if (text.isNotBlank()) {
@@ -205,6 +195,7 @@ class UsageApiService @Inject constructor(
         UsageInfo(
             platform = Platform.CHATGPT,
             items = items,
+            planLabel = planType?.let { formatChatGptPlan(it) },
             updatedAt = System.currentTimeMillis()
         )
     }
@@ -272,11 +263,12 @@ class UsageApiService @Inject constructor(
         val accessToken = extractCursorToken(cookie)
         val items = mutableListOf<UsageItem>()
         var sawSessionExpired = false
+        var cursorPlanLabel: String? = null
 
         // 1) Membership / subscription info (full_stripe_profile). This already worked, so
         // fetch it first to guarantee the card always has content even if usage RPC changes.
         try {
-            fetchCursorMembership(accessToken, cookie, items)
+            cursorPlanLabel = fetchCursorMembership(accessToken, cookie, items)
         } catch (e: SessionExpiredException) {
             sawSessionExpired = true
         } catch (e: Exception) {
@@ -303,6 +295,7 @@ class UsageApiService @Inject constructor(
         UsageInfo(
             platform = Platform.CURSOR,
             items = items,
+            planLabel = cursorPlanLabel,
             updatedAt = System.currentTimeMillis()
         )
     }
@@ -323,7 +316,7 @@ class UsageApiService @Inject constructor(
         }
     }
 
-    private fun fetchCursorMembership(accessToken: String, cookie: String, items: MutableList<UsageItem>) {
+    private fun fetchCursorMembership(accessToken: String, cookie: String, items: MutableList<UsageItem>): String? {
         val request = Request.Builder()
             .url("https://api2.cursor.sh/auth/full_stripe_profile")
             .header("Cookie", "WorkosCursorSessionToken=$cookie")
@@ -337,13 +330,6 @@ class UsageApiService @Inject constructor(
             val json = gson.fromJson(body, JsonObject::class.java)
             val membership = json.get("membershipType")?.takeUnless { it.isJsonNull }?.asString
                 ?: json.get("individualMembershipType")?.takeUnless { it.isJsonNull }?.asString
-            if (membership != null && items.none { it.label == "会员类型" }) {
-                items.add(UsageItem(
-                    label = "会员类型",
-                    percent = -1f,
-                    valueText = formatCursorMembership(membership)
-                ))
-            }
             val status = json.get("subscriptionStatus")?.takeUnless { it.isJsonNull }?.asString
             if (status != null && items.none { it.label == "订阅状态" }) {
                 items.add(UsageItem(
@@ -352,6 +338,7 @@ class UsageApiService @Inject constructor(
                     valueText = if (status == "active") "有效" else status
                 ))
             }
+            return membership?.let { formatCursorMembership(it) }
         }
     }
 
@@ -373,20 +360,6 @@ class UsageApiService @Inject constructor(
             val json = gson.fromJson(body, JsonObject::class.java)
             // Usage numbers are nested under "planUsage"; fall back to top-level for safety.
             val usage = json.optObject("planUsage") ?: json
-
-            if (items.none { it.label == "会员类型" }) {
-                val planName = usage.get("planName")?.takeUnless { it.isJsonNull }?.asString
-                    ?: json.get("planName")?.takeUnless { it.isJsonNull }?.asString
-                    ?: json.get("planType")?.takeUnless { it.isJsonNull }?.asString
-                if (planName != null) {
-                    items.add(UsageItem(
-                        label = "会员类型",
-                        percent = -1f,
-                        valueText = formatCursorMembership(planName)
-                    ))
-                }
-            }
-
             val spendCents = (usage.get("used") ?: usage.get("totalSpend"))
                 ?.takeUnless { it.isJsonNull }?.asDouble
             val limitCents = usage.get("limit")?.takeUnless { it.isJsonNull }?.asDouble

@@ -313,8 +313,8 @@ private fun InfoItem(item: UsageItem) {
 }
 
 fun getSemanticColor(percent: Float): Color = when {
-    percent < 80f -> Color(0xFF4A9D6F)
-    percent < 90f -> Color(0xFFD4A027)
+    percent < 75f -> Color(0xFF4A9D6F)
+    percent < 95f -> Color(0xFFD4A027)
     else -> Color(0xFFD94F4F)
 }
 
@@ -338,9 +338,9 @@ private fun getPlatformIconBg(platform: Platform): Color = when (platform) {
 }
 
 private fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platform) {
-    Platform.CLAUDE -> usageInfo.items.firstOrNull { it.label == "套餐类型" }?.valueText ?: "Pro"
-    Platform.CHATGPT -> usageInfo.items.firstOrNull { it.label == "套餐类型" }?.valueText ?: "Unknown"
-    Platform.CURSOR -> usageInfo.items.firstOrNull { it.label == "会员类型" }?.valueText ?: "Unknown"
+    Platform.CLAUDE -> usageInfo.planLabel ?: "Pro"
+    Platform.CHATGPT -> usageInfo.planLabel ?: "Unknown"
+    Platform.CURSOR -> usageInfo.planLabel ?: "Unknown"
     Platform.MINIMAX -> "Token Plan"
     Platform.AIHUBMIX -> "API"
     Platform.DEEPSEEK -> "API"
