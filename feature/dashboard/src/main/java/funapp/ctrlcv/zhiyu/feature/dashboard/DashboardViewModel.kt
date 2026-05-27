@@ -36,7 +36,20 @@ class DashboardViewModel @Inject constructor(
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
-        loadUsage()
+        viewModelScope.launch {
+            // 先把缓存数据立刻渲染，避免首次打开空白屏
+            val cached = repository.getCachedUsage()
+            if (cached.isNotEmpty()) {
+                _uiState.update {
+                    it.copy(
+                        usageList = cached,
+                        lastUpdated = cached.maxOf { info -> info.updatedAt }
+                    )
+                }
+            }
+            // 缓存展示后再触发网络刷新
+            loadUsage()
+        }
         observeSessionEvents()
     }
 

@@ -98,4 +98,6 @@ class UsageRepositoryImpl @Inject constructor(
         }
         return results.ifEmpty { cache.getAll() }
     }
+
+    override fun getCachedUsage(): List<UsageInfo> = cache.getAll()
 }
