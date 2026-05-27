@@ -19,6 +19,8 @@ data class UsageItem(
     // MiniMax token plan 专用：实际用量数值（current_interval_usage/total_count）
     val usageCount: Int? = null,
     val totalCount: Int? = null,
-    // 时间窗口区间，如 "05:00-10:00(UTC+8)" 或 "2026/05/27 00:00 - 2026/05/28 00:00"
-    val timeRange: String? = null
+    // 时间窗口区间，如 "05:00-10:00(UTC+8)" 或 "每日刷新"
+    val timeRange: String? = null,
+    // 默认折叠不展示（如 MiniMax 创作工具类配额）
+    val collapsible: Boolean = false
 )

@@ -236,7 +236,8 @@ class UsageApiService @Inject constructor(
                     ))
                 }
 
-                // 再追加 model_remains 中未被 category 覆盖且有额度的具体模型
+                // 再追加 model_remains：先展示常用模型（MCP 等），再追加折叠的创作工具
+                val collapsibleItems = mutableListOf<UsageItem>()
                 json.getAsJsonArray("model_remains")?.forEach { element ->
                     val obj = element.asJsonObject
                     val total = obj.get("current_interval_total_count")?.asInt ?: 0
@@ -249,15 +250,18 @@ class UsageApiService @Inject constructor(
                     if (!seenLabels.add(label)) return@forEach
                     val startMs = obj.get("start_time")?.asLong
                     val endMs = obj.get("end_time")?.asLong
-                    items.add(UsageItem(
+                    val item = UsageItem(
                         label = label,
                         percent = percent,
                         resetCountdown = endMs?.let { formatMinimaxResetTime(it) },
                         usageCount = used,
                         totalCount = total,
-                        timeRange = if (startMs != null && endMs != null) formatMinimaxTimeRange(startMs, endMs) else null
-                    ))
+                        timeRange = if (startMs != null && endMs != null) formatMinimaxTimeRange(startMs, endMs) else null,
+                        collapsible = isMinimaxCollapsibleModel(modelName)
+                    )
+                    if (item.collapsible) collapsibleItems.add(item) else items.add(item)
                 }
+                items.addAll(collapsibleItems)
 
                 UsageInfo(
                     platform = Platform.MINIMAX,
@@ -275,6 +279,11 @@ class UsageApiService @Inject constructor(
         modelName.startsWith("MiniMax-M") ||
         modelName == "speech-hd" ||
         modelName.startsWith("MiniMax-Hailuo")
+
+    private fun isMinimaxCollapsibleModel(modelName: String): Boolean = when (modelName) {
+        "music-2.5", "music-2.6", "music-cover", "lyrics_generation" -> true
+        else -> false
+    }
 
     private fun getMinimaxModelDisplayName(modelName: String): String = when (modelName) {
         "music-2.5", "music-2.6" -> "音乐生成"
@@ -313,7 +322,7 @@ class UsageApiService @Inject constructor(
             if (start.toLocalDate() == end.toLocalDate()) {
                 "${start.format(timeFmt)}-${end.format(timeFmt)}(UTC+8)"
             } else {
-                "${start.format(dateFmt)} - ${end.format(dateFmt)}"
+                "每日刷新"
             }
         } catch (e: Exception) {
             ""
