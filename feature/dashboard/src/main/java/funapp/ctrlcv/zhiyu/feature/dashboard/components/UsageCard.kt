@@ -157,8 +157,8 @@ private fun CardHeader(platform: Platform, maxPercent: Float?, balanceText: Stri
                 Icon(
                     painter = painterResource(id = getPlatformIconRes(platform)),
                     contentDescription = platform.displayName,
-                    modifier = Modifier.size(22.dp),
-                    tint = Color.White
+                    modifier = Modifier.size(if (platform == Platform.AIHUBMIX) 28.dp else 22.dp),
+                    tint = if (platform == Platform.AIHUBMIX) Color.Unspecified else Color.White
                 )
             }
 
@@ -323,17 +323,17 @@ private fun getPlatformIconBg(platform: Platform): Color = when (platform) {
     Platform.CHATGPT -> Color(0xFF10A37F)
     Platform.CURSOR -> Color(0xFF1A1A1A)
     Platform.MINIMAX -> Color(0xFF2D2D2D)
-    Platform.AIHUBMIX -> Color(0xFF5B4FCF)
+    Platform.AIHUBMIX -> Color(0xFFF5F5F5)
     Platform.DEEPSEEK -> Color(0xFF4362D6)
 }
 
 private fun getPlanLabel(platform: Platform): String = when (platform) {
-    Platform.CLAUDE -> "Claude Pro"
-    Platform.CHATGPT -> "Codex API"
-    Platform.CURSOR -> "Cursor Pro"
-    Platform.MINIMAX -> "MiniMax API"
-    Platform.AIHUBMIX -> "AIHubMix API"
-    Platform.DEEPSEEK -> "DeepSeek API"
+    Platform.CLAUDE -> "Pro"
+    Platform.CHATGPT -> "API"
+    Platform.CURSOR -> "Pro"
+    Platform.MINIMAX -> "API"
+    Platform.AIHUBMIX -> "API"
+    Platform.DEEPSEEK -> "API"
 }
 
 private fun formatBalance(valueText: String): String {
