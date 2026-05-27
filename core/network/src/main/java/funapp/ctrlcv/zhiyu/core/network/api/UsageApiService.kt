@@ -195,10 +195,9 @@ class UsageApiService @Inject constructor(
     }
 
     // ── MiniMax ──────────────────────────────────────────────────────────────
-    // Docs: https://www.minimaxi.com/v1/token_plan/remains
-    // 注意：此处使用 Token Plan 专属 API Key，非普通按量 API Key
     // GET https://www.minimaxi.com/v1/token_plan/remains
     // Authorization: Bearer {token_plan_api_key}
+    // 返回 category_remains（按大类）和 model_remains（按模型）两个数组
     suspend fun getMiniMaxUsage(apiKey: String): UsageInfo = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("https://www.minimaxi.com/v1/token_plan/remains")
@@ -211,61 +210,113 @@ class UsageApiService @Inject constructor(
             val body = readOrThrow(response, Platform.MINIMAX)
             try {
                 val json = gson.fromJson(body, JsonObject::class.java)
+                val items = mutableListOf<UsageItem>()
+                val seenLabels = mutableSetOf<String>()
 
-                val baseResp = json.getAsJsonObject("base_resp")
-                val statusCode = baseResp?.get("status_code")?.asInt ?: 0
-                if (statusCode != 0) {
-                    val msg = baseResp?.get("status_msg")?.asString ?: "Unknown error"
-                    throw ApiStructureChangedException(Platform.MINIMAX, "API error $statusCode: $msg")
+                // 优先展示 category_remains（大类聚合，有 display_name）
+                json.getAsJsonArray("category_remains")?.forEach { element ->
+                    val obj = element.asJsonObject
+                    val total = obj.get("current_interval_total_count")?.asInt ?: 0
+                    if (total <= 0) return@forEach
+                    val used = obj.get("current_interval_usage_count")?.asInt ?: 0
+                    val percent = (used.toFloat() / total * 100f).coerceIn(0f, 100f)
+                    val label = obj.get("display_name")?.asString
+                        ?: obj.get("category")?.asString
+                        ?: return@forEach
+                    if (!seenLabels.add(label)) return@forEach
+                    val startMs = obj.get("start_time")?.asLong
+                    val endMs = obj.get("end_time")?.asLong
+                    items.add(UsageItem(
+                        label = label,
+                        percent = percent,
+                        resetCountdown = endMs?.let { formatMinimaxResetTime(it) },
+                        usageCount = used,
+                        totalCount = total,
+                        timeRange = if (startMs != null && endMs != null) formatMinimaxTimeRange(startMs, endMs) else null
+                    ))
                 }
 
-                // 优先从 token_plan / 根级别读取 remains 与 total
-                val planNode = json.getAsJsonObject("token_plan")
-                    ?: json.getAsJsonObject("token_plan_remains")
-                    ?: json
-
-                val remains = planNode.get("remains")?.takeUnless { it.isJsonNull }?.asLong
-                    ?: planNode.get("remain_tokens")?.takeUnless { it.isJsonNull }?.asLong
-                    ?: 0L
-                val total = planNode.get("total")?.takeUnless { it.isJsonNull }?.asLong
-                    ?: planNode.get("total_tokens")?.takeUnless { it.isJsonNull }?.asLong
-                    ?: planNode.get("total_token")?.takeUnless { it.isJsonNull }?.asLong
-                    ?: 0L
-
-                val expireTime = planNode.get("expire_time")?.takeUnless { it.isJsonNull }?.asString
-                    ?: planNode.get("expireTime")?.takeUnless { it.isJsonNull }?.asString
-                    ?: json.get("expire_time")?.takeUnless { it.isJsonNull }?.asString
-
-                val items = mutableListOf<UsageItem>()
-                if (total > 0) {
-                    val used = total - remains
+                // 再追加 model_remains 中未被 category 覆盖且有额度的具体模型
+                json.getAsJsonArray("model_remains")?.forEach { element ->
+                    val obj = element.asJsonObject
+                    val total = obj.get("current_interval_total_count")?.asInt ?: 0
+                    if (total <= 0) return@forEach
+                    val modelName = obj.get("model_name")?.asString ?: return@forEach
+                    if (isMinimaxCategoryModel(modelName)) return@forEach
+                    val used = obj.get("current_interval_usage_count")?.asInt ?: 0
                     val percent = (used.toFloat() / total * 100f).coerceIn(0f, 100f)
+                    val label = getMinimaxModelDisplayName(modelName)
+                    if (!seenLabels.add(label)) return@forEach
+                    val startMs = obj.get("start_time")?.asLong
+                    val endMs = obj.get("end_time")?.asLong
                     items.add(UsageItem(
-                        label = "Token Plan 用量",
+                        label = label,
                         percent = percent,
-                        resetCountdown = expireTime?.let { formatResetTime(it) },
-                        valueText = "剩余 ${formatTokenCount(remains)}"
-                    ))
-                } else {
-                    // 只拿到 remains，无 total，以信息行展示
-                    items.add(UsageItem(
-                        label = "Token Plan 剩余",
-                        percent = -1f,
-                        resetCountdown = expireTime?.let { formatResetTime(it) },
-                        valueText = "${formatTokenCount(remains)} tokens"
+                        resetCountdown = endMs?.let { formatMinimaxResetTime(it) },
+                        usageCount = used,
+                        totalCount = total,
+                        timeRange = if (startMs != null && endMs != null) formatMinimaxTimeRange(startMs, endMs) else null
                     ))
                 }
 
                 UsageInfo(
                     platform = Platform.MINIMAX,
                     items = items,
-                    resetInfo = if (total > 0) "共 ${formatTokenCount(total)} tokens" else null,
                     updatedAt = System.currentTimeMillis()
                 )
             } catch (e: Exception) {
                 if (e is ApiStructureChangedException || e is SessionExpiredException) throw e
                 throw ApiStructureChangedException(Platform.MINIMAX, "Failed to parse usage: ${e.message}")
             }
+        }
+    }
+
+    private fun isMinimaxCategoryModel(modelName: String): Boolean =
+        modelName.startsWith("MiniMax-M") ||
+        modelName == "speech-hd" ||
+        modelName.startsWith("MiniMax-Hailuo")
+
+    private fun getMinimaxModelDisplayName(modelName: String): String = when (modelName) {
+        "music-2.5", "music-2.6" -> "音乐生成"
+        "music-cover" -> "音乐翻唱"
+        "lyrics_generation" -> "歌词生成"
+        "image-01" -> "图片生成"
+        "coding-plan-vlm" -> "图片理解 MCP"
+        "coding-plan-search" -> "网络搜索 MCP"
+        else -> modelName
+    }
+
+    private fun formatMinimaxResetTime(endTimeMs: Long): String {
+        return try {
+            val remaining = endTimeMs - System.currentTimeMillis()
+            if (remaining <= 0) return "即将重置"
+            val hours = remaining / 3_600_000L
+            val minutes = (remaining % 3_600_000L) / 60_000L
+            when {
+                hours > 24 -> "${hours / 24}天后重置"
+                hours > 0 -> "${hours}小时${if (minutes > 0) "${minutes}分钟" else ""}后重置"
+                minutes > 0 -> "${minutes}分钟后重置"
+                else -> "即将重置"
+            }
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    private fun formatMinimaxTimeRange(startMs: Long, endMs: Long): String {
+        return try {
+            val zone = java.time.ZoneId.of("Asia/Shanghai")
+            val start = java.time.Instant.ofEpochMilli(startMs).atZone(zone)
+            val end = java.time.Instant.ofEpochMilli(endMs).atZone(zone)
+            val timeFmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+            val dateFmt = java.time.format.DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
+            if (start.toLocalDate() == end.toLocalDate()) {
+                "${start.format(timeFmt)}-${end.format(timeFmt)}(UTC+8)"
+            } else {
+                "${start.format(dateFmt)} - ${end.format(dateFmt)}"
+            }
+        } catch (e: Exception) {
+            ""
         }
     }
 

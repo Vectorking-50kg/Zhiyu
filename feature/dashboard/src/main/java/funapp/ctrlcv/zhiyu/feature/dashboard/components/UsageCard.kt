@@ -176,9 +176,13 @@ private fun ProgressItem(item: UsageItem) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = buildString {
-                    append("${item.percent.toInt()}%")
-                    item.resetCountdown?.let { append(" · $it") }
+                text = if (item.usageCount != null && item.totalCount != null) {
+                    "用量: ${item.usageCount}/${item.totalCount}  已使用 ${item.percent.toInt()}%"
+                } else {
+                    buildString {
+                        append("${item.percent.toInt()}%")
+                        item.resetCountdown?.let { append(" · $it") }
+                    }
                 },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -198,13 +202,34 @@ private fun ProgressItem(item: UsageItem) {
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
 
-        item.valueText?.let { value ->
+        if (item.timeRange != null || (item.usageCount != null && item.resetCountdown != null)) {
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = item.timeRange ?: "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+                item.resetCountdown?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        } else {
+            item.valueText?.let { value ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
