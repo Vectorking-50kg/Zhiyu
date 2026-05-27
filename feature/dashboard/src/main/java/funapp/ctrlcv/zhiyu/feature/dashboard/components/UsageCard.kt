@@ -54,6 +54,11 @@ fun UsageCard(usageInfo: UsageInfo) {
     val collapsibleItems = usageInfo.items.filter { it.collapsible }
     val maxPercent: Float? = normalItems.filter { it.percent >= 0f }.maxOfOrNull { it.percent }
         ?: usageInfo.items.filter { it.percent >= 0f }.maxOfOrNull { it.percent }
+    val balanceText: String? = when (usageInfo.platform) {
+        Platform.AIHUBMIX -> usageInfo.items.firstOrNull { it.label == "余额" }?.valueText?.let { formatBalance(it) }
+        Platform.DEEPSEEK -> usageInfo.items.firstOrNull { it.label == "账户余额" }?.valueText?.let { formatBalance(it) }
+        else -> null
+    }
     var expanded by remember { mutableStateOf(false) }
 
     Card(
@@ -67,7 +72,7 @@ fun UsageCard(usageInfo: UsageInfo) {
         )
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
-            CardHeader(platform = usageInfo.platform, maxPercent = maxPercent)
+            CardHeader(platform = usageInfo.platform, maxPercent = maxPercent, balanceText = balanceText)
 
             if (normalItems.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -135,7 +140,7 @@ fun UsageCard(usageInfo: UsageInfo) {
 }
 
 @Composable
-private fun CardHeader(platform: Platform, maxPercent: Float?) {
+private fun CardHeader(platform: Platform, maxPercent: Float?, balanceText: String? = null) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -175,12 +180,18 @@ private fun CardHeader(platform: Platform, maxPercent: Float?) {
             }
         }
 
-        maxPercent?.let {
-            Text(
-                text = "${it.toInt()}%",
+        when {
+            balanceText != null -> Text(
+                text = balanceText,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = getSemanticColor(it)
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            maxPercent != null -> Text(
+                text = "${maxPercent.toInt()}%",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = getSemanticColor(maxPercent)
             )
         }
     }
@@ -323,4 +334,14 @@ private fun getPlanLabel(platform: Platform): String = when (platform) {
     Platform.MINIMAX -> "MiniMax API"
     Platform.AIHUBMIX -> "AIHubMix API"
     Platform.DEEPSEEK -> "DeepSeek API"
+}
+
+private fun formatBalance(valueText: String): String {
+    val prefix = when {
+        valueText.startsWith("$") -> "$"
+        valueText.startsWith("¥") -> "¥"
+        else -> ""
+    }
+    val num = valueText.removePrefix(prefix).toDoubleOrNull() ?: return valueText
+    return "$prefix${String.format("%.2f", num)}"
 }
