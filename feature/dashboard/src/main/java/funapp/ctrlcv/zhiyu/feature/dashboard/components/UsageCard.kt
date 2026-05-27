@@ -68,8 +68,8 @@ fun UsageCard(usageInfo: UsageInfo) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant
+            width = 0.5.dp,
+            color = Color(0xFFBDB0A4)
         )
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
