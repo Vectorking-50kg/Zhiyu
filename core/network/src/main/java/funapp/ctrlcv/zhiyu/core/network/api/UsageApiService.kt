@@ -56,9 +56,6 @@ class UsageApiService @Inject constructor(
                 val json = gson.fromJson(body, JsonObject::class.java)
                 val items = mutableListOf<UsageItem>()
 
-                // 真实接口返回的是 {five_hour:{utilization, resets_at}, seven_day:{...},
-                // seven_day_opus, seven_day_sonnet, seven_day_omelette, ...}
-                // utilization 已经是 0-100 的百分比
                 parseClaudeBucket(json, "five_hour", "5 小时限额")?.let(items::add)
                 parseClaudeBucket(json, "seven_day", "周限额 · 所有模型")?.let(items::add)
                 parseClaudeBucket(json, "seven_day_opus", "周限额 · Opus")?.let(items::add)
@@ -197,6 +194,209 @@ class UsageApiService @Inject constructor(
         }
     }
 
+    // ── MiniMax ──────────────────────────────────────────────────────────────
+    // Docs: https://www.minimaxi.com/v1/token_plan/remains
+    // 注意：此处使用 Token Plan 专属 API Key，非普通按量 API Key
+    // GET https://www.minimaxi.com/v1/token_plan/remains
+    // Authorization: Bearer {token_plan_api_key}
+    suspend fun getMiniMaxUsage(apiKey: String): UsageInfo = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("https://www.minimaxi.com/v1/token_plan/remains")
+            .header("Authorization", "Bearer $apiKey")
+            .header("Content-Type", "application/json")
+            .tag(Platform::class.java, Platform.MINIMAX)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val body = readOrThrow(response, Platform.MINIMAX)
+            try {
+                val json = gson.fromJson(body, JsonObject::class.java)
+
+                val baseResp = json.getAsJsonObject("base_resp")
+                val statusCode = baseResp?.get("status_code")?.asInt ?: 0
+                if (statusCode != 0) {
+                    val msg = baseResp?.get("status_msg")?.asString ?: "Unknown error"
+                    throw ApiStructureChangedException(Platform.MINIMAX, "API error $statusCode: $msg")
+                }
+
+                // 优先从 token_plan / 根级别读取 remains 与 total
+                val planNode = json.getAsJsonObject("token_plan")
+                    ?: json.getAsJsonObject("token_plan_remains")
+                    ?: json
+
+                val remains = planNode.get("remains")?.takeUnless { it.isJsonNull }?.asLong
+                    ?: planNode.get("remain_tokens")?.takeUnless { it.isJsonNull }?.asLong
+                    ?: 0L
+                val total = planNode.get("total")?.takeUnless { it.isJsonNull }?.asLong
+                    ?: planNode.get("total_tokens")?.takeUnless { it.isJsonNull }?.asLong
+                    ?: planNode.get("total_token")?.takeUnless { it.isJsonNull }?.asLong
+                    ?: 0L
+
+                val expireTime = planNode.get("expire_time")?.takeUnless { it.isJsonNull }?.asString
+                    ?: planNode.get("expireTime")?.takeUnless { it.isJsonNull }?.asString
+                    ?: json.get("expire_time")?.takeUnless { it.isJsonNull }?.asString
+
+                val items = mutableListOf<UsageItem>()
+                if (total > 0) {
+                    val used = total - remains
+                    val percent = (used.toFloat() / total * 100f).coerceIn(0f, 100f)
+                    items.add(UsageItem(
+                        label = "Token Plan 用量",
+                        percent = percent,
+                        resetCountdown = expireTime?.let { formatResetTime(it) },
+                        valueText = "剩余 ${formatTokenCount(remains)}"
+                    ))
+                } else {
+                    // 只拿到 remains，无 total，以信息行展示
+                    items.add(UsageItem(
+                        label = "Token Plan 剩余",
+                        percent = -1f,
+                        resetCountdown = expireTime?.let { formatResetTime(it) },
+                        valueText = "${formatTokenCount(remains)} tokens"
+                    ))
+                }
+
+                UsageInfo(
+                    platform = Platform.MINIMAX,
+                    items = items,
+                    resetInfo = if (total > 0) "共 ${formatTokenCount(total)} tokens" else null,
+                    updatedAt = System.currentTimeMillis()
+                )
+            } catch (e: Exception) {
+                if (e is ApiStructureChangedException || e is SessionExpiredException) throw e
+                throw ApiStructureChangedException(Platform.MINIMAX, "Failed to parse usage: ${e.message}")
+            }
+        }
+    }
+
+    // ── AIHubMix ─────────────────────────────────────────────────────────────
+    // Docs: https://docs.aihubmix.com/cn/api/Cli
+    // GET https://aihubmix.com/api/user/self
+    // Authorization: {token}  （无 Bearer 前缀）
+    // 余额（CNY）= quota / 500000
+    suspend fun getAiHubMixUsage(token: String): UsageInfo = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("https://aihubmix.com/api/user/self")
+            .header("Authorization", token)          // 无 Bearer 前缀
+            .header("Content-Type", "application/json")
+            .tag(Platform::class.java, Platform.AIHUBMIX)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val body = readOrThrow(response, Platform.AIHUBMIX)
+            try {
+                val json = gson.fromJson(body, JsonObject::class.java)
+                val success = json.get("success")?.asBoolean ?: false
+                if (!success) {
+                    val msg = json.get("message")?.asString ?: "Request failed"
+                    throw ApiStructureChangedException(Platform.AIHUBMIX, msg)
+                }
+
+                val data = json.getAsJsonObject("data")
+                    ?: throw ApiStructureChangedException(Platform.AIHUBMIX, "Missing data field")
+
+                val quota = data.get("quota")?.asLong ?: 0L
+                val usedQuota = data.get("used_quota")?.asLong ?: 0L
+                val requestCount = data.get("request_count")?.asLong ?: 0L
+
+                // 1 USD = 500000 quota 单位
+                val remainingUsd = quota / 500000.0
+                val spentUsd = usedQuota / 500000.0
+
+                val items = mutableListOf<UsageItem>()
+                items.add(UsageItem(
+                    label = "余额",
+                    percent = -1f,
+                    valueText = "\$${String.format("%.4f", remainingUsd)}"
+                ))
+                items.add(UsageItem(
+                    label = "已消费",
+                    percent = -1f,
+                    valueText = "\$${String.format("%.4f", spentUsd)}"
+                ))
+                items.add(UsageItem(
+                    label = "累计请求次数",
+                    percent = -1f,
+                    valueText = "$requestCount 次"
+                ))
+
+                UsageInfo(
+                    platform = Platform.AIHUBMIX,
+                    items = items,
+                    updatedAt = System.currentTimeMillis()
+                )
+            } catch (e: Exception) {
+                if (e is ApiStructureChangedException || e is SessionExpiredException) throw e
+                throw ApiStructureChangedException(Platform.AIHUBMIX, "Failed to parse usage: ${e.message}")
+            }
+        }
+    }
+
+    // ── DeepSeek ─────────────────────────────────────────────────────────────
+    // Docs: https://platform.deepseek.com/api-docs/zh-cn/api/get-user-balance
+    // GET https://api.deepseek.com/user/balance
+    // Authorization: Bearer {api_key}
+    suspend fun getDeepSeekUsage(apiKey: String): UsageInfo = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("https://api.deepseek.com/user/balance")
+            .header("Authorization", "Bearer $apiKey")
+            .header("Accept", "application/json")
+            .tag(Platform::class.java, Platform.DEEPSEEK)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val body = readOrThrow(response, Platform.DEEPSEEK)
+            try {
+                val json = gson.fromJson(body, JsonObject::class.java)
+                val isAvailable = json.get("is_available")?.asBoolean ?: false
+                val balanceArray = json.getAsJsonArray("balance_infos")
+                    ?: throw ApiStructureChangedException(Platform.DEEPSEEK, "Missing balance_infos field")
+
+                val items = mutableListOf<UsageItem>()
+                balanceArray.forEach { element ->
+                    val info = element.asJsonObject
+                    val currency = info.get("currency")?.asString ?: "CNY"
+                    val totalBalance = info.get("total_balance")?.asString ?: "0.00"
+                    val grantedBalance = info.get("granted_balance")?.asString ?: "0.00"
+                    val toppedUpBalance = info.get("topped_up_balance")?.asString ?: "0.00"
+
+                    val currencySymbol = if (currency == "CNY") "¥" else "$"
+
+                    items.add(UsageItem(
+                        label = "账户余额",
+                        percent = -1f,
+                        valueText = "$currencySymbol$totalBalance"
+                    ))
+                    val grantedVal = grantedBalance.toDoubleOrNull() ?: 0.0
+                    if (grantedVal > 0.0) {
+                        items.add(UsageItem(
+                            label = "赠送余额",
+                            percent = -1f,
+                            valueText = "$currencySymbol$grantedBalance"
+                        ))
+                    }
+                    items.add(UsageItem(
+                        label = "充值余额",
+                        percent = -1f,
+                        valueText = "$currencySymbol$toppedUpBalance"
+                    ))
+                }
+
+                val statusText = if (isAvailable) "账户可用" else "账户不可用"
+
+                UsageInfo(
+                    platform = Platform.DEEPSEEK,
+                    items = items,
+                    resetInfo = statusText,
+                    updatedAt = System.currentTimeMillis()
+                )
+            } catch (e: Exception) {
+                if (e is ApiStructureChangedException || e is SessionExpiredException) throw e
+                throw ApiStructureChangedException(Platform.DEEPSEEK, "Failed to parse usage: ${e.message}")
+            }
+        }
+    }
+
     private fun readOrThrow(response: Response, platform: Platform): String {
         if (response.code == 401 || response.code == 403) {
             throw SessionExpiredException(platform)
@@ -246,6 +446,18 @@ class UsageApiService @Inject constructor(
         } catch (e: Exception) {
             ""
         }
+    }
+
+    private fun formatTokenCount(count: Long): String = when {
+        count >= 1_000_000 -> "${count / 1_000_000}M"
+        count >= 1_000 -> "${count / 1_000}K"
+        else -> count.toString()
+    }
+
+    private fun formatQuota(quota: Long): String = when {
+        quota >= 1_000_000 -> String.format("%.1fM", quota / 1_000_000.0)
+        quota >= 1_000 -> String.format("%.1fK", quota / 1_000.0)
+        else -> quota.toString()
     }
 
     companion object {

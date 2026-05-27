@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
-import funapp.ctrlcv.zhiyu.core.domain.model.Account
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,6 +40,20 @@ class SecureTokenStore @Inject constructor(
 
     fun hasToken(platform: Platform, accountId: String): Boolean =
         get(platform, accountId) != null
+
+    /** 用于存储平台附加凭据，例如 MiniMax 的 GroupId */
+    fun saveExtra(platform: Platform, accountId: String, key: String, value: String) {
+        prefs.edit()
+            .putString("${platform.key}_${accountId}_extra_$key", value)
+            .apply()
+    }
+
+    fun getExtra(platform: Platform, accountId: String, key: String): String? =
+        prefs.getString("${platform.key}_${accountId}_extra_$key", null)
+
+    fun clearExtra(platform: Platform, accountId: String, key: String) {
+        prefs.edit().remove("${platform.key}_${accountId}_extra_$key").apply()
+    }
 
     fun clearAll() {
         prefs.edit().clear().apply()

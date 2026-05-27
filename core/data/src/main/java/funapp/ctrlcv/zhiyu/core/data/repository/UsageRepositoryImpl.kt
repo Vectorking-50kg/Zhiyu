@@ -50,11 +50,44 @@ class UsageRepositoryImpl @Inject constructor(
         cache.get(Platform.CURSOR)?.copy(stale = true) ?: throw e
     }
 
+    override suspend fun getMiniMaxUsage(accountId: String): Result<UsageInfo> = runCatching {
+        val apiKey = tokenStore.get(Platform.MINIMAX, accountId)
+            ?: throw NoCookieException(Platform.MINIMAX)
+        val usage = api.getMiniMaxUsage(apiKey)
+        cache.save(Platform.MINIMAX, usage)
+        usage
+    }.recoverCatching { e ->
+        cache.get(Platform.MINIMAX)?.copy(stale = true) ?: throw e
+    }
+
+    override suspend fun getAiHubMixUsage(accountId: String): Result<UsageInfo> = runCatching {
+        val token = tokenStore.get(Platform.AIHUBMIX, accountId)
+            ?: throw NoCookieException(Platform.AIHUBMIX)
+        val usage = api.getAiHubMixUsage(token)
+        cache.save(Platform.AIHUBMIX, usage)
+        usage
+    }.recoverCatching { e ->
+        cache.get(Platform.AIHUBMIX)?.copy(stale = true) ?: throw e
+    }
+
+    override suspend fun getDeepSeekUsage(accountId: String): Result<UsageInfo> = runCatching {
+        val apiKey = tokenStore.get(Platform.DEEPSEEK, accountId)
+            ?: throw NoCookieException(Platform.DEEPSEEK)
+        val usage = api.getDeepSeekUsage(apiKey)
+        cache.save(Platform.DEEPSEEK, usage)
+        usage
+    }.recoverCatching { e ->
+        cache.get(Platform.DEEPSEEK)?.copy(stale = true) ?: throw e
+    }
+
     override suspend fun getUsage(platform: Platform, accountId: String): Result<UsageInfo> {
         return when (platform) {
             Platform.CLAUDE -> getClaudeUsage(accountId)
             Platform.CHATGPT -> getChatGptUsage(accountId)
             Platform.CURSOR -> getCursorUsage(accountId)
+            Platform.MINIMAX -> getMiniMaxUsage(accountId)
+            Platform.AIHUBMIX -> getAiHubMixUsage(accountId)
+            Platform.DEEPSEEK -> getDeepSeekUsage(accountId)
         }
     }
 

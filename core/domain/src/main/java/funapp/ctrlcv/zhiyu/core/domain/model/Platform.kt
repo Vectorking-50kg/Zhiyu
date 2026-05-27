@@ -4,7 +4,8 @@ enum class Platform(
     val key: String,
     val displayName: String,
     val loginUrl: String,
-    val baseUrl: String
+    val baseUrl: String,
+    val requiresApiKey: Boolean = false
 ) {
     CLAUDE(
         key = "claude",
@@ -23,6 +24,27 @@ enum class Platform(
         displayName = "Cursor",
         loginUrl = "https://authenticator.cursor.sh",
         baseUrl = "https://api2.cursor.sh"
+    ),
+    MINIMAX(
+        key = "minimax",
+        displayName = "MiniMax",
+        loginUrl = "",
+        baseUrl = "https://api.minimax.chat",
+        requiresApiKey = true
+    ),
+    AIHUBMIX(
+        key = "aihubmix",
+        displayName = "AIHubMix",
+        loginUrl = "",
+        baseUrl = "https://aihubmix.com",
+        requiresApiKey = true
+    ),
+    DEEPSEEK(
+        key = "deepseek",
+        displayName = "DeepSeek",
+        loginUrl = "",
+        baseUrl = "https://api.deepseek.com",
+        requiresApiKey = true
     );
 
     fun isLoggedIn(url: String): Boolean = when (this) {
@@ -33,17 +55,20 @@ enum class Platform(
             !url.contains("/auth") && !url.contains("/login")
         CURSOR -> url.contains("cursor.com") && !url.contains("authenticator") &&
             !url.contains("/sign-in") && !url.contains("/login")
+        MINIMAX, AIHUBMIX, DEEPSEEK -> false
     }
 
     fun getCookieName(): String = when (this) {
         CLAUDE -> "sessionKey"
         CHATGPT -> "__Secure-next-auth.session-token"
         CURSOR -> "WorkosCursorSessionToken"
+        MINIMAX, AIHUBMIX, DEEPSEEK -> "api_key"
     }
 
     fun getCookieDomains(): List<String> = when (this) {
         CLAUDE -> listOf("https://claude.ai")
         CHATGPT -> listOf("https://chatgpt.com", "https://chat.openai.com")
         CURSOR -> listOf("https://cursor.sh", "https://authenticator.cursor.sh", "https://api2.cursor.sh", "https://www.cursor.com")
+        MINIMAX, AIHUBMIX, DEEPSEEK -> emptyList()
     }
 }
