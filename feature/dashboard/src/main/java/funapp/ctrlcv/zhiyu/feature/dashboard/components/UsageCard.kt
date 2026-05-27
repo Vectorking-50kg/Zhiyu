@@ -73,7 +73,7 @@ fun UsageCard(usageInfo: UsageInfo) {
         )
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
-            CardHeader(platform = usageInfo.platform, maxPercent = maxPercent, balanceText = balanceText)
+            CardHeader(usageInfo = usageInfo, maxPercent = maxPercent, balanceText = balanceText)
 
             if (normalItems.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -141,7 +141,8 @@ fun UsageCard(usageInfo: UsageInfo) {
 }
 
 @Composable
-private fun CardHeader(platform: Platform, maxPercent: Float?, balanceText: String? = null) {
+private fun CardHeader(usageInfo: UsageInfo, maxPercent: Float?, balanceText: String? = null) {
+    val platform = usageInfo.platform
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -174,7 +175,7 @@ private fun CardHeader(platform: Platform, maxPercent: Float?, balanceText: Stri
                 )
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
-                    text = getPlanLabel(platform),
+                    text = getPlanLabel(usageInfo),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -336,11 +337,11 @@ private fun getPlatformIconBg(platform: Platform): Color = when (platform) {
     Platform.DEEPSEEK -> Color(0xFF4362D6)
 }
 
-private fun getPlanLabel(platform: Platform): String = when (platform) {
+private fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platform) {
     Platform.CLAUDE -> "Pro"
-    Platform.CHATGPT -> "API"
-    Platform.CURSOR -> "Pro"
-    Platform.MINIMAX -> "API"
+    Platform.CHATGPT -> usageInfo.items.firstOrNull { it.label == "套餐类型" }?.valueText ?: "Plus"
+    Platform.CURSOR -> usageInfo.items.firstOrNull { it.label == "会员类型" }?.valueText ?: "Pro"
+    Platform.MINIMAX -> "Token Plan"
     Platform.AIHUBMIX -> "API"
     Platform.DEEPSEEK -> "API"
 }

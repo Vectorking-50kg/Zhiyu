@@ -80,10 +80,7 @@ class SettingsViewModel @Inject constructor(
                 id = "default",
                 platform = platform,
                 displayName = platform.displayName,
-                planType = when (platform) {
-                    Platform.MINIMAX -> "Token Plan"
-                    else -> "API"
-                }
+                planType = "API"
             )
         )
 
