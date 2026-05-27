@@ -141,10 +141,10 @@ class UsageApiService @Inject constructor(
             val body = readOrThrow(response, Platform.CHATGPT)
             try {
                 val json = gson.fromJson(body, JsonObject::class.java)
-                val rateLimit = json.getAsJsonObject("rate_limit")
+                val rateLimit = json.optObject("rate_limit")
                 parseChatGptWindow(rateLimit, "primary_window", "5 小时限额")?.let(items::add)
                 parseChatGptWindow(rateLimit, "secondary_window", "周限额")?.let(items::add)
-                val codeReview = json.getAsJsonObject("code_review_rate_limit")
+                val codeReview = json.optObject("code_review_rate_limit")
                 parseChatGptWindow(codeReview, "primary_window", "Code Review · 5 小时")?.let(items::add)
                 parseChatGptWindow(codeReview, "secondary_window", "Code Review · 周")?.let(items::add)
                 json.get("plan_type")?.takeUnless { it.isJsonNull }?.asString
@@ -226,6 +226,11 @@ class UsageApiService @Inject constructor(
             null
         }
     }
+
+    // Safe object accessor: getAsJsonObject does an unchecked cast that throws
+    // ClassCastException when the member is present but JSON null (e.g. "code_review_rate_limit": null).
+    private fun JsonObject.optObject(key: String): JsonObject? =
+        get(key)?.takeIf { it.isJsonObject }?.asJsonObject
 
     private fun parseChatGptWindow(rateLimit: JsonObject?, key: String, label: String): UsageItem? {
         val node = rateLimit?.get(key)
@@ -347,7 +352,7 @@ class UsageApiService @Inject constructor(
             val body = readOrThrow(response, Platform.CURSOR)
             val json = gson.fromJson(body, JsonObject::class.java)
             // Usage numbers are nested under "planUsage"; fall back to top-level for safety.
-            val usage = json.getAsJsonObject("planUsage") ?: json
+            val usage = json.optObject("planUsage") ?: json
 
             if (items.none { it.label == "会员类型" }) {
                 val planName = usage.get("planName")?.takeUnless { it.isJsonNull }?.asString
