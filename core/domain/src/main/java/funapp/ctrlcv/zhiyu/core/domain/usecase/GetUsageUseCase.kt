@@ -12,6 +12,7 @@ interface UsageRepository {
     suspend fun getDeepSeekUsage(accountId: String): Result<UsageInfo>
     suspend fun getUsage(platform: Platform, accountId: String): Result<UsageInfo>
     suspend fun getAllUsage(): List<UsageInfo>
+    fun getCachedUsage(): List<UsageInfo>
 }
 
 class GetUsageUseCase(private val repository: UsageRepository) {
