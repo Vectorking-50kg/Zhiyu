@@ -39,6 +39,10 @@ class UsageRepositoryImpl @Inject constructor(
             ?: throw NoCookieException(Platform.CHATGPT)
         val usage = api.getChatGptUsage(cookie)
         cache.save(Platform.CHATGPT, usage)
+        usage.items.find { it.label == "套餐类型" }?.valueText?.let { planType ->
+            accountStore.getAccounts(Platform.CHATGPT).find { it.id == accountId }
+                ?.let { accountStore.saveAccount(it.copy(planType = planType)) }
+        }
         usage
     }.recoverCatching { e ->
         cache.get(Platform.CHATGPT)?.copy(stale = true) ?: throw e
@@ -49,6 +53,10 @@ class UsageRepositoryImpl @Inject constructor(
             ?: throw NoCookieException(Platform.CURSOR)
         val usage = api.getCursorUsage(cookie)
         cache.save(Platform.CURSOR, usage)
+        usage.items.find { it.label == "会员类型" }?.valueText?.let { planType ->
+            accountStore.getAccounts(Platform.CURSOR).find { it.id == accountId }
+                ?.let { accountStore.saveAccount(it.copy(planType = planType)) }
+        }
         usage
     }.recoverCatching { e ->
         cache.get(Platform.CURSOR)?.copy(stale = true) ?: throw e
