@@ -318,7 +318,6 @@ class UsageApiService @Inject constructor(
             val start = java.time.Instant.ofEpochMilli(startMs).atZone(zone)
             val end = java.time.Instant.ofEpochMilli(endMs).atZone(zone)
             val timeFmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-            val dateFmt = java.time.format.DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
             if (start.toLocalDate() == end.toLocalDate()) {
                 "${start.format(timeFmt)}-${end.format(timeFmt)}(UTC+8)"
             } else {
