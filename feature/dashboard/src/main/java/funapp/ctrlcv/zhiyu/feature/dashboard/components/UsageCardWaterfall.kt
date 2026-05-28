@@ -58,8 +58,8 @@ fun UsageCardWaterfall(usageInfo: UsageInfo) {
                     Icon(
                         painter = painterResource(id = getPlatformIconRes(usageInfo.platform)),
                         contentDescription = usageInfo.platform.displayName,
-                        modifier = Modifier.size(if (usageInfo.platform == Platform.AIHUBMIX) 26.dp else 20.dp),
-                        tint = if (usageInfo.platform == Platform.AIHUBMIX) Color.Unspecified else Color.White
+                        modifier = Modifier.size(20.dp),
+                        tint = Color.Unspecified
                     )
                 }
                 Spacer(modifier = Modifier.width(10.dp))

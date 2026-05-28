@@ -63,8 +63,8 @@ fun UsageCardList(usageInfo: UsageInfo) {
                     Icon(
                         painter = painterResource(id = getPlatformIconRes(usageInfo.platform)),
                         contentDescription = usageInfo.platform.displayName,
-                        modifier = Modifier.size(if (usageInfo.platform == Platform.AIHUBMIX) 22.dp else 18.dp),
-                        tint = if (usageInfo.platform == Platform.AIHUBMIX) Color.Unspecified else Color.White
+                        modifier = Modifier.size(18.dp),
+                        tint = Color.Unspecified
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))

@@ -153,8 +153,8 @@ private fun CardHeader(usageInfo: UsageInfo, maxPercent: Float?, balanceText: St
                 Icon(
                     painter = painterResource(id = getPlatformIconRes(platform)),
                     contentDescription = platform.displayName,
-                    modifier = Modifier.size(if (platform == Platform.AIHUBMIX) 28.dp else 22.dp),
-                    tint = if (platform == Platform.AIHUBMIX) Color.Unspecified else Color.White
+                    modifier = Modifier.size(22.dp),
+                    tint = Color.Unspecified
                 )
             }
 
@@ -310,12 +310,12 @@ internal fun getPlatformIconRes(platform: Platform): Int = when (platform) {
 }
 
 internal fun getPlatformIconBg(platform: Platform): Color = when (platform) {
-    Platform.CLAUDE -> Color(0xFFCC785C)
-    Platform.CHATGPT -> Color(0xFF10A37F)
-    Platform.CURSOR -> Color(0xFF1A1A1A)
-    Platform.MINIMAX -> Color(0xFF2D2D2D)
-    Platform.AIHUBMIX -> Color(0xFFF5F5F5)
-    Platform.DEEPSEEK -> Color(0xFF4362D6)
+    Platform.CLAUDE -> Color(0xFFFDF3EF)
+    Platform.CHATGPT -> Color(0xFFF0F0FF)
+    Platform.CURSOR -> Color(0xFFF0F0F0)
+    Platform.MINIMAX -> Color(0xFFFEF0F5)
+    Platform.AIHUBMIX -> Color(0xFFFFFFFF)
+    Platform.DEEPSEEK -> Color(0xFFF0F0FF)
 }
 
 internal fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platform) {
