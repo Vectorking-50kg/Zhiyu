@@ -56,13 +56,9 @@ fun UsageCard(usageInfo: UsageInfo) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 0.5.dp,
-            color = Color(0xFFBDB0A4)
-        )
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             CardHeader(usageInfo = usageInfo, maxPercent = maxPercent, balanceText = balanceText)

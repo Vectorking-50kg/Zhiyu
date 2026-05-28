@@ -1,11 +1,14 @@
 package funapp.ctrlcv.zhiyu.feature.dashboard.components
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,10 +40,9 @@ fun UsageCardWaterfall(usageInfo: UsageInfo) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color(0xFFBDB0A4))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             // 上半部分：图标（左）+ 标题和套餐类型（右）
@@ -52,14 +54,17 @@ fun UsageCardWaterfall(usageInfo: UsageInfo) {
                     tint = Color.Unspecified
                 )
                 Spacer(modifier = Modifier.width(10.dp))
-                Column {
+                Column(
+                    modifier = Modifier.heightIn(min = 32.dp),
+                    verticalArrangement = Arrangement.Center,
+                ) {
                     Text(
                         text = usageInfo.platform.displayName,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.height(3.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = getPlanLabel(usageInfo),
                         style = MaterialTheme.typography.labelSmall,

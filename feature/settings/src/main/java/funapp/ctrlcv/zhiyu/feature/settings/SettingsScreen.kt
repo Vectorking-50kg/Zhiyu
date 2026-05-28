@@ -2,53 +2,71 @@ package funapp.ctrlcv.zhiyu.feature.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
+import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import funapp.ctrlcv.zhiyu.core.domain.model.ColorMode
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
+import funapp.ctrlcv.zhiyu.core.ui.components.CardGroup
+import funapp.ctrlcv.zhiyu.core.ui.theme.CustomColors
+import funapp.ctrlcv.zhiyu.core.ui.theme.PresetThemes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,8 +77,6 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
-
-    // Holds the JSON string while the file-save dialog is open
     val pendingExportJson = remember { mutableStateOf<String?>(null) }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -91,7 +107,6 @@ fun SettingsScreen(
         }
     }
 
-    // Trigger file-save dialog when export JSON is ready
     LaunchedEffect(uiState.exportJson) {
         val json = uiState.exportJson ?: return@LaunchedEffect
         pendingExportJson.value = json
@@ -99,7 +114,6 @@ fun SettingsScreen(
         exportLauncher.launch("zhiyu_backup_${System.currentTimeMillis()}.json")
     }
 
-    // Show snackbar for backup operation results
     LaunchedEffect(uiState.backupMessage) {
         val msg = uiState.backupMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(msg)
@@ -109,182 +123,74 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "设置",
-                        style = MaterialTheme.typography.headlineSmall
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                title = { Text("设置") },
+                colors = CustomColors.topBarColors,
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        containerColor = CustomColors.topBarColors.containerColor,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(top = innerPadding.calculateTopPadding())
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding() + 8.dp,
+                bottom = innerPadding.calculateBottomPadding() + 24.dp,
+                start = 8.dp,
+                end = 8.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // ── 账号管理（WebView 登录平台）───────────────────────────────
-            SectionLabel("账号管理")
-
-            val webLoginPlatforms = Platform.entries.filter { !it.requiresApiKey }
-            webLoginPlatforms.forEachIndexed { index, platform ->
-                val hasAccount = uiState.loggedInPlatforms.contains(platform)
-                ListItem(
-                    headlineContent = { Text(platform.displayName) },
-                    supportingContent = {
-                        Text(
-                            text = if (hasAccount) "已登录" else "未登录｜点击登录",
-                            color = if (hasAccount)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.Login,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    trailingContent = {
-                        Icon(
-                            imageVector = Icons.Outlined.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    modifier = Modifier.clickable { onNavigateToAuth(platform.key) }
+            item("appearance") {
+                AppearanceSection(
+                    colorMode = uiState.colorMode,
+                    themeId = uiState.themeId,
+                    onClickColorMode = { viewModel.showColorModeDialog() },
                 )
-                if (index < webLoginPlatforms.lastIndex) {
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // ── API 密钥配置平台 ────────────────────────────────────────
-            SectionLabel("API 密钥")
-
-            val apiKeyPlatforms = Platform.entries.filter { it.requiresApiKey }
-            apiKeyPlatforms.forEachIndexed { index, platform ->
-                val isConfigured = uiState.configuredApiPlatforms.contains(platform)
-                ListItem(
-                    headlineContent = { Text(platform.displayName) },
-                    supportingContent = {
-                        Text(
-                            text = if (isConfigured) "已配置｜点击修改" else "未配置｜点击添加 API 密钥",
-                            color = if (isConfigured)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Outlined.Key,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    trailingContent = {
-                        if (isConfigured) {
-                            IconButton(onClick = { viewModel.clearApiKey(platform) }) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Delete,
-                                    contentDescription = "清除",
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        } else {
-                            Icon(
-                                imageVector = Icons.Outlined.ChevronRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                    modifier = Modifier.clickable { viewModel.showApiKeyDialog(platform) }
+            item("themePicker") {
+                ThemePickerSection(
+                    selectedId = uiState.themeId,
+                    onSelect = { viewModel.setThemeId(it) },
                 )
-                if (index < apiKeyPlatforms.lastIndex) {
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            item("webAccounts") {
+                WebAccountSection(
+                    loggedIn = uiState.loggedInPlatforms,
+                    onClickPlatform = onNavigateToAuth,
+                )
+            }
 
-            // ── 数据备份 ─────────────────────────────────────────────────
-            SectionLabel("数据备份")
+            item("apiKeys") {
+                ApiKeySection(
+                    configured = uiState.configuredApiPlatforms,
+                    onClickPlatform = { viewModel.showApiKeyDialog(it) },
+                    onClearPlatform = { viewModel.clearApiKey(it) },
+                )
+            }
 
-            ListItem(
-                headlineContent = { Text("导出备份") },
-                supportingContent = { Text("将账号和密钥导出为 JSON 文件") },
-                leadingContent = {
-                    Icon(
-                        imageVector = Icons.Outlined.FileUpload,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.Outlined.ChevronRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                modifier = Modifier.clickable { viewModel.prepareExport() }
-            )
+            item("backup") {
+                BackupSection(
+                    onClickExport = { viewModel.prepareExport() },
+                    onClickImport = { viewModel.showImportConfirm() },
+                )
+            }
 
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-
-            ListItem(
-                headlineContent = { Text("导入备份") },
-                supportingContent = { Text("从备份文件恢复账号和密钥") },
-                leadingContent = {
-                    Icon(
-                        imageVector = Icons.Outlined.FileDownload,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.Outlined.ChevronRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                modifier = Modifier.clickable { viewModel.showImportConfirm() }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // ── 关于 ────────────────────────────────────────────────────
-            SectionLabel("关于")
-
-            ListItem(
-                headlineContent = { Text("知余 v1.0.0") },
-                supportingContent = { Text("所有数据仅存储在本设备") },
-                leadingContent = {
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            )
-
-            Spacer(modifier = Modifier.height(innerPadding.calculateBottomPadding()))
+            item("about") {
+                AboutSection()
+            }
         }
     }
 
-    // ── API Key 配置弹窗 ─────────────────────────────────────────────────
+    if (uiState.showColorModeDialog) {
+        ColorModeDialog(
+            current = uiState.colorMode,
+            onSelect = { viewModel.setColorMode(it) },
+            onDismiss = { viewModel.dismissColorModeDialog() }
+        )
+    }
+
     uiState.apiKeyDialog?.let { dialog ->
         ApiKeyDialog(
             state = dialog,
@@ -294,7 +200,6 @@ fun SettingsScreen(
         )
     }
 
-    // ── 导入确认弹窗 ─────────────────────────────────────────────────────
     if (uiState.showImportConfirm) {
         ImportConfirmDialog(
             onDismiss = { viewModel.dismissImportConfirm() },
@@ -307,9 +212,327 @@ fun SettingsScreen(
 }
 
 @Composable
+private fun AppearanceSection(
+    colorMode: ColorMode,
+    themeId: String,
+    onClickColorMode: () -> Unit,
+) {
+    CardGroup(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        title = { Text("外观") },
+    ) {
+        item(
+            onClick = onClickColorMode,
+            leadingContent = { Icon(Icons.Outlined.DarkMode, null) },
+            headlineContent = { Text("颜色模式") },
+            supportingContent = {
+                Text(
+                    when (colorMode) {
+                        ColorMode.SYSTEM -> "跟随系统"
+                        ColorMode.LIGHT -> "浅色"
+                        ColorMode.DARK -> "深色"
+                    }
+                )
+            },
+            trailingContent = {
+                Icon(
+                    Icons.Outlined.ChevronRight,
+                    null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        )
+        item(
+            leadingContent = { Icon(Icons.Outlined.Palette, null) },
+            headlineContent = { Text("主题") },
+            supportingContent = {
+                Text(
+                    PresetThemes.find { it.id == themeId }?.displayName ?: themeId
+                )
+            },
+        )
+    }
+}
+
+@Composable
+private fun ThemePickerSection(
+    selectedId: String,
+    onSelect: (String) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 8.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceBright)
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+    ) {
+        ThemePicker(
+            selectedId = selectedId,
+            onSelect = onSelect,
+        )
+    }
+}
+
+@Composable
+private fun WebAccountSection(
+    loggedIn: Set<Platform>,
+    onClickPlatform: (String) -> Unit,
+) {
+    val platforms = Platform.entries.filter { !it.requiresApiKey }
+    if (platforms.isEmpty()) return
+    CardGroup(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        title = { Text("账号管理") },
+    ) {
+        platforms.forEach { platform ->
+            val hasAccount = loggedIn.contains(platform)
+            item(
+                onClick = { onClickPlatform(platform.key) },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Login,
+                        contentDescription = null,
+                        tint = if (hasAccount) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                headlineContent = { Text(platform.displayName) },
+                supportingContent = {
+                    Text(
+                        text = if (hasAccount) "已登录" else "未登录｜点击登录",
+                        color = if (hasAccount) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        Icons.Outlined.ChevronRight,
+                        null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ApiKeySection(
+    configured: Set<Platform>,
+    onClickPlatform: (Platform) -> Unit,
+    onClearPlatform: (Platform) -> Unit,
+) {
+    val platforms = Platform.entries.filter { it.requiresApiKey }
+    if (platforms.isEmpty()) return
+    CardGroup(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        title = { Text("API 密钥") },
+    ) {
+        platforms.forEach { platform ->
+            val isConfigured = configured.contains(platform)
+            item(
+                onClick = { onClickPlatform(platform) },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.Key,
+                        contentDescription = null,
+                        tint = if (isConfigured) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                headlineContent = { Text(platform.displayName) },
+                supportingContent = {
+                    Text(
+                        text = if (isConfigured) "已配置｜点击修改" else "未配置｜点击添加",
+                        color = if (isConfigured) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                trailingContent = {
+                    if (isConfigured) {
+                        IconButton(onClick = { onClearPlatform(platform) }) {
+                            Icon(
+                                Icons.Outlined.Delete,
+                                "清除",
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    } else {
+                        Icon(
+                            Icons.Outlined.ChevronRight,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun BackupSection(
+    onClickExport: () -> Unit,
+    onClickImport: () -> Unit,
+) {
+    CardGroup(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        title = { Text("数据备份") },
+    ) {
+        item(
+            onClick = onClickExport,
+            leadingContent = { Icon(Icons.Outlined.FileUpload, null) },
+            headlineContent = { Text("导出备份") },
+            supportingContent = { Text("将账号和密钥导出为 JSON 文件") },
+            trailingContent = {
+                Icon(
+                    Icons.Outlined.ChevronRight,
+                    null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+        )
+        item(
+            onClick = onClickImport,
+            leadingContent = { Icon(Icons.Outlined.FileDownload, null) },
+            headlineContent = { Text("导入备份") },
+            supportingContent = { Text("从备份文件恢复账号和密钥") },
+            trailingContent = {
+                Icon(
+                    Icons.Outlined.ChevronRight,
+                    null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+        )
+    }
+}
+
+@Composable
+private fun AboutSection() {
+    CardGroup(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        title = { Text("关于") },
+    ) {
+        item(
+            leadingContent = { Icon(Icons.Outlined.Info, null) },
+            headlineContent = { Text("知余 v1.0.0") },
+            supportingContent = { Text("所有数据仅存储在本设备") },
+        )
+        item(
+            leadingContent = { Icon(Icons.Outlined.Backup, null) },
+            headlineContent = { Text("使用提示") },
+            supportingContent = { Text("登录账号或配置 API 密钥后即可在首页查看额度") },
+        )
+    }
+}
+
+@Composable
+private fun ThemePicker(
+    selectedId: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PresetThemes.forEach { theme ->
+            val isSelected = theme.id == selectedId
+            val scheme = theme.standardLight
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onSelect(theme.id) }
+                    .padding(vertical = 4.dp),
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .then(
+                            if (isSelected) Modifier.border(
+                                2.dp,
+                                MaterialTheme.colorScheme.primary,
+                                CircleShape,
+                            ) else Modifier
+                        )
+                        .clip(CircleShape)
+                ) {
+                    Canvas(modifier = Modifier.size(32.dp)) {
+                        drawCircle(color = scheme.primary)
+                    }
+                    if (isSelected) {
+                        Icon(
+                            Icons.Outlined.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+                Text(
+                    text = theme.displayName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorModeDialog(
+    current: ColorMode,
+    onSelect: (ColorMode) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val options = listOf(
+        ColorMode.SYSTEM to "跟随系统",
+        ColorMode.LIGHT to "浅色",
+        ColorMode.DARK to "深色",
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("颜色模式") },
+        text = {
+            Column {
+                options.forEach { (mode, label) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onSelect(mode) }
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                    ) {
+                        RadioButton(
+                            selected = current == mode,
+                            onClick = { onSelect(mode) },
+                        )
+                        Spacer(Modifier.size(8.dp))
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
+}
+
+@Composable
 private fun ImportConfirmDialog(
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -334,7 +557,7 @@ private fun ApiKeyDialog(
     state: ApiKeyDialogState,
     onDismiss: () -> Unit,
     onApiKeyChange: (String) -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
 ) {
     val platform = state.platform
     val hint = when (platform) {
@@ -355,9 +578,9 @@ private fun ApiKeyDialog(
                 Text(
                     text = hint,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = state.apiKey,
                     onValueChange = onApiKeyChange,
@@ -368,8 +591,8 @@ private fun ApiKeyDialog(
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done
-                    )
+                        imeAction = ImeAction.Done,
+                    ),
                 )
             }
         },
@@ -382,19 +605,7 @@ private fun ApiKeyDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
+            TextButton(onClick = onDismiss) { Text("取消") }
         }
-    )
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
     )
 }
