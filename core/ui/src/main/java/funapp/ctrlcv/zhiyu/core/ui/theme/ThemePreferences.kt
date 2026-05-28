@@ -1,4 +1,4 @@
-package funapp.ctrlcv.zhiyu.ui.theme
+package funapp.ctrlcv.zhiyu.core.ui.theme
 
 import android.content.Context
 import android.content.SharedPreferences

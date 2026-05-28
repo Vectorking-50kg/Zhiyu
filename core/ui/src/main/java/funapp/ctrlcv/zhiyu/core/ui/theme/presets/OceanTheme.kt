@@ -1,9 +1,9 @@
-package funapp.ctrlcv.zhiyu.ui.theme.presets
+package funapp.ctrlcv.zhiyu.core.ui.theme.presets
 
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
-import funapp.ctrlcv.zhiyu.ui.theme.PresetTheme
+import funapp.ctrlcv.zhiyu.core.ui.theme.PresetTheme
 
 val OceanThemePreset by lazy {
     PresetTheme(

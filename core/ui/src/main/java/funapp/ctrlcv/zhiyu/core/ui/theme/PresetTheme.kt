@@ -1,12 +1,12 @@
-package funapp.ctrlcv.zhiyu.ui.theme
+package funapp.ctrlcv.zhiyu.core.ui.theme
 
 import androidx.compose.material3.ColorScheme
-import funapp.ctrlcv.zhiyu.ui.theme.presets.AutumnThemePreset
-import funapp.ctrlcv.zhiyu.ui.theme.presets.BlackThemePreset
-import funapp.ctrlcv.zhiyu.ui.theme.presets.OceanThemePreset
-import funapp.ctrlcv.zhiyu.ui.theme.presets.SakuraThemePreset
-import funapp.ctrlcv.zhiyu.ui.theme.presets.SpringThemePreset
-import funapp.ctrlcv.zhiyu.ui.theme.presets.ZhiyuOriginalThemePreset
+import funapp.ctrlcv.zhiyu.core.ui.theme.presets.AutumnThemePreset
+import funapp.ctrlcv.zhiyu.core.ui.theme.presets.BlackThemePreset
+import funapp.ctrlcv.zhiyu.core.ui.theme.presets.OceanThemePreset
+import funapp.ctrlcv.zhiyu.core.ui.theme.presets.SakuraThemePreset
+import funapp.ctrlcv.zhiyu.core.ui.theme.presets.SpringThemePreset
+import funapp.ctrlcv.zhiyu.core.ui.theme.presets.ZhiyuOriginalThemePreset
 
 data class PresetTheme(
     val id: String,

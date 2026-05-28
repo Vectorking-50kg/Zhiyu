@@ -25,11 +25,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
@@ -45,6 +45,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import funapp.ctrlcv.zhiyu.core.ui.theme.CustomColors
 import funapp.ctrlcv.zhiyu.feature.dashboard.components.UsageCard
 import funapp.ctrlcv.zhiyu.feature.dashboard.components.UsageCardList
 import funapp.ctrlcv.zhiyu.feature.dashboard.components.UsageCardWaterfall
@@ -58,7 +59,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     var layoutModeOrdinal by rememberSaveable { mutableIntStateOf(0) }
     val layoutMode = LayoutMode.values()[layoutModeOrdinal]
@@ -87,16 +88,15 @@ fun DashboardScreen(
                 scrollBehavior = scrollBehavior
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = CustomColors.topBarColors.containerColor
     ) { innerPadding ->
         LazyVerticalGrid(
             columns = when (layoutMode) {
                 LayoutMode.WATERFALL -> GridCells.Adaptive(minSize = 150.dp)
                 else -> GridCells.Fixed(1)
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
@@ -195,13 +195,11 @@ private fun DashboardTopBar(
     onToggleLayout: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior
 ) {
-    TopAppBar(
+    LargeTopAppBar(
         title = {
             Text(
                 text = "知余",
-                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
             )
         },
         actions = {
@@ -217,7 +215,6 @@ private fun DashboardTopBar(
                         LayoutMode.LIST -> "列表布局"
                         LayoutMode.WATERFALL -> "瀑布流布局"
                     },
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             IconButton(onClick = onRefresh) {
@@ -225,14 +222,10 @@ private fun DashboardTopBar(
                     imageVector = Icons.Outlined.Refresh,
                     contentDescription = "刷新",
                     modifier = if (isRefreshing) Modifier.rotate(rotation) else Modifier,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background,
-            scrolledContainerColor = MaterialTheme.colorScheme.background
-        ),
+        colors = CustomColors.topBarColors,
         scrollBehavior = scrollBehavior
     )
 }

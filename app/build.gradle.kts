@@ -47,6 +47,7 @@ dependencies {
     implementation(project(":core:storage"))
     implementation(project(":core:network"))
     implementation(project(":core:data"))
+    implementation(project(":core:ui"))
     implementation(project(":feature:auth"))
     implementation(project(":feature:dashboard"))
     implementation(project(":feature:widget"))

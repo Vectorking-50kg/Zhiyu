@@ -11,6 +11,10 @@ import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.storage.AccountStore
 import funapp.ctrlcv.zhiyu.core.storage.BackupManager
 import funapp.ctrlcv.zhiyu.core.storage.SecureTokenStore
+import funapp.ctrlcv.zhiyu.core.ui.theme.DEFAULT_THEME_ID
+import funapp.ctrlcv.zhiyu.core.ui.theme.KEY_COLOR_MODE
+import funapp.ctrlcv.zhiyu.core.ui.theme.KEY_THEME_ID
+import funapp.ctrlcv.zhiyu.core.ui.theme.THEME_PREFS_NAME
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,11 +22,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-private const val THEME_PREFS = "zhiyu_theme_prefs"
-private const val KEY_COLOR_MODE = "colorMode"
-private const val KEY_THEME_ID = "themeId"
-private const val DEFAULT_THEME_ID = "zhiyu"
 
 data class ApiKeyDialogState(
     val platform: Platform,
@@ -50,7 +49,7 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val themePrefs by lazy {
-        ctx.getSharedPreferences(THEME_PREFS, Context.MODE_PRIVATE)
+        ctx.getSharedPreferences(THEME_PREFS_NAME, Context.MODE_PRIVATE)
     }
 
     private val _uiState = MutableStateFlow(SettingsUiState())
