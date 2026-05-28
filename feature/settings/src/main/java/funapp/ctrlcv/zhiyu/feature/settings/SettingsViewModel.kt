@@ -1,9 +1,12 @@
 package funapp.ctrlcv.zhiyu.feature.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import funapp.ctrlcv.zhiyu.core.domain.model.Account
+import funapp.ctrlcv.zhiyu.core.domain.model.ColorMode
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.storage.AccountStore
 import funapp.ctrlcv.zhiyu.core.storage.BackupManager
@@ -16,6 +19,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private const val THEME_PREFS = "zhiyu_theme_prefs"
+private const val KEY_COLOR_MODE = "colorMode"
+private const val KEY_THEME_ID = "themeId"
+private const val DEFAULT_THEME_ID = "zhiyu"
+
 data class ApiKeyDialogState(
     val platform: Platform,
     val apiKey: String = ""
@@ -27,21 +35,55 @@ data class SettingsUiState(
     val apiKeyDialog: ApiKeyDialogState? = null,
     val exportJson: String? = null,
     val showImportConfirm: Boolean = false,
-    val backupMessage: String? = null
+    val backupMessage: String? = null,
+    val colorMode: ColorMode = ColorMode.SYSTEM,
+    val themeId: String = DEFAULT_THEME_ID,
+    val showColorModeDialog: Boolean = false,
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @ApplicationContext private val ctx: Context,
     private val accountStore: AccountStore,
     private val tokenStore: SecureTokenStore,
     private val backupManager: BackupManager
 ) : ViewModel() {
+
+    private val themePrefs by lazy {
+        ctx.getSharedPreferences(THEME_PREFS, Context.MODE_PRIVATE)
+    }
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
         loadAccounts()
+        loadThemePrefs()
+    }
+
+    private fun loadThemePrefs() {
+        val colorModeStr = themePrefs.getString(KEY_COLOR_MODE, ColorMode.SYSTEM.name) ?: ColorMode.SYSTEM.name
+        val colorMode = ColorMode.entries.firstOrNull { it.name == colorModeStr } ?: ColorMode.SYSTEM
+        val themeId = themePrefs.getString(KEY_THEME_ID, DEFAULT_THEME_ID) ?: DEFAULT_THEME_ID
+        _uiState.update { it.copy(colorMode = colorMode, themeId = themeId) }
+    }
+
+    fun setColorMode(mode: ColorMode) {
+        themePrefs.edit().putString(KEY_COLOR_MODE, mode.name).apply()
+        _uiState.update { it.copy(colorMode = mode, showColorModeDialog = false) }
+    }
+
+    fun setThemeId(id: String) {
+        themePrefs.edit().putString(KEY_THEME_ID, id).apply()
+        _uiState.update { it.copy(themeId = id) }
+    }
+
+    fun showColorModeDialog() {
+        _uiState.update { it.copy(showColorModeDialog = true) }
+    }
+
+    fun dismissColorModeDialog() {
+        _uiState.update { it.copy(showColorModeDialog = false) }
     }
 
     private fun loadAccounts() {

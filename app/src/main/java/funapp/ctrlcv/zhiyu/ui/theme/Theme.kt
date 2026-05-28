@@ -7,9 +7,11 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import funapp.ctrlcv.zhiyu.core.domain.model.ColorMode
 
 private val LightColorScheme = lightColorScheme(
     background = Color(0xFFFAF7F3),
@@ -43,10 +45,23 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun ZhiyuTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val colorMode by rememberColorMode()
+    val themeId by rememberThemeId()
+
+    val systemDark = isSystemInDarkTheme()
+    val darkTheme = when (colorMode) {
+        ColorMode.SYSTEM -> systemDark
+        ColorMode.LIGHT -> false
+        ColorMode.DARK -> true
+    }
+
+    val colorScheme = if (themeId == DEFAULT_THEME_ID) {
+        if (darkTheme) DarkColorScheme else LightColorScheme
+    } else {
+        findPresetTheme(themeId).getColorScheme(darkTheme)
+    }
 
     val view = LocalView.current
     if (!view.isInEditMode) {

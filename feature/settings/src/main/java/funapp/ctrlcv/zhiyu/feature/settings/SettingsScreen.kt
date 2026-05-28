@@ -2,24 +2,33 @@ package funapp.ctrlcv.zhiyu.feature.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -28,6 +37,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -41,14 +51,29 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import funapp.ctrlcv.zhiyu.core.domain.model.ColorMode
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
+
+// Preset theme display info (id, displayName, primary light color, primary dark color)
+private val PRESET_THEME_COLORS = listOf(
+    Triple("zhiyu", "知余", Color(0xFF4A6FD4)),
+    Triple("sakura", "樱花", Color(0xFF8E4955)),
+    Triple("ocean", "海洋", Color(0xFF116682)),
+    Triple("spring", "春绿", Color(0xFF4C662B)),
+    Triple("autumn", "秋金", Color(0xFF735C0C)),
+    Triple("black", "纯黑", Color(0xFF606060)),
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +85,6 @@ fun SettingsScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Holds the JSON string while the file-save dialog is open
     val pendingExportJson = remember { mutableStateOf<String?>(null) }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -91,7 +115,6 @@ fun SettingsScreen(
         }
     }
 
-    // Trigger file-save dialog when export JSON is ready
     LaunchedEffect(uiState.exportJson) {
         val json = uiState.exportJson ?: return@LaunchedEffect
         pendingExportJson.value = json
@@ -99,7 +122,6 @@ fun SettingsScreen(
         exportLauncher.launch("zhiyu_backup_${System.currentTimeMillis()}.json")
     }
 
-    // Show snackbar for backup operation results
     LaunchedEffect(uiState.backupMessage) {
         val msg = uiState.backupMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(msg)
@@ -128,6 +150,59 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(top = innerPadding.calculateTopPadding())
         ) {
+            // ── 外观 ────────────────────────────────────────────────────
+            SectionLabel("外观")
+
+            ListItem(
+                headlineContent = { Text("颜色模式") },
+                supportingContent = {
+                    Text(
+                        text = when (uiState.colorMode) {
+                            ColorMode.SYSTEM -> "跟随系统"
+                            ColorMode.LIGHT -> "浅色"
+                            ColorMode.DARK -> "深色"
+                        },
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.Palette,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                modifier = Modifier.clickable { viewModel.showColorModeDialog() }
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+            ListItem(
+                headlineContent = { Text("主题") },
+                supportingContent = {
+                    ThemePicker(
+                        selectedId = uiState.themeId,
+                        onSelect = { viewModel.setThemeId(it) }
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.Palette,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             // ── 账号管理（WebView 登录平台）───────────────────────────────
             SectionLabel("账号管理")
 
@@ -284,6 +359,15 @@ fun SettingsScreen(
         }
     }
 
+    // ── 颜色模式选择弹窗 ─────────────────────────────────────────────────
+    if (uiState.showColorModeDialog) {
+        ColorModeDialog(
+            current = uiState.colorMode,
+            onSelect = { viewModel.setColorMode(it) },
+            onDismiss = { viewModel.dismissColorModeDialog() }
+        )
+    }
+
     // ── API Key 配置弹窗 ─────────────────────────────────────────────────
     uiState.apiKeyDialog?.let { dialog ->
         ApiKeyDialog(
@@ -304,6 +388,92 @@ fun SettingsScreen(
             }
         )
     }
+}
+
+@Composable
+private fun ThemePicker(
+    selectedId: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.padding(top = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        PRESET_THEME_COLORS.forEach { (id, name, primaryColor) ->
+            val isSelected = id == selectedId
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(40.dp)
+                    .then(
+                        if (isSelected) Modifier.border(
+                            2.dp,
+                            MaterialTheme.colorScheme.primary,
+                            CircleShape
+                        ) else Modifier
+                    )
+                    .clip(CircleShape)
+                    .clickable { onSelect(id) }
+            ) {
+                Canvas(modifier = Modifier.size(40.dp)) {
+                    drawCircle(color = primaryColor)
+                }
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Outlined.Check,
+                        contentDescription = name,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorModeDialog(
+    current: ColorMode,
+    onSelect: (ColorMode) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val options = listOf(
+        ColorMode.SYSTEM to "跟随系统",
+        ColorMode.LIGHT to "浅色",
+        ColorMode.DARK to "深色",
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("颜色模式") },
+        text = {
+            Column {
+                options.forEach { (mode, label) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(mode) }
+                            .padding(vertical = 4.dp)
+                    ) {
+                        RadioButton(
+                            selected = current == mode,
+                            onClick = { onSelect(mode) }
+                        )
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }
 
 @Composable
