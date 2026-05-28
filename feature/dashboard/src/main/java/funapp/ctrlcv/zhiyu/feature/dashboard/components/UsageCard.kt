@@ -1,11 +1,9 @@
 package funapp.ctrlcv.zhiyu.feature.dashboard.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -143,20 +141,12 @@ private fun CardHeader(usageInfo: UsageInfo, maxPercent: Float?, balanceText: St
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(getPlatformIconBg(platform)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(id = getPlatformIconRes(platform)),
-                    contentDescription = platform.displayName,
-                    modifier = Modifier.size(if (platform == Platform.AIHUBMIX) 28.dp else 22.dp),
-                    tint = if (platform == Platform.AIHUBMIX) Color.Unspecified else Color.White
-                )
-            }
+            Icon(
+                painter = painterResource(id = getPlatformIconRes(platform)),
+                contentDescription = platform.displayName,
+                modifier = Modifier.size(32.dp),
+                tint = Color.Unspecified
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -300,7 +290,7 @@ fun getSemanticColor(percent: Float): Color = when {
 }
 
 @DrawableRes
-private fun getPlatformIconRes(platform: Platform): Int = when (platform) {
+internal fun getPlatformIconRes(platform: Platform): Int = when (platform) {
     Platform.CLAUDE -> R.drawable.ic_brand_anthropic
     Platform.CHATGPT -> R.drawable.ic_brand_openai
     Platform.CURSOR -> R.drawable.ic_brand_cursor
@@ -309,16 +299,8 @@ private fun getPlatformIconRes(platform: Platform): Int = when (platform) {
     Platform.DEEPSEEK -> R.drawable.ic_brand_deepseek
 }
 
-private fun getPlatformIconBg(platform: Platform): Color = when (platform) {
-    Platform.CLAUDE -> Color(0xFFCC785C)
-    Platform.CHATGPT -> Color(0xFF10A37F)
-    Platform.CURSOR -> Color(0xFF1A1A1A)
-    Platform.MINIMAX -> Color(0xFF2D2D2D)
-    Platform.AIHUBMIX -> Color(0xFFF5F5F5)
-    Platform.DEEPSEEK -> Color(0xFF4362D6)
-}
 
-private fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platform) {
+internal fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platform) {
     Platform.CLAUDE -> usageInfo.planLabel ?: "Unknown"
     Platform.CHATGPT -> usageInfo.planLabel ?: "Unknown"
     Platform.CURSOR -> usageInfo.planLabel ?: "Unknown"
@@ -327,7 +309,7 @@ private fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platfor
     Platform.DEEPSEEK -> "API"
 }
 
-private fun formatBalance(valueText: String): String {
+internal fun formatBalance(valueText: String): String {
     val prefix = when {
         valueText.startsWith("$") -> "$"
         valueText.startsWith("¥") -> "¥"
