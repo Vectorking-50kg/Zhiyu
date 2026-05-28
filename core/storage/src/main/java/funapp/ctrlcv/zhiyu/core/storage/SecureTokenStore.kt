@@ -58,4 +58,16 @@ class SecureTokenStore @Inject constructor(
     fun clearAll() {
         prefs.edit().clear().apply()
     }
+
+    fun exportAll(): Map<String, String> {
+        return prefs.all.mapNotNull { (k, v) ->
+            if (v is String) k to v else null
+        }.toMap()
+    }
+
+    fun importAll(data: Map<String, String>) {
+        val editor = prefs.edit()
+        data.forEach { (key, value) -> editor.putString(key, value) }
+        editor.apply()
+    }
 }

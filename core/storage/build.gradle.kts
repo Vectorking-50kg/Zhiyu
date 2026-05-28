@@ -28,6 +28,7 @@ dependencies {
 
     implementation(libs.core.ktx)
     implementation(libs.security.crypto)
+    implementation(libs.gson)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 }
