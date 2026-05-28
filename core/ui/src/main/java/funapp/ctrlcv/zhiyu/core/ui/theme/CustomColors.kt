@@ -2,6 +2,7 @@ package funapp.ctrlcv.zhiyu.core.ui.theme
 
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme.colorScheme
@@ -9,6 +10,7 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 
+@OptIn(ExperimentalMaterial3Api::class)
 object CustomColors {
     val topBarColors: TopAppBarColors
         @Composable get() = if (!LocalDarkMode.current) TopAppBarDefaults.topAppBarColors(
