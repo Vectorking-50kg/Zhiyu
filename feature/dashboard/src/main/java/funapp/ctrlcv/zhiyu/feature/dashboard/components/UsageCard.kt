@@ -1,11 +1,9 @@
 package funapp.ctrlcv.zhiyu.feature.dashboard.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -143,20 +141,12 @@ private fun CardHeader(usageInfo: UsageInfo, maxPercent: Float?, balanceText: St
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(getPlatformIconBg(platform)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(id = getPlatformIconRes(platform)),
-                    contentDescription = platform.displayName,
-                    modifier = Modifier.size(22.dp),
-                    tint = Color.Unspecified
-                )
-            }
+            Icon(
+                painter = painterResource(id = getPlatformIconRes(platform)),
+                contentDescription = platform.displayName,
+                modifier = Modifier.size(32.dp),
+                tint = Color.Unspecified
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -309,14 +299,6 @@ internal fun getPlatformIconRes(platform: Platform): Int = when (platform) {
     Platform.DEEPSEEK -> R.drawable.ic_brand_deepseek
 }
 
-internal fun getPlatformIconBg(platform: Platform): Color = when (platform) {
-    Platform.CLAUDE -> Color(0xFFFDF3EF)
-    Platform.CHATGPT -> Color(0xFFF0F0FF)
-    Platform.CURSOR -> Color(0xFFF0F0F0)
-    Platform.MINIMAX -> Color(0xFFFEF0F5)
-    Platform.AIHUBMIX -> Color(0xFFFFFFFF)
-    Platform.DEEPSEEK -> Color(0xFFF0F0FF)
-}
 
 internal fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platform) {
     Platform.CLAUDE -> usageInfo.planLabel ?: "Unknown"

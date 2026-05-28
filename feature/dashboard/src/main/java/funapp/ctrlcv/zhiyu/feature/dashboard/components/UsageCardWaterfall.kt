@@ -1,8 +1,6 @@
 package funapp.ctrlcv.zhiyu.feature.dashboard.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,20 +45,12 @@ fun UsageCardWaterfall(usageInfo: UsageInfo) {
         Column(modifier = Modifier.padding(14.dp)) {
             // 上半部分：图标（左）+ 标题和套餐类型（右）
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(getPlatformIconBg(usageInfo.platform)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(id = getPlatformIconRes(usageInfo.platform)),
-                        contentDescription = usageInfo.platform.displayName,
-                        modifier = Modifier.size(20.dp),
-                        tint = Color.Unspecified
-                    )
-                }
+                Icon(
+                    painter = painterResource(id = getPlatformIconRes(usageInfo.platform)),
+                    contentDescription = usageInfo.platform.displayName,
+                    modifier = Modifier.size(32.dp),
+                    tint = Color.Unspecified
+                )
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(
