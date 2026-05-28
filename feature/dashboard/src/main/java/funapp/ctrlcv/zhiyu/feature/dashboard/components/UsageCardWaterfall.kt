@@ -1,12 +1,14 @@
 package funapp.ctrlcv.zhiyu.feature.dashboard.components
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,14 +54,17 @@ fun UsageCardWaterfall(usageInfo: UsageInfo) {
                     tint = Color.Unspecified
                 )
                 Spacer(modifier = Modifier.width(10.dp))
-                Column {
+                Column(
+                    modifier = Modifier.heightIn(min = 32.dp),
+                    verticalArrangement = Arrangement.Center,
+                ) {
                     Text(
                         text = usageInfo.platform.displayName,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.height(3.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = getPlanLabel(usageInfo),
                         style = MaterialTheme.typography.labelSmall,
