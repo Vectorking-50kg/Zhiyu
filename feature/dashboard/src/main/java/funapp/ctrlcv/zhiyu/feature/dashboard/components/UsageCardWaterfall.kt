@@ -1,16 +1,20 @@
 package funapp.ctrlcv.zhiyu.feature.dashboard.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -42,41 +46,69 @@ fun UsageCardWaterfall(usageInfo: UsageInfo) {
         border = androidx.compose.foundation.BorderStroke(0.5.dp, Color(0xFFBDB0A4))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
+            // 上半部分：图标（左）+ 标题和套餐类型（右）
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(getPlatformIconBg(usageInfo.platform)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = getPlatformIconRes(usageInfo.platform)),
+                        contentDescription = usageInfo.platform.displayName,
+                        modifier = Modifier.size(if (usageInfo.platform == Platform.AIHUBMIX) 26.dp else 20.dp),
+                        tint = if (usageInfo.platform == Platform.AIHUBMIX) Color.Unspecified else Color.White
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = usageInfo.platform.displayName,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = getPlanLabel(usageInfo),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .border(
+                                width = 0.75.dp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(3.dp)
+                            )
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 下半部分：数值居中
             Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(getPlatformIconBg(usageInfo.platform)),
+                modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = painterResource(id = getPlatformIconRes(usageInfo.platform)),
-                    contentDescription = usageInfo.platform.displayName,
-                    modifier = Modifier.size(if (usageInfo.platform == Platform.AIHUBMIX) 26.dp else 20.dp),
-                    tint = if (usageInfo.platform == Platform.AIHUBMIX) Color.Unspecified else Color.White
-                )
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = usageInfo.platform.displayName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            when {
-                balanceText != null -> Text(
-                    text = balanceText,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                maxPercent != null -> Text(
-                    text = "${maxPercent.toInt()}%",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = getSemanticColor(maxPercent)
-                )
-                else -> Spacer(modifier = Modifier.height(4.dp))
+                when {
+                    balanceText != null -> Text(
+                        text = balanceText,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    maxPercent != null -> Text(
+                        text = "${maxPercent.toInt()}%",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = getSemanticColor(maxPercent)
+                    )
+                }
             }
         }
     }

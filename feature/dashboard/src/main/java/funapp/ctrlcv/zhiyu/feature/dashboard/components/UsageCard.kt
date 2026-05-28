@@ -318,7 +318,7 @@ internal fun getPlatformIconBg(platform: Platform): Color = when (platform) {
     Platform.DEEPSEEK -> Color(0xFF4362D6)
 }
 
-private fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platform) {
+internal fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platform) {
     Platform.CLAUDE -> usageInfo.planLabel ?: "Unknown"
     Platform.CHATGPT -> usageInfo.planLabel ?: "Unknown"
     Platform.CURSOR -> usageInfo.planLabel ?: "Unknown"
