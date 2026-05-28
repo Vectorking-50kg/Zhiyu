@@ -62,4 +62,24 @@ class AccountStore @Inject constructor(
     private fun getAccountIds(platform: Platform): Set<String> {
         return prefs.getStringSet("accounts_${platform.key}", emptySet()) ?: emptySet()
     }
+
+    fun exportAllStrings(): Map<String, String> {
+        return prefs.all.mapNotNull { (k, v) ->
+            if (v is String) k to v else null
+        }.toMap()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun exportAllSets(): Map<String, List<String>> {
+        return prefs.all.mapNotNull { (k, v) ->
+            if (v is Set<*>) k to (v as Set<String>).toList() else null
+        }.toMap()
+    }
+
+    fun importAll(strings: Map<String, String>, sets: Map<String, List<String>>) {
+        val editor = prefs.edit()
+        strings.forEach { (key, value) -> editor.putString(key, value) }
+        sets.forEach { (key, value) -> editor.putStringSet(key, value.toSet()) }
+        editor.apply()
+    }
 }

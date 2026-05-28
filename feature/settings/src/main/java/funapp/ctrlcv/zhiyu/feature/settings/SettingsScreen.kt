@@ -1,5 +1,7 @@
 package funapp.ctrlcv.zhiyu.feature.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material3.AlertDialog
@@ -25,14 +29,20 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -47,6 +57,54 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Holds the JSON string while the file-save dialog is open
+    val pendingExportJson = remember { mutableStateOf<String?>(null) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        val json = pendingExportJson.value
+        pendingExportJson.value = null
+        if (uri == null || json == null) return@rememberLauncherForActivityResult
+        try {
+            context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
+            viewModel.onExportWritten()
+        } catch (e: Exception) {
+            viewModel.onExportHandled()
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        try {
+            val json = context.contentResolver.openInputStream(uri)?.use {
+                it.readBytes().toString(Charsets.UTF_8)
+            } ?: return@rememberLauncherForActivityResult
+            viewModel.importData(json)
+        } catch (e: Exception) {
+            viewModel.importData("")
+        }
+    }
+
+    // Trigger file-save dialog when export JSON is ready
+    LaunchedEffect(uiState.exportJson) {
+        val json = uiState.exportJson ?: return@LaunchedEffect
+        pendingExportJson.value = json
+        viewModel.onExportHandled()
+        exportLauncher.launch("zhiyu_backup_${System.currentTimeMillis()}.json")
+    }
+
+    // Show snackbar for backup operation results
+    LaunchedEffect(uiState.backupMessage) {
+        val msg = uiState.backupMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        viewModel.clearBackupMessage()
+    }
 
     Scaffold(
         topBar = {
@@ -61,7 +119,8 @@ fun SettingsScreen(
                     containerColor = MaterialTheme.colorScheme.background
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -159,6 +218,53 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // ── 数据备份 ─────────────────────────────────────────────────
+            SectionLabel("数据备份")
+
+            ListItem(
+                headlineContent = { Text("导出备份") },
+                supportingContent = { Text("将账号和密钥导出为 JSON 文件") },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.FileUpload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                modifier = Modifier.clickable { viewModel.prepareExport() }
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+            ListItem(
+                headlineContent = { Text("导入备份") },
+                supportingContent = { Text("从备份文件恢复账号和密钥") },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.FileDownload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                modifier = Modifier.clickable { viewModel.showImportConfirm() }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             // ── 关于 ────────────────────────────────────────────────────
             SectionLabel("关于")
 
@@ -187,6 +293,40 @@ fun SettingsScreen(
             onConfirm = { viewModel.saveApiKey() }
         )
     }
+
+    // ── 导入确认弹窗 ─────────────────────────────────────────────────────
+    if (uiState.showImportConfirm) {
+        ImportConfirmDialog(
+            onDismiss = { viewModel.dismissImportConfirm() },
+            onConfirm = {
+                viewModel.dismissImportConfirm()
+                importLauncher.launch(arrayOf("application/json", "*/*"))
+            }
+        )
+    }
+}
+
+@Composable
+private fun ImportConfirmDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("导入备份") },
+        text = {
+            Text(
+                "导入将合并备份文件中的账号和密钥，已有数据不会被删除。\n\n备份文件包含敏感凭据，请确保文件来源可信。",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text("选择文件") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }
 
 @Composable
