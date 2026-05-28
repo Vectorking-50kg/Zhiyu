@@ -12,10 +12,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.ViewAgenda
+import androidx.compose.material.icons.outlined.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -30,6 +35,9 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -38,6 +46,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import funapp.ctrlcv.zhiyu.feature.dashboard.components.UsageCard
+import funapp.ctrlcv.zhiyu.feature.dashboard.components.UsageCardList
+import funapp.ctrlcv.zhiyu.feature.dashboard.components.UsageCardWaterfall
+
+enum class LayoutMode { DETAILED, LIST, WATERFALL }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +59,9 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
+    var layoutModeOrdinal by rememberSaveable { mutableIntStateOf(0) }
+    val layoutMode = LayoutMode.values()[layoutModeOrdinal]
 
     val infiniteTransition = rememberInfiniteTransition(label = "refresh")
     val rotation by infiniteTransition.animateFloat(
@@ -65,12 +80,20 @@ fun DashboardScreen(
                 isRefreshing = uiState.isRefreshing,
                 rotation = rotation,
                 onRefresh = { viewModel.refresh() },
+                layoutMode = layoutMode,
+                onToggleLayout = {
+                    layoutModeOrdinal = (layoutModeOrdinal + 1) % LayoutMode.values().size
+                },
                 scrollBehavior = scrollBehavior
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        LazyColumn(
+        LazyVerticalGrid(
+            columns = when (layoutMode) {
+                LayoutMode.WATERFALL -> GridCells.Adaptive(minSize = 150.dp)
+                else -> GridCells.Fixed(1)
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -80,10 +103,17 @@ fun DashboardScreen(
                 top = innerPadding.calculateTopPadding() + 4.dp,
                 bottom = innerPadding.calculateBottomPadding() + 16.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(
+                when (layoutMode) {
+                    LayoutMode.LIST -> 6.dp
+                    LayoutMode.WATERFALL -> 8.dp
+                    else -> 10.dp
+                }
+            ),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (uiState.lastUpdated > 0) {
-                item(key = "last_updated") {
+                item(key = "last_updated", span = { GridItemSpan(maxLineSpan) }) {
                     Text(
                         text = "上次更新：${formatTimeSince(uiState.lastUpdated)}",
                         style = MaterialTheme.typography.bodySmall,
@@ -94,11 +124,15 @@ fun DashboardScreen(
             }
 
             items(uiState.usageList, key = { "${it.platform.key}_${it.updatedAt}" }) { usage ->
-                UsageCard(usageInfo = usage)
+                when (layoutMode) {
+                    LayoutMode.DETAILED -> UsageCard(usageInfo = usage)
+                    LayoutMode.LIST -> UsageCardList(usageInfo = usage)
+                    LayoutMode.WATERFALL -> UsageCardWaterfall(usageInfo = usage)
+                }
             }
 
             if (uiState.usageList.isEmpty() && !uiState.isRefreshing) {
-                item {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -115,7 +149,7 @@ fun DashboardScreen(
             }
 
             if (uiState.error != null) {
-                item {
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -157,6 +191,8 @@ private fun DashboardTopBar(
     isRefreshing: Boolean,
     rotation: Float,
     onRefresh: () -> Unit,
+    layoutMode: LayoutMode,
+    onToggleLayout: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior
 ) {
     TopAppBar(
@@ -169,6 +205,21 @@ private fun DashboardTopBar(
             )
         },
         actions = {
+            IconButton(onClick = onToggleLayout) {
+                Icon(
+                    imageVector = when (layoutMode) {
+                        LayoutMode.DETAILED -> Icons.Outlined.ViewAgenda
+                        LayoutMode.LIST -> Icons.Outlined.ViewList
+                        LayoutMode.WATERFALL -> Icons.Outlined.GridView
+                    },
+                    contentDescription = when (layoutMode) {
+                        LayoutMode.DETAILED -> "详细布局"
+                        LayoutMode.LIST -> "列表布局"
+                        LayoutMode.WATERFALL -> "瀑布流布局"
+                    },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             IconButton(onClick = onRefresh) {
                 Icon(
                     imageVector = Icons.Outlined.Refresh,

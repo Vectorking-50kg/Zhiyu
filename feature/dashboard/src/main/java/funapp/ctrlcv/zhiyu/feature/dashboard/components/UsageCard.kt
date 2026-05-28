@@ -300,7 +300,7 @@ fun getSemanticColor(percent: Float): Color = when {
 }
 
 @DrawableRes
-private fun getPlatformIconRes(platform: Platform): Int = when (platform) {
+internal fun getPlatformIconRes(platform: Platform): Int = when (platform) {
     Platform.CLAUDE -> R.drawable.ic_brand_anthropic
     Platform.CHATGPT -> R.drawable.ic_brand_openai
     Platform.CURSOR -> R.drawable.ic_brand_cursor
@@ -309,7 +309,7 @@ private fun getPlatformIconRes(platform: Platform): Int = when (platform) {
     Platform.DEEPSEEK -> R.drawable.ic_brand_deepseek
 }
 
-private fun getPlatformIconBg(platform: Platform): Color = when (platform) {
+internal fun getPlatformIconBg(platform: Platform): Color = when (platform) {
     Platform.CLAUDE -> Color(0xFFCC785C)
     Platform.CHATGPT -> Color(0xFF10A37F)
     Platform.CURSOR -> Color(0xFF1A1A1A)
@@ -327,7 +327,7 @@ private fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platfor
     Platform.DEEPSEEK -> "API"
 }
 
-private fun formatBalance(valueText: String): String {
+internal fun formatBalance(valueText: String): String {
     val prefix = when {
         valueText.startsWith("$") -> "$"
         valueText.startsWith("¥") -> "¥"
