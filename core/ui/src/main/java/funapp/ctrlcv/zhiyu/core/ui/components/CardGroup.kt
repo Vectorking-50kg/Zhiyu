@@ -26,10 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import funapp.ctrlcv.zhiyu.core.ui.theme.CustomColors
-
-private val CardGroupCorner = 20.dp
-private val CardGroupInnerCorner = 4.dp
-private val CardGroupItemSpacing = 2.dp
+import funapp.ctrlcv.zhiyu.core.ui.theme.LocalBrandConfig
 
 private data class CardGroupItem(
     val onClick: (() -> Unit)?,
@@ -93,6 +90,10 @@ private fun CardGroupListItem(
     count: Int,
     index: Int,
 ) {
+    val brandConfig = LocalBrandConfig.current
+    val cardGroupCorner = brandConfig.cardCornerRadius
+    val cardGroupInnerCorner = brandConfig.cardInnerCornerRadius
+
     val isFirst = index == 0
     val isLast = index == count - 1
 
@@ -100,12 +101,12 @@ private fun CardGroupListItem(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val topCorner by animateDpAsState(
-        targetValue = if (isPressed || count == 1 || isFirst) CardGroupCorner else CardGroupInnerCorner,
+        targetValue = if (isPressed || count == 1 || isFirst) cardGroupCorner else cardGroupInnerCorner,
         animationSpec = spring(),
         label = "topCorner",
     )
     val bottomCorner by animateDpAsState(
-        targetValue = if (isPressed || count == 1 || isLast) CardGroupCorner else CardGroupInnerCorner,
+        targetValue = if (isPressed || count == 1 || isLast) cardGroupCorner else cardGroupInnerCorner,
         animationSpec = spring(),
         label = "bottomCorner",
     )
@@ -148,6 +149,8 @@ fun CardGroup(
     val scope = CardGroupScopeImpl()
     scope.content()
 
+    val brandConfig = LocalBrandConfig.current
+
     Column(modifier = modifier) {
         if (title != null) {
             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
@@ -162,7 +165,7 @@ fun CardGroup(
         scope.items.forEachIndexed { index, item ->
             CardGroupListItem(item = item, count = count, index = index)
             if (index != count - 1) {
-                Spacer(modifier = Modifier.height(CardGroupItemSpacing))
+                Spacer(modifier = Modifier.height(brandConfig.cardItemSpacing))
             }
         }
     }

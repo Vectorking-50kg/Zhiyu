@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
+import funapp.ctrlcv.zhiyu.core.ui.theme.LocalBrandConfig
 
 @Composable
 fun UsageCardList(usageInfo: UsageInfo) {
@@ -35,11 +36,23 @@ fun UsageCardList(usageInfo: UsageInfo) {
         else -> null
     }
 
+    val brandConfig = LocalBrandConfig.current
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (brandConfig.cardBorderWidth > 0.dp) Modifier.border(
+                    width = brandConfig.cardBorderWidth,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = brandConfig.cardBorderAlpha),
+                    shape = RoundedCornerShape(brandConfig.cardCornerRadius),
+                ) else Modifier
+            ),
+        shape = RoundedCornerShape(brandConfig.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (brandConfig.useShadowElevation) 2.dp else 0.dp
+        ),
     ) {
         Row(
             modifier = Modifier

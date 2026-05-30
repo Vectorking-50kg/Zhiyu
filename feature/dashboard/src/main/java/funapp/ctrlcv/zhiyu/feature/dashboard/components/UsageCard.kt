@@ -40,6 +40,7 @@ import funapp.ctrlcv.zhiyu.feature.dashboard.R
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageItem
+import funapp.ctrlcv.zhiyu.core.ui.theme.LocalBrandConfig
 
 @Composable
 fun UsageCard(usageInfo: UsageInfo) {
@@ -53,14 +54,25 @@ fun UsageCard(usageInfo: UsageInfo) {
         else -> null
     }
     var expanded by remember { mutableStateOf(false) }
+    val brandConfig = LocalBrandConfig.current
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (brandConfig.cardBorderWidth > 0.dp) Modifier.border(
+                    width = brandConfig.cardBorderWidth,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = brandConfig.cardBorderAlpha),
+                    shape = RoundedCornerShape(brandConfig.cardCornerRadius),
+                ) else Modifier
+            ),
+        shape = RoundedCornerShape(brandConfig.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (brandConfig.useShadowElevation) 2.dp else 0.dp
+        ),
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
+        Column(modifier = Modifier.padding(brandConfig.cardPadding)) {
             CardHeader(usageInfo = usageInfo, maxPercent = maxPercent, balanceText = balanceText)
 
             if (normalItems.isNotEmpty()) {
@@ -188,6 +200,7 @@ private fun CardHeader(usageInfo: UsageInfo, maxPercent: Float?, balanceText: St
 
 @Composable
 private fun ProgressItem(item: UsageItem) {
+    val brandConfig = LocalBrandConfig.current
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -219,8 +232,8 @@ private fun ProgressItem(item: UsageItem) {
             progress = { (item.percent / 100f).coerceIn(0f, 1f) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(10.dp)
-                .clip(RoundedCornerShape(5.dp)),
+                .height(brandConfig.progressBarHeight)
+                .clip(RoundedCornerShape(brandConfig.progressBarCornerRadius)),
             color = getSemanticColor(item.percent),
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
             drawStopIndicator = {}

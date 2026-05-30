@@ -28,7 +28,8 @@ fun ZhiyuTheme(
         ColorMode.DARK -> true
     }
 
-    val colorScheme = findPresetTheme(themeId).getColorScheme(darkTheme)
+    val preset = findPresetTheme(themeId)
+    val colorScheme = preset.getColorScheme(darkTheme)
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -41,9 +42,13 @@ fun ZhiyuTheme(
         }
     }
 
-    CompositionLocalProvider(LocalDarkMode provides darkTheme) {
+    CompositionLocalProvider(
+        LocalDarkMode provides darkTheme,
+        LocalBrandConfig provides preset.brandConfig,
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
+            typography = preset.typography,
             content = content
         )
     }

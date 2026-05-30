@@ -17,7 +17,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -66,6 +69,7 @@ import funapp.ctrlcv.zhiyu.core.domain.model.ColorMode
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.ui.components.CardGroup
 import funapp.ctrlcv.zhiyu.core.ui.theme.CustomColors
+import funapp.ctrlcv.zhiyu.core.ui.theme.LocalBrandConfig
 import funapp.ctrlcv.zhiyu.core.ui.theme.PresetThemes
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -259,11 +263,12 @@ private fun ThemePickerSection(
     selectedId: String,
     onSelect: (String) -> Unit,
 ) {
+    val brandConfig = LocalBrandConfig.current
     Box(
         modifier = Modifier
             .padding(horizontal = 8.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(brandConfig.cardCornerRadius))
             .background(MaterialTheme.colorScheme.surfaceBright)
             .padding(horizontal = 12.dp, vertical = 14.dp),
     ) {
@@ -434,19 +439,19 @@ private fun ThemePicker(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    LazyRow(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PresetThemes.forEach { theme ->
+        items(PresetThemes, key = { it.id }) { theme ->
             val isSelected = theme.id == selectedId
             val scheme = theme.standardLight
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
-                    .weight(1f)
+                    .width(56.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { onSelect(theme.id) }
                     .padding(vertical = 4.dp),
@@ -481,6 +486,7 @@ private fun ThemePicker(
                     style = MaterialTheme.typography.labelSmall,
                     color = if (isSelected) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
                 )
             }
         }
