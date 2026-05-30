@@ -15,7 +15,7 @@ import funapp.ctrlcv.zhiyu.core.ui.theme.PresetTheme
 val LinearThemePreset by lazy {
     PresetTheme(
         id = "linear",
-        displayName = "Linear",
+        displayName = "薰夜",
         standardLight = linearLightScheme,
         standardDark = linearDarkScheme,
         typography = linearTypography,

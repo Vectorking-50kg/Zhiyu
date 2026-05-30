@@ -15,7 +15,7 @@ import funapp.ctrlcv.zhiyu.core.ui.theme.PresetTheme
 val CursorThemePreset by lazy {
     PresetTheme(
         id = "cursor",
-        displayName = "Cursor",
+        displayName = "焰橙",
         standardLight = cursorLightScheme,
         standardDark = cursorDarkScheme,
         typography = cursorTypography,

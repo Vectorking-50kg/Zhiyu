@@ -16,7 +16,7 @@ import funapp.ctrlcv.zhiyu.core.ui.theme.PresetTheme
 val OpenCodeThemePreset by lazy {
     PresetTheme(
         id = "opencode",
-        displayName = "OpenCode",
+        displayName = "矩阵",
         standardLight = openCodeLightScheme,
         standardDark = openCodeDarkScheme,
         typography = openCodeTypography,

@@ -15,7 +15,7 @@ import funapp.ctrlcv.zhiyu.core.ui.theme.PresetTheme
 val NotionThemePreset by lazy {
     PresetTheme(
         id = "notion",
-        displayName = "Notion",
+        displayName = "紫陌",
         standardLight = notionLightScheme,
         standardDark = notionDarkScheme,
         typography = notionTypography,

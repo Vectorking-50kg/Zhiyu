@@ -15,7 +15,7 @@ import funapp.ctrlcv.zhiyu.core.ui.theme.PresetTheme
 val RaycastThemePreset by lazy {
     PresetTheme(
         id = "raycast",
-        displayName = "Raycast",
+        displayName = "深空",
         standardLight = raycastLightScheme,
         standardDark = raycastDarkScheme,
         typography = raycastTypography,

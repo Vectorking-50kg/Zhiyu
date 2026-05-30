@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.callbackFlow
 const val THEME_PREFS_NAME = "zhiyu_theme_prefs"
 const val KEY_COLOR_MODE = "colorMode"
 const val KEY_THEME_ID = "themeId"
-const val DEFAULT_THEME_ID = "zhiyu"
+const val DEFAULT_THEME_ID = "vercel"
 
 @Composable
 fun rememberColorMode(): MutableState<ColorMode> {

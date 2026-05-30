@@ -16,7 +16,7 @@ import funapp.ctrlcv.zhiyu.core.ui.theme.PresetTheme
 val ClaudeThemePreset by lazy {
     PresetTheme(
         id = "claude",
-        displayName = "Claude",
+        displayName = "暖砂",
         standardLight = claudeLightScheme,
         standardDark = claudeDarkScheme,
         typography = claudeTypography,

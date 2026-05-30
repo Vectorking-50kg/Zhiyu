@@ -12,7 +12,6 @@ import funapp.ctrlcv.zhiyu.core.ui.theme.presets.OpenCodeThemePreset
 import funapp.ctrlcv.zhiyu.core.ui.theme.presets.RaycastThemePreset
 import funapp.ctrlcv.zhiyu.core.ui.theme.presets.StripeThemePreset
 import funapp.ctrlcv.zhiyu.core.ui.theme.presets.VercelThemePreset
-import funapp.ctrlcv.zhiyu.core.ui.theme.presets.ZhiyuOriginalThemePreset
 
 data class PresetTheme(
     val id: String,
@@ -30,12 +29,11 @@ val LocalBrandConfig = compositionLocalOf { BrandThemeConfig() }
 
 val PresetThemes by lazy {
     listOf(
-        ZhiyuOriginalThemePreset,
+        VercelThemePreset,
         ClaudeThemePreset,
         OpenCodeThemePreset,
         CursorThemePreset,
         RaycastThemePreset,
-        VercelThemePreset,
         LinearThemePreset,
         NotionThemePreset,
         StripeThemePreset,
@@ -44,4 +42,4 @@ val PresetThemes by lazy {
 }
 
 fun findPresetTheme(id: String): PresetTheme =
-    PresetThemes.find { it.id == id } ?: ZhiyuOriginalThemePreset
+    PresetThemes.find { it.id == id } ?: VercelThemePreset

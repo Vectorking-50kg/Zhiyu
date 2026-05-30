@@ -15,7 +15,7 @@ import funapp.ctrlcv.zhiyu.core.ui.theme.PresetTheme
 val AppleThemePreset by lazy {
     PresetTheme(
         id = "apple",
-        displayName = "Apple",
+        displayName = "湛蓝",
         standardLight = appleLightScheme,
         standardDark = appleDarkScheme,
         typography = appleTypography,

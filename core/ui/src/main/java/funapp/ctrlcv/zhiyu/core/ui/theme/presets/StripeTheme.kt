@@ -15,7 +15,7 @@ import funapp.ctrlcv.zhiyu.core.ui.theme.PresetTheme
 val StripeThemePreset by lazy {
     PresetTheme(
         id = "stripe",
-        displayName = "Stripe",
+        displayName = "轻纱",
         standardLight = stripeLightScheme,
         standardDark = stripeDarkScheme,
         typography = stripeTypography,

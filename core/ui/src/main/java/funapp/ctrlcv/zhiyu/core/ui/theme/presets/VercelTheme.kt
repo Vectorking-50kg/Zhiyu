@@ -15,7 +15,7 @@ import funapp.ctrlcv.zhiyu.core.ui.theme.PresetTheme
 val VercelThemePreset by lazy {
     PresetTheme(
         id = "vercel",
-        displayName = "Vercel",
+        displayName = "素墨",
         standardLight = vercelLightScheme,
         standardDark = vercelDarkScheme,
         typography = vercelTypography,
