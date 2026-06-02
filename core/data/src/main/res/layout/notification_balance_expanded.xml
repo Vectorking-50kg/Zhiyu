@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 常驻通知展开态：标题 + 动态填充的平台行容器，外层由 DecoratedCustomViewStyle 套系统外壳 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="2dp"
+    android:paddingBottom="6dp">
+
+    <TextView
+        android:id="@+id/notif_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="AI 用量 · 余额"
+        android:textAppearance="@style/TextAppearance.Compat.Notification.Title" />
+
+    <LinearLayout
+        android:id="@+id/notif_rows"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:orientation="vertical" />
+
+</LinearLayout>
