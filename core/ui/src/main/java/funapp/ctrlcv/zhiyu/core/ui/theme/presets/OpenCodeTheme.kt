@@ -169,5 +169,4 @@ private val openCodeTypography = Typography(
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
     ),
-    defaultFontFamily = InterFontFamily,
 )

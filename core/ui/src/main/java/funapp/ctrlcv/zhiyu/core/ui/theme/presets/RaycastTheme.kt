@@ -179,5 +179,4 @@ private val raycastTypography = Typography(
         fontSize = 12.sp,
         letterSpacing = 0.4.sp,
     ),
-    defaultFontFamily = InterFontFamily,
 )

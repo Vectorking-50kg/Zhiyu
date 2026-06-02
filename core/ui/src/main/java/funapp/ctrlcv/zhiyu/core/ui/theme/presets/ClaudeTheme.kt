@@ -172,5 +172,4 @@ private val claudeTypography = Typography(
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
     ),
-    defaultFontFamily = InterFontFamily,
 )
