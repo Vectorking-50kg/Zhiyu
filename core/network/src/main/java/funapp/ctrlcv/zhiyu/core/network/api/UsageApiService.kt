@@ -432,7 +432,9 @@ class UsageApiService @Inject constructor(
     // ── MiniMax ──────────────────────────────────────────────────────────────
     // GET https://www.minimaxi.com/v1/token_plan/remains
     // Authorization: Bearer {token_plan_api_key}
-    // 返回 category_remains（按大类）和 model_remains（按模型）两个数组
+    // 返回 model_remains 数组，每个模型含「5h 间隔限额」与「周限额」两个窗口。
+    // 改为按用量计费后用 *_remaining_percent / *_status 表示余量（不再用请求次数），
+    // 计费切换期间还会下发 *_boost_permille 提升倍率。仅展示 general 主额度（与官网「我的用量」一致）。
     suspend fun getMiniMaxUsage(apiKey: String): UsageInfo = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("https://www.minimaxi.com/v1/token_plan/remains")
@@ -445,62 +447,41 @@ class UsageApiService @Inject constructor(
             val body = readOrThrow(response, Platform.MINIMAX)
             try {
                 val json = gson.fromJson(body, JsonObject::class.java)
-                val items = mutableListOf<UsageItem>()
-                val collapsibleItems = mutableListOf<UsageItem>()
-                val seenLabels = mutableSetOf<String>()
 
-                // 优先展示 category_remains（大类聚合，有 display_name）
-                json.getAsJsonArray("category_remains")?.forEach { element ->
-                    val obj = element.asJsonObject
-                    val total = obj.get("current_interval_total_count")?.asInt ?: 0
-                    if (total <= 0) return@forEach
-                    val used = obj.get("current_interval_usage_count")?.asInt ?: 0
-                    val percent = (used.toFloat() / total * 100f).coerceIn(0f, 100f)
-                    val label = obj.get("display_name")?.asString
-                        ?: obj.get("category")?.asString
-                        ?: return@forEach
-                    if (!seenLabels.add(label)) return@forEach
-                    val startMs = obj.get("start_time")?.asLong
-                    val endMs = obj.get("end_time")?.asLong
-                    val isCollapsible = label in MINIMAX_COLLAPSIBLE_LABELS
-                    val item = UsageItem(
-                        label = label,
-                        percent = percent,
-                        resetCountdown = endMs?.let { formatMinimaxResetTime(it) },
-                        usageCount = used,
-                        totalCount = total,
-                        timeRange = if (startMs != null && endMs != null) formatMinimaxTimeRange(startMs, endMs) else null,
-                        collapsible = isCollapsible
-                    )
-                    if (isCollapsible) collapsibleItems.add(item) else items.add(item)
+                // base_resp.status_code：1004 为鉴权失败（API Key 无效），按会话过期处理
+                json.getAsJsonObject("base_resp")?.get("status_code")?.asInt?.let { code ->
+                    if (code == 1004) throw SessionExpiredException(Platform.MINIMAX)
+                    if (code != 0) throw ApiStructureChangedException(Platform.MINIMAX, "base_resp status_code=$code")
                 }
 
-                // 再追加 model_remains：先展示常用模型（MCP 等），再追加折叠的创作工具
-                json.getAsJsonArray("model_remains")?.forEach { element ->
-                    val obj = element.asJsonObject
-                    val total = obj.get("current_interval_total_count")?.asInt ?: 0
-                    if (total <= 0) return@forEach
-                    val modelName = obj.get("model_name")?.asString ?: return@forEach
-                    if (isMinimaxCategoryModel(modelName)) return@forEach
-                    val used = obj.get("current_interval_usage_count")?.asInt ?: 0
-                    val percent = (used.toFloat() / total * 100f).coerceIn(0f, 100f)
-                    val label = getMinimaxModelDisplayName(modelName)
-                    if (!seenLabels.add(label)) return@forEach
-                    val startMs = obj.get("start_time")?.asLong
-                    val endMs = obj.get("end_time")?.asLong
-                    val isCollapsible = label in MINIMAX_COLLAPSIBLE_LABELS
-                    val item = UsageItem(
-                        label = label,
-                        percent = percent,
-                        resetCountdown = endMs?.let { formatMinimaxResetTime(it) },
-                        usageCount = used,
-                        totalCount = total,
-                        timeRange = if (startMs != null && endMs != null) formatMinimaxTimeRange(startMs, endMs) else null,
-                        collapsible = isCollapsible
+                val models = json.getAsJsonArray("model_remains")
+                    ?: throw ApiStructureChangedException(Platform.MINIMAX, "missing model_remains")
+
+                // 仅展示 general 主额度；找不到时退回首个模型，避免出现空卡片
+                val general = models
+                    .map { it.asJsonObject }
+                    .firstOrNull { it.get("model_name")?.asString == "general" }
+                    ?: models.firstOrNull()?.asJsonObject
+                    ?: throw ApiStructureChangedException(Platform.MINIMAX, "empty model_remains")
+
+                val items = listOf(
+                    buildMinimaxUsageItem(
+                        obj = general,
+                        label = "5h 限额",
+                        statusKey = "current_interval_status",
+                        remainingPercentKey = "current_interval_remaining_percent",
+                        remainsTimeKey = "remains_time",
+                        boostKey = "interval_boost_permille"
+                    ),
+                    buildMinimaxUsageItem(
+                        obj = general,
+                        label = "周限额",
+                        statusKey = "current_weekly_status",
+                        remainingPercentKey = "current_weekly_remaining_percent",
+                        remainsTimeKey = "weekly_remains_time",
+                        boostKey = "weekly_boost_permille"
                     )
-                    if (isCollapsible) collapsibleItems.add(item) else items.add(item)
-                }
-                items.addAll(collapsibleItems)
+                )
 
                 UsageInfo(
                     platform = Platform.MINIMAX,
@@ -514,51 +495,43 @@ class UsageApiService @Inject constructor(
         }
     }
 
-    private fun isMinimaxCategoryModel(modelName: String): Boolean =
-        modelName.startsWith("MiniMax-M") ||
-        modelName == "speech-hd" ||
-        modelName.startsWith("MiniMax-Hailuo")
-
-    private fun isMinimaxCollapsibleModel(modelName: String): Boolean =
-        getMinimaxModelDisplayName(modelName) in MINIMAX_COLLAPSIBLE_LABELS
-
-    private fun getMinimaxModelDisplayName(modelName: String): String = when (modelName) {
-        "music-2.5", "music-2.6" -> "音乐生成"
-        "music-cover" -> "音乐翻唱"
-        "lyrics_generation" -> "歌词生成"
-        "image-01" -> "图片生成"
-        "coding-plan-vlm" -> "图片理解 MCP"
-        "coding-plan-search" -> "网络搜索 MCP"
-        else -> modelName
-    }
-
-    private fun formatMinimaxResetTime(endTimeMs: Long): String {
-        return try {
-            val remaining = endTimeMs - System.currentTimeMillis()
-            if (remaining <= 0) return "即将重置"
-            val hours = remaining / 3_600_000L
-            val minutes = (remaining % 3_600_000L) / 60_000L
-            when {
-                hours > 24 -> "${hours / 24}天后重置"
-                hours > 0 -> "${hours}小时${if (minutes > 0) "${minutes}分钟" else ""}后重置"
-                minutes > 0 -> "${minutes}分钟后重置"
-                else -> "即将重置"
-            }
-        } catch (e: Exception) {
-            ""
+    // MiniMax Token Plan 单个限额窗口（5h / 周）。status == 3 表示该窗口无上限（无限制）。
+    private fun buildMinimaxUsageItem(
+        obj: JsonObject,
+        label: String,
+        statusKey: String,
+        remainingPercentKey: String,
+        remainsTimeKey: String,
+        boostKey: String
+    ): UsageItem {
+        val status = obj.get(statusKey)?.asInt ?: 0
+        if (status == MINIMAX_STATUS_UNLIMITED) {
+            return UsageItem(label = label, percent = 0f, unlimited = true)
         }
+        val remainingPercent = obj.get(remainingPercentKey)?.asInt ?: 100
+        val usedPercent = (100 - remainingPercent).coerceIn(0, 100).toFloat()
+        val remainsTimeMs = obj.get(remainsTimeKey)?.asLong
+        // boost_permille 为千分比，2000 → 200%；仅在有提升（> 1000，即超过原始 100%）时展示「总额度」
+        val boostPercent = obj.get(boostKey)?.asInt?.takeIf { it > 1000 }?.div(10)
+        return UsageItem(
+            label = label,
+            percent = usedPercent,
+            resetCountdown = remainsTimeMs?.let { formatMinimaxResetCountdown(it) },
+            boostPercent = boostPercent
+        )
     }
 
-    private fun formatMinimaxTimeRange(startMs: Long, endMs: Long): String {
+    // remains_time 为距离重置的剩余毫秒数
+    private fun formatMinimaxResetCountdown(remainingMs: Long): String {
         return try {
-            val zone = java.time.ZoneId.of("Asia/Shanghai")
-            val start = java.time.Instant.ofEpochMilli(startMs).atZone(zone)
-            val end = java.time.Instant.ofEpochMilli(endMs).atZone(zone)
-            val timeFmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-            if (start.toLocalDate() == end.toLocalDate()) {
-                "${start.format(timeFmt)}-${end.format(timeFmt)}(UTC+8)"
-            } else {
-                "每日刷新"
+            if (remainingMs <= 0) return "即将重置"
+            val hours = remainingMs / 3_600_000L
+            val minutes = (remainingMs % 3_600_000L) / 60_000L
+            when {
+                hours > 24 -> "${hours / 24} 天后重置"
+                hours > 0 -> "$hours 小时${if (minutes > 0) " $minutes 分钟" else ""}后重置"
+                minutes > 0 -> "$minutes 分钟后重置"
+                else -> "即将重置"
             }
         } catch (e: Exception) {
             ""
@@ -786,6 +759,8 @@ class UsageApiService @Inject constructor(
 
     companion object {
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
-        val MINIMAX_COLLAPSIBLE_LABELS = setOf("歌词生成", "音乐生成", "音乐翻唱")
+
+        // MiniMax Token Plan：current_*_status == 3 表示该窗口无上限（无限制）
+        private const val MINIMAX_STATUS_UNLIMITED = 3
     }
 }

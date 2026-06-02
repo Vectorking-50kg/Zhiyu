@@ -2,7 +2,6 @@ package funapp.ctrlcv.zhiyu.feature.dashboard.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,8 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -25,10 +22,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,16 +37,13 @@ import funapp.ctrlcv.zhiyu.core.ui.theme.LocalBrandConfig
 
 @Composable
 fun UsageCard(usageInfo: UsageInfo) {
-    val normalItems = usageInfo.items.filter { !it.collapsible }
-    val collapsibleItems = usageInfo.items.filter { it.collapsible }
-    val maxPercent: Float? = normalItems.filter { it.percent >= 0f }.maxOfOrNull { it.percent }
-        ?: usageInfo.items.filter { it.percent >= 0f }.maxOfOrNull { it.percent }
+    val items = usageInfo.items
+    val maxPercent: Float? = items.filter { it.percent >= 0f && !it.unlimited }.maxOfOrNull { it.percent }
     val balanceText: String? = when (usageInfo.platform) {
         Platform.AIHUBMIX -> usageInfo.items.firstOrNull { it.label == "余额" }?.valueText?.let { formatBalance(it) }
         Platform.DEEPSEEK -> usageInfo.items.firstOrNull { it.label == "账户余额" }?.valueText?.let { formatBalance(it) }
         else -> null
     }
-    var expanded by remember { mutableStateOf(false) }
     val brandConfig = LocalBrandConfig.current
 
     Card(
@@ -75,45 +65,12 @@ fun UsageCard(usageInfo: UsageInfo) {
         Column(modifier = Modifier.padding(brandConfig.cardPadding)) {
             CardHeader(usageInfo = usageInfo, maxPercent = maxPercent, balanceText = balanceText)
 
-            if (normalItems.isNotEmpty()) {
+            if (items.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    normalItems.forEach { item ->
+                    items.forEach { item ->
                         if (item.percent >= 0f) ProgressItem(item = item) else InfoItem(item = item)
                     }
-                }
-            }
-
-            if (collapsibleItems.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { expanded = !expanded }
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "其它配额",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Icon(
-                        imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                        contentDescription = if (expanded) "收起" else "展开",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (expanded) {
-                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        collapsibleItems.forEach { item ->
-                            ProgressItem(item = item)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
                 }
             }
 
@@ -212,61 +169,40 @@ private fun ProgressItem(item: UsageItem) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = if (item.usageCount != null && item.totalCount != null) {
-                    "${item.usageCount}/${item.totalCount}  ${item.percent.toInt()}%"
-                } else {
-                    buildString {
-                        append("${item.percent.toInt()}%")
-                        item.resetCountdown?.let { append("｜$it") }
-                    }
+                text = if (item.unlimited) {
+                    "无限制"
+                } else buildString {
+                    append("${item.percent.toInt()}%")
+                    item.resetCountdown?.let { append("｜$it") }
                 },
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = if (item.unlimited) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
         }
 
         Spacer(modifier = Modifier.height(7.dp))
 
         LinearProgressIndicator(
-            progress = { (item.percent / 100f).coerceIn(0f, 1f) },
+            progress = { if (item.unlimited) 1f else (item.percent / 100f).coerceIn(0f, 1f) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(brandConfig.progressBarHeight)
                 .clip(RoundedCornerShape(brandConfig.progressBarCornerRadius)),
-            color = getSemanticColor(item.percent),
+            color = if (item.unlimited) MaterialTheme.colorScheme.primary else getSemanticColor(item.percent),
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
             drawStopIndicator = {}
         )
 
-        if (item.timeRange != null || (item.usageCount != null && item.resetCountdown != null)) {
+        // boost 提升期间展示「总额度 X%」；其余平台沿用 valueText 作为补充说明
+        val secondaryText: String? = item.boostPercent?.let { "总额度 $it%" } ?: item.valueText
+        secondaryText?.let { value ->
             Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = item.timeRange ?: "",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-                item.resetCountdown?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
-            }
-        } else {
-            item.valueText?.let { value ->
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

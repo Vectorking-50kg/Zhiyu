@@ -17,11 +17,8 @@ data class UsageItem(
     // 当 percent < 0 时作为主要展示内容（如 "¥10.50"）；
     // 当 percent >= 0 时作为进度条下方的补充说明
     val valueText: String? = null,
-    // MiniMax token plan 专用：实际用量数值（current_interval_usage/total_count）
-    val usageCount: Int? = null,
-    val totalCount: Int? = null,
-    // 时间窗口区间，如 "05:00-10:00(UTC+8)" 或 "每日刷新"
-    val timeRange: String? = null,
-    // 默认折叠不展示（如 MiniMax 创作工具类配额）
-    val collapsible: Boolean = false
+    // MiniMax Token Plan 专用：该窗口为无上限（无限制），不展示百分比进度
+    val unlimited: Boolean = false,
+    // MiniMax Token Plan 专用：boost 提升后的总额度百分比（如 200 表示「总额度 200%」），仅在有提升时展示
+    val boostPercent: Int? = null
 )
