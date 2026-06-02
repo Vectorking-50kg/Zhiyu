@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:maxLines="1"
-        android:text="AI 用量 · 余额"
+        android:text="AI 用量 / 余额"
         android:textAppearance="@style/TextAppearance.Compat.Notification.Title" />
 
     <LinearLayout

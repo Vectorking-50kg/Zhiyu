@@ -323,8 +323,8 @@ private fun NotificationSection(
         item(
             onClick = { onToggleEnabled(!enabled) },
             leadingContent = { Icon(Icons.Outlined.Notifications, null) },
-            headlineContent = { Text("余额常驻通知") },
-            supportingContent = { Text("在状态栏持续显示所选平台的用量与余额") },
+            headlineContent = { Text("常驻通知") },
+            supportingContent = { Text("在状态栏持续显示所选平台的用量或余额") },
             trailingContent = {
                 Switch(
                     checked = enabled,

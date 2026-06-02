@@ -61,7 +61,7 @@ class BalanceNotificationManager @Inject constructor(
         // 按 Platform 枚举顺序稳定排序，避免每次刷新通知里平台顺序跳动
         val platforms = Platform.entries.filter { it in pinned }
         val stale = infos.isNotEmpty() && infos.all { it.stale }
-        val title = if (stale) "AI 用量 · 余额（缓存）" else "AI 用量 · 余额"
+        val title = if (stale) "AI 用量 / 余额（缓存）" else "AI 用量 / 余额"
 
         // 折叠态摘要：纯文本一行，展开后由自定义大视图呈现进度条与状态色
         val summary = platforms.joinToString("    ") { platform ->
@@ -145,7 +145,7 @@ class BalanceNotificationManager @Inject constructor(
     private fun ensureChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "余额常驻",
+            "常驻通知",
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
             description = "在状态栏常驻显示所选平台的用量与余额"
