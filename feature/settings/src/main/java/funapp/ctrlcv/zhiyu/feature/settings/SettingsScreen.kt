@@ -1,5 +1,8 @@
 package funapp.ctrlcv.zhiyu.feature.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -35,7 +38,9 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -47,6 +52,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,6 +70,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import funapp.ctrlcv.zhiyu.core.domain.model.ColorMode
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
@@ -82,6 +89,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val pendingExportJson = remember { mutableStateOf<String?>(null) }
+    val pendingNotificationToast = remember { mutableStateOf<String?>(null) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -109,6 +117,38 @@ fun SettingsScreen(
         } catch (e: Exception) {
             viewModel.importData("")
         }
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.setPersistentNotificationEnabled(true)
+        } else {
+            pendingNotificationToast.value = "未授予通知权限，无法显示状态栏余额"
+        }
+    }
+
+    val onToggleNotification: (Boolean) -> Unit = handler@{ enable ->
+        if (!enable) {
+            viewModel.setPersistentNotificationEnabled(false)
+            return@handler
+        }
+        val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        if (needsPermission) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            viewModel.setPersistentNotificationEnabled(true)
+        }
+    }
+
+    LaunchedEffect(pendingNotificationToast.value) {
+        val msg = pendingNotificationToast.value ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        pendingNotificationToast.value = null
     }
 
     LaunchedEffect(uiState.exportJson) {
@@ -156,6 +196,16 @@ fun SettingsScreen(
                 ThemePickerSection(
                     selectedId = uiState.themeId,
                     onSelect = { viewModel.setThemeId(it) },
+                )
+            }
+
+            item("notification") {
+                NotificationSection(
+                    enabled = uiState.persistentNotificationEnabled,
+                    pinned = uiState.pinnedPlatforms,
+                    configured = uiState.loggedInPlatforms + uiState.configuredApiPlatforms,
+                    onToggleEnabled = onToggleNotification,
+                    onTogglePlatform = { viewModel.togglePinnedPlatform(it) },
                 )
             }
 
@@ -255,6 +305,69 @@ private fun AppearanceSection(
                 )
             },
         )
+    }
+}
+
+@Composable
+private fun NotificationSection(
+    enabled: Boolean,
+    pinned: Set<Platform>,
+    configured: Set<Platform>,
+    onToggleEnabled: (Boolean) -> Unit,
+    onTogglePlatform: (Platform) -> Unit,
+) {
+    CardGroup(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        title = { Text("状态栏通知") },
+    ) {
+        item(
+            onClick = { onToggleEnabled(!enabled) },
+            leadingContent = { Icon(Icons.Outlined.Notifications, null) },
+            headlineContent = { Text("余额常驻通知") },
+            supportingContent = { Text("在状态栏持续显示所选平台的用量与余额") },
+            trailingContent = {
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = onToggleEnabled,
+                )
+            },
+        )
+
+        if (enabled) {
+            if (configured.isEmpty()) {
+                item(
+                    leadingContent = { Icon(Icons.Outlined.Info, null) },
+                    headlineContent = { Text("暂无可固定的平台") },
+                    supportingContent = { Text("请先登录账号或配置 API 密钥") },
+                )
+            } else {
+                // 按 Platform 枚举顺序展示，保持与状态栏通知一致
+                Platform.entries.filter { it in configured }.forEach { platform ->
+                    val isPinned = platform in pinned
+                    item(
+                        onClick = { onTogglePlatform(platform) },
+                        leadingContent = {
+                            Icon(
+                                Icons.Outlined.PushPin,
+                                null,
+                                tint = if (isPinned) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        headlineContent = { Text(platform.displayName) },
+                        supportingContent = {
+                            Text(if (isPinned) "已固定到状态栏" else "未固定")
+                        },
+                        trailingContent = {
+                            Switch(
+                                checked = isPinned,
+                                onCheckedChange = { onTogglePlatform(platform) },
+                            )
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
