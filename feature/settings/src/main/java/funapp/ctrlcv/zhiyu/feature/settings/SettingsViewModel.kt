@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import funapp.ctrlcv.zhiyu.core.data.notification.BalanceNotificationManager
+import funapp.ctrlcv.zhiyu.core.data.notification.NotificationPreferences
 import funapp.ctrlcv.zhiyu.core.domain.model.Account
 import funapp.ctrlcv.zhiyu.core.domain.model.ColorMode
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
@@ -38,6 +40,8 @@ data class SettingsUiState(
     val colorMode: ColorMode = ColorMode.SYSTEM,
     val themeId: String = DEFAULT_THEME_ID,
     val showColorModeDialog: Boolean = false,
+    val persistentNotificationEnabled: Boolean = false,
+    val pinnedPlatforms: Set<Platform> = emptySet(),
 )
 
 @HiltViewModel
@@ -45,7 +49,9 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val ctx: Context,
     private val accountStore: AccountStore,
     private val tokenStore: SecureTokenStore,
-    private val backupManager: BackupManager
+    private val backupManager: BackupManager,
+    private val notificationPrefs: NotificationPreferences,
+    private val balanceNotifier: BalanceNotificationManager
 ) : ViewModel() {
 
     private val themePrefs by lazy {
@@ -58,6 +64,7 @@ class SettingsViewModel @Inject constructor(
     init {
         loadAccounts()
         loadThemePrefs()
+        loadNotificationPrefs()
     }
 
     private fun loadThemePrefs() {
@@ -95,6 +102,39 @@ class SettingsViewModel @Inject constructor(
             .toSet()
 
         _uiState.update { it.copy(loggedInPlatforms = loggedIn, configuredApiPlatforms = configured) }
+    }
+
+    private fun loadNotificationPrefs() {
+        _uiState.update {
+            it.copy(
+                persistentNotificationEnabled = notificationPrefs.persistentEnabled,
+                pinnedPlatforms = notificationPrefs.pinnedPlatforms(),
+            )
+        }
+    }
+
+    /** 已登录的网页平台 + 已配置密钥的 API 平台，即可固定到状态栏的候选平台。 */
+    private fun configuredPlatforms(): Set<Platform> =
+        _uiState.value.loggedInPlatforms + _uiState.value.configuredApiPlatforms
+
+    /**
+     * 切换常驻通知总开关。注意：调用方需先在 API 33+ 上确保已获得通知权限。
+     * 首次开启且尚未选择平台时，默认固定所有已配置平台。
+     */
+    fun setPersistentNotificationEnabled(enabled: Boolean) {
+        notificationPrefs.persistentEnabled = enabled
+        if (enabled && notificationPrefs.pinnedPlatforms().isEmpty()) {
+            configuredPlatforms().forEach { notificationPrefs.setPinned(it, true) }
+        }
+        balanceNotifier.refresh()
+        loadNotificationPrefs()
+    }
+
+    fun togglePinnedPlatform(platform: Platform) {
+        val pinned = notificationPrefs.pinnedPlatforms()
+        notificationPrefs.setPinned(platform, platform !in pinned)
+        balanceNotifier.refresh()
+        loadNotificationPrefs()
     }
 
     fun showApiKeyDialog(platform: Platform) {

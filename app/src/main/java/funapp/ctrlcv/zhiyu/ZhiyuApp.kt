@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import funapp.ctrlcv.zhiyu.core.data.notification.BalanceNotificationManager
 import funapp.ctrlcv.zhiyu.core.data.worker.RefreshWorker
 import javax.inject.Inject
 
@@ -15,6 +16,9 @@ class ZhiyuApp : Application(), Configuration.Provider {
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject
+    lateinit var balanceNotifier: BalanceNotificationManager
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -25,6 +29,8 @@ class ZhiyuApp : Application(), Configuration.Provider {
         super.onCreate()
         createNotificationChannels()
         RefreshWorker.schedule(this)
+        // 进程重建（重启 / 被系统回收后重新拉起）时，依据缓存恢复状态栏常驻通知
+        balanceNotifier.refresh()
     }
 
     private fun createNotificationChannels() {
