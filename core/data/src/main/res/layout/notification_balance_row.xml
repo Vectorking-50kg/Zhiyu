@@ -34,10 +34,20 @@
             tools:text="Claude" />
 
         <TextView
-            android:id="@+id/platform_value"
+            android:id="@+id/platform_metric_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="@style/TextAppearance.Compat.Notification.Info"
+            tools:text="5 小时限额" />
+
+        <TextView
+            android:id="@+id/platform_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
             android:textSize="14sp"
             android:textStyle="bold"
             tools:text="85%" />

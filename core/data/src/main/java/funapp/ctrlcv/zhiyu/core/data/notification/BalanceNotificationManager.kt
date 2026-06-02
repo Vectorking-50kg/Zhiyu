@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.res.ColorStateList
 import android.os.Build
+import android.text.format.DateUtils
 import android.view.View
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
@@ -19,6 +20,9 @@ import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.model.primaryMetric
 import funapp.ctrlcv.zhiyu.core.domain.model.primaryMetricText
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -61,7 +65,11 @@ class BalanceNotificationManager @Inject constructor(
         // 按 Platform 枚举顺序稳定排序，避免每次刷新通知里平台顺序跳动
         val platforms = Platform.entries.filter { it in pinned }
         val stale = infos.isNotEmpty() && infos.all { it.stale }
-        val title = if (stale) "AI 用量 / 余额（缓存）" else "AI 用量 / 余额"
+        val baseTitle = if (stale) "AI 用量 / 余额（缓存）" else "AI 用量 / 余额"
+        // 更新时间附在标题右侧，以「·」分隔；Android 标准的时间槽（setWhen + setShowWhen）
+        // 只会渲染到系统头部「应用名 · 时间」一行，无法贴在自定义标题旁，故此处直接拼进标题文案。
+        val updatedAt = infos.maxOfOrNull { it.updatedAt }
+        val title = if (updatedAt != null) "$baseTitle · ${formatUpdatedAt(updatedAt)}" else baseTitle
 
         // 折叠态摘要：纯文本一行，展开后由自定义大视图呈现进度条与状态色
         val summary = platforms.joinToString("    ") { platform ->
@@ -105,6 +113,15 @@ class BalanceNotificationManager @Inject constructor(
             row.setTextColor(R.id.platform_value, color)
             row.setInt(R.id.platform_dot, "setColorFilter", color)
 
+            // 数值左侧的含义说明，如「5 小时限额」「账户余额」；无说明时隐藏占位
+            val metricLabel = metric?.label
+            if (!metricLabel.isNullOrBlank()) {
+                row.setViewVisibility(R.id.platform_metric_label, View.VISIBLE)
+                row.setTextViewText(R.id.platform_metric_label, metricLabel)
+            } else {
+                row.setViewVisibility(R.id.platform_metric_label, View.GONE)
+            }
+
             if (percent != null) {
                 row.setViewVisibility(R.id.platform_bar, View.VISIBLE)
                 row.setProgressBar(R.id.platform_bar, 100, percent, false)
@@ -122,6 +139,12 @@ class BalanceNotificationManager @Inject constructor(
             expanded.addView(R.id.notif_rows, row)
         }
         return expanded
+    }
+
+    /** 更新时间文案：当天只显示「HH:mm」，跨天则带上「MM-dd」。 */
+    private fun formatUpdatedAt(timestamp: Long): String {
+        val pattern = if (DateUtils.isToday(timestamp)) "HH:mm" else "MM-dd HH:mm"
+        return SimpleDateFormat(pattern, Locale.getDefault()).format(Date(timestamp))
     }
 
     /** 与首页卡片一致的用量语义色：充裕(绿) / 偏高(琥珀) / 紧张(红)。 */
