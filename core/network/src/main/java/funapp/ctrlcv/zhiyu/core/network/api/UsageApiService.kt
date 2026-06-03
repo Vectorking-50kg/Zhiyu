@@ -467,7 +467,7 @@ class UsageApiService @Inject constructor(
                 val items = listOf(
                     buildMinimaxUsageItem(
                         obj = general,
-                        label = "5h 限额",
+                        label = "5 小时限额",
                         statusKey = "current_interval_status",
                         remainingPercentKey = "current_interval_remaining_percent",
                         remainsTimeKey = "remains_time",
@@ -528,9 +528,9 @@ class UsageApiService @Inject constructor(
             val hours = remainingMs / 3_600_000L
             val minutes = (remainingMs % 3_600_000L) / 60_000L
             when {
-                hours > 24 -> "${hours / 24} 天后重置"
-                hours > 0 -> "$hours 小时${if (minutes > 0) " $minutes 分钟" else ""}后重置"
-                minutes > 0 -> "$minutes 分钟后重置"
+                hours > 24 -> "${hours / 24}天后重置"
+                hours > 0 -> "${hours}小时${if (minutes > 0) "${minutes}分钟" else ""}后重置"
+                minutes > 0 -> "${minutes}分钟后重置"
                 else -> "即将重置"
             }
         } catch (e: Exception) {

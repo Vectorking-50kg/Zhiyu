@@ -62,6 +62,9 @@ class BalanceNotificationManager @Inject constructor(
         val platforms = Platform.entries.filter { it in pinned }
         val stale = infos.isNotEmpty() && infos.all { it.stale }
         val title = if (stale) "AI 用量 / 余额（缓存）" else "AI 用量 / 余额"
+        // 更新时间走系统标准时间槽：setWhen + setShowWhen 渲染到头部「应用名 · 时间」一行，
+        // 系统以灰色小字呈现，不抢标题视觉。取所有置顶平台中最近的一次更新。
+        val updatedAt = infos.maxOfOrNull { it.updatedAt }
 
         // 折叠态摘要：纯文本一行，展开后由自定义大视图呈现进度条与状态色
         val summary = platforms.joinToString("    ") { platform ->
@@ -75,7 +78,8 @@ class BalanceNotificationManager @Inject constructor(
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomBigContentView(buildExpandedView(title, platforms, byPlatform))
             .setOngoing(true)
-            .setShowWhen(false)
+            .setShowWhen(updatedAt != null)
+            .apply { updatedAt?.let { setWhen(it) } }
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
@@ -104,6 +108,15 @@ class BalanceNotificationManager @Inject constructor(
             row.setTextViewText(R.id.platform_value, metric?.text ?: "--")
             row.setTextColor(R.id.platform_value, color)
             row.setInt(R.id.platform_dot, "setColorFilter", color)
+
+            // 数值左侧的含义说明，如「5 小时限额」「账户余额」；无说明时隐藏占位
+            val metricLabel = metric?.label
+            if (!metricLabel.isNullOrBlank()) {
+                row.setViewVisibility(R.id.platform_metric_label, View.VISIBLE)
+                row.setTextViewText(R.id.platform_metric_label, metricLabel)
+            } else {
+                row.setViewVisibility(R.id.platform_metric_label, View.GONE)
+            }
 
             if (percent != null) {
                 row.setViewVisibility(R.id.platform_bar, View.VISIBLE)

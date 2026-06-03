@@ -6,10 +6,13 @@ package funapp.ctrlcv.zhiyu.core.domain.model
  * @param text    展示文案，如「45%」「¥12.30」「无限制」「--」
  * @param percent 当主指标为用量百分比时给出 0..100 的整数，供进度条渲染；
  *                余额、无限制、无数据等场景为 null（不绘制进度条）
+ * @param label   主指标的含义说明，如「5 小时限额」「账户余额」，用于在数值左侧标注；
+ *                无可用数据时为 null
  */
 data class UsageMetric(
     val text: String,
     val percent: Int?,
+    val label: String? = null,
 )
 
 /**
@@ -19,28 +22,31 @@ data class UsageMetric(
  * - 仅有无上限额度时展示「无限制」；无任何可用数据时返回「--」。
  */
 fun UsageInfo.primaryMetric(): UsageMetric {
-    balanceText()?.let { return UsageMetric(it, percent = null) }
-    val maxPercent = items
+    balanceItem()?.let { item ->
+        return UsageMetric(formatBalance(item.valueText!!), percent = null, label = item.label)
+    }
+    val maxItem = items
         .filter { it.percent >= 0f && !it.unlimited }
-        .maxOfOrNull { it.percent }
+        .maxByOrNull { it.percent }
     return when {
-        maxPercent != null -> UsageMetric("${maxPercent.toInt()}%", maxPercent.toInt())
-        items.any { it.unlimited } -> UsageMetric("无限制", percent = null)
-        else -> UsageMetric("--", percent = null)
+        maxItem != null -> UsageMetric("${maxItem.percent.toInt()}%", maxItem.percent.toInt(), label = maxItem.label)
+        else -> {
+            val unlimited = items.firstOrNull { it.unlimited }
+            if (unlimited != null) UsageMetric("无限制", percent = null, label = unlimited.label)
+            else UsageMetric("--", percent = null)
+        }
     }
 }
 
 /** 仅取主指标文案，便于折叠态摘要等纯文本场景复用。 */
 fun UsageInfo.primaryMetricText(): String = primaryMetric().text
 
-private fun UsageInfo.balanceText(): String? {
-    val raw = when (platform) {
-        Platform.AIHUBMIX -> items.firstOrNull { it.label == "余额" }?.valueText
-        Platform.DEEPSEEK -> items.firstOrNull { it.label == "账户余额" }?.valueText
-        else -> null
-    } ?: return null
-    return formatBalance(raw)
-}
+/** 余额类平台（AIHubMix「余额」、DeepSeek「账户余额」）的余额条目，含有效 valueText 时才返回。 */
+private fun UsageInfo.balanceItem(): UsageItem? = when (platform) {
+    Platform.AIHUBMIX -> items.firstOrNull { it.label == "余额" }
+    Platform.DEEPSEEK -> items.firstOrNull { it.label == "账户余额" }
+    else -> null
+}?.takeIf { it.valueText != null }
 
 private fun formatBalance(valueText: String): String {
     val prefix = when {
