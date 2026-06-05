@@ -105,8 +105,12 @@ class BalanceNotificationManager @Inject constructor(
             builder.setProgress(0, 0, true)
         } else {
             builder.setContentText(summary)
-            // 刷新完成或正常显示：在通知操作栏加「刷新」按钮（官方 addAction API）
-            builder.addAction(0, "刷新", refreshPendingIntent())
+            // 刷新完成或正常显示：在通知操作栏加「刷新」按钮
+            // setShowsUserInterface(false) 确保点击后不抬起 app UI，纯后台执行
+            val refreshAction = NotificationCompat.Action.Builder(0, "刷新", refreshPendingIntent())
+                .setShowsUserInterface(false)
+                .build()
+            builder.addAction(refreshAction)
         }
 
         launchIntent()?.let { builder.setContentIntent(it) }
