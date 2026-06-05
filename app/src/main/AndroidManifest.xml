@@ -28,6 +28,14 @@
         </activity>
 
         <receiver
+            android:name="funapp.ctrlcv.zhiyu.core.data.notification.NotificationRefreshReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="funapp.ctrlcv.zhiyu.ACTION_REFRESH_NOTIFICATION" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name="funapp.ctrlcv.zhiyu.feature.widget.UsageWidgetReceiver"
             android:exported="true">
             <intent-filter>

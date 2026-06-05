@@ -6,6 +6,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Build
 import android.view.View
@@ -36,17 +37,32 @@ class BalanceNotificationManager @Inject constructor(
 ) {
     private val notificationManager = NotificationManagerCompat.from(context)
 
+    @Volatile
+    private var isRefreshing = false
+
     /**
      * 根据当前偏好与缓存重建常驻通知。
      * 总开关关闭、未选中任何平台、或无通知权限时取消通知。
      */
     @SuppressLint("MissingPermission")
     fun refresh() {
+        isRefreshing = false
         val pinned = prefs.pinnedPlatforms()
         if (!prefs.persistentEnabled || pinned.isEmpty() || !notificationManager.areNotificationsEnabled()) {
             cancel()
             return
         }
+        ensureChannel()
+        val infos = cache.getAll().filter { it.platform in pinned }
+        notificationManager.notify(NOTIFICATION_ID, buildNotification(pinned, infos))
+    }
+
+    /** 立即将通知切换到「刷新中」状态并显示旋转动画，由 [NotificationRefreshReceiver] 调用。 */
+    @SuppressLint("MissingPermission")
+    fun showRefreshing() {
+        isRefreshing = true
+        val pinned = prefs.pinnedPlatforms()
+        if (!prefs.persistentEnabled || pinned.isEmpty() || !notificationManager.areNotificationsEnabled()) return
         ensureChannel()
         val infos = cache.getAll().filter { it.platform in pinned }
         notificationManager.notify(NOTIFICATION_ID, buildNotification(pinned, infos))
@@ -74,7 +90,6 @@ class BalanceNotificationManager @Inject constructor(
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_balance_notification)
             .setContentTitle(title)
-            .setContentText(summary)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomBigContentView(buildExpandedView(title, platforms, byPlatform))
             .setOngoing(true)
@@ -83,6 +98,20 @@ class BalanceNotificationManager @Inject constructor(
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
+
+        if (isRefreshing) {
+            // 刷新中：隐藏摘要文字，用系统标准不定式进度条表示加载状态
+            builder.setContentText("正在刷新...")
+            builder.setProgress(0, 0, true)
+        } else {
+            builder.setContentText(summary)
+            // 刷新完成或正常显示：在通知操作栏加「刷新」按钮
+            // setShowsUserInterface(false) 确保点击后不抬起 app UI，纯后台执行
+            val refreshAction = NotificationCompat.Action.Builder(0, "刷新", refreshPendingIntent())
+                .setShowsUserInterface(false)
+                .build()
+            builder.addAction(refreshAction)
+        }
 
         launchIntent()?.let { builder.setContentIntent(it) }
         return builder.build()
@@ -144,6 +173,18 @@ class BalanceNotificationManager @Inject constructor(
         else -> COLOR_DANGER
     }
 
+    private fun refreshPendingIntent(): PendingIntent {
+        val intent = Intent(context, NotificationRefreshReceiver::class.java).apply {
+            action = ACTION_REFRESH_NOTIFICATION
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            1,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     private fun launchIntent(): PendingIntent? {
         val intent = context.packageManager
             .getLaunchIntentForPackage(context.packageName) ?: return null
@@ -170,6 +211,7 @@ class BalanceNotificationManager @Inject constructor(
 
     companion object {
         const val CHANNEL_ID = "balance_persistent"
+        const val ACTION_REFRESH_NOTIFICATION = "funapp.ctrlcv.zhiyu.ACTION_REFRESH_NOTIFICATION"
         private const val NOTIFICATION_ID = 1001
 
         // 与 dashboard getSemanticColor 取色一致，保证通知与首页观感统一
