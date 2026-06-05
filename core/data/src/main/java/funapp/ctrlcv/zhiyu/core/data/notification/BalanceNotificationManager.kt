@@ -90,7 +90,6 @@ class BalanceNotificationManager @Inject constructor(
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_balance_notification)
             .setContentTitle(title)
-            .setContentText(summary)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setCustomBigContentView(buildExpandedView(title, platforms, byPlatform))
             .setOngoing(true)
@@ -100,11 +99,21 @@ class BalanceNotificationManager @Inject constructor(
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
 
+        if (isRefreshing) {
+            // 刷新中：隐藏摘要文字，用系统标准不定式进度条表示加载状态
+            builder.setContentText("正在刷新...")
+            builder.setProgress(0, 0, true)
+        } else {
+            builder.setContentText(summary)
+            // 刷新完成或正常显示：在通知操作栏加「刷新」按钮（官方 addAction API）
+            builder.addAction(0, "刷新", refreshPendingIntent())
+        }
+
         launchIntent()?.let { builder.setContentIntent(it) }
         return builder.build()
     }
 
-    /** 构建展开态自定义视图：标题 + 刷新按钮 + 每个平台一行（状态色点、名称、数值、进度条）。 */
+    /** 构建展开态自定义视图：标题 + 每个平台一行（状态色点、名称、数值、进度条）。 */
     private fun buildExpandedView(
         title: String,
         platforms: List<Platform>,
@@ -113,17 +122,6 @@ class BalanceNotificationManager @Inject constructor(
         val expanded = RemoteViews(context.packageName, R.layout.notification_balance_expanded)
         expanded.setTextViewText(R.id.notif_header, title)
         expanded.removeAllViews(R.id.notif_rows)
-
-        // 刷新中：显示旋转动画 + 文字变「刷新中」；空闲：隐藏旋转动画 + 绑定点击事件
-        // RemoteViews 每次重建，刷新中时不调用 setOnClickPendingIntent 即可无点击响应
-        if (isRefreshing) {
-            expanded.setViewVisibility(R.id.notif_refresh_spinner, View.VISIBLE)
-            expanded.setTextViewText(R.id.notif_refresh_btn, "刷新中")
-        } else {
-            expanded.setViewVisibility(R.id.notif_refresh_spinner, View.GONE)
-            expanded.setTextViewText(R.id.notif_refresh_btn, "刷新")
-            expanded.setOnClickPendingIntent(R.id.notif_refresh_btn, refreshPendingIntent())
-        }
 
         platforms.forEach { platform ->
             val metric = byPlatform[platform]?.primaryMetric()
