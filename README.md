@@ -2,10 +2,7 @@
 
 # 知余 · Zhiyu
 
-**一站式 AI 平台用量与余额监控 · Android 原生应用**
-
-把 Claude、Codex、Cursor、MiniMax、AIHubMix、DeepSeek 的额度与余额，
-聚合到首页卡片、桌面小组件和状态栏常驻通知里，随时一眼掌握。
+**一站式 AI 平台用量与余额监控**
 
 ![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)
 ![Min SDK](https://img.shields.io/badge/minSdk-26%20(Android%208.0)-3DDC84)
@@ -17,37 +14,34 @@
 
 ---
 
-## ✨ 功能简介
+## 功能简介
 
-- 📊 **多平台聚合面板** —— 一个首页同时展示所有平台的限额进度与账户余额，瀑布流卡片布局，加载/陈旧状态一目了然。
-- 🔔 **状态栏常驻通知** —— 将任意平台「固定」到状态栏，持续显示用量百分比或余额，并标注最近更新时间。
-- 🧩 **桌面小组件** —— 2×2 主屏小组件，每 30 分钟自动刷新，无需打开 App 即可查看。
-- 🔄 **后台自动刷新** —— 基于 WorkManager 定时拉取最新数据，配合本地缓存，离线也能看到上次结果。
-- 🔐 **本地加密存储** —— 登录凭据与 API 密钥使用 `EncryptedSharedPreferences`（AES‑256）加密，**所有数据仅保存在本机**，不上传任何服务器。
-- 🎨 **9 套品牌主题** —— Apple / Claude / Cursor / Linear / Notion / OpenCode / Raycast / Stripe / Vercel，支持跟随系统、浅色、深色模式。
-- 🌐 **WebView 登录 + API Key 双模式** —— 网页平台直接在内置 WebView 中登录，托管平台粘贴 API Key 即可。
-- 💾 **备份与恢复** —— 一键将账号与密钥导出为 JSON 文件，换机或重装后导入即可恢复。
+- **多平台聚合面板** —— 一个首页同时展示所有平台的限额进度与账户余额，瀑布流卡片布局，加载/陈旧状态一目了然。
+- **状态栏常驻通知** —— 将任意平台「固定」到状态栏，持续显示用量百分比或余额，并标注最近更新时间。
+- **桌面小组件** —— 2×2 主屏小组件，每 30 分钟自动刷新，无需打开 App 即可查看。
+- **后台自动刷新** —— 基于 WorkManager 定时拉取最新数据，配合本地缓存，离线也能看到上次结果。
+- **本地加密存储** —— 登录凭据与 API 密钥使用 `EncryptedSharedPreferences`（AES‑256）加密，**所有数据仅保存在本机**，不上传任何服务器。
+- **WebView 登录 + API Key 双模式** —— 网页平台直接在内置 WebView 中登录，托管平台粘贴 API Key 即可。
+- **备份与恢复** —— 一键将账号与密钥导出为 JSON 文件，换机或重装后导入即可恢复。
 
 ---
 
-## 📱 支持的平台与订阅
+## 支持的平台与订阅
 
 知余通过两种方式接入平台：**网页登录**（在内置 WebView 中登录后复用会话 Cookie）与 **API Key**（在对应控制台创建后粘贴）。
 
 | 平台 | 接入方式 | 可识别订阅 / 档位 | 主要监控指标 |
 | :--- | :--- | :--- | :--- |
-| 🟣 **Claude** | 网页登录 | Free · Pro · Max 5× · Max 20× · Team · Enterprise | 5 小时限额、周限额（所有模型 / Opus / Sonnet / Claude Design） |
-| 🟢 **Codex**（ChatGPT） | 网页登录 | 按账户计划自动识别 | 5 小时限额、周限额、Code Review（5 小时 / 周）、续订 / 到期时间 |
-| ⚫ **Cursor** | 网页登录 | 按账户计划自动识别 | 本周期用量、Auto 用量、API 用量 |
-| 🔵 **MiniMax** | API Key（Token Plan 专属） | Token Plan | 5 小时限额、周限额（支持「无限制」与额度提升 Boost） |
-| 🟠 **AIHubMix** | API Key（令牌） | 按量计费账户 | 账户余额、已消费、累计请求次数 |
-| 🐋 **DeepSeek** | API Key | 按量计费账户 | 账户余额、赠送余额、充值余额 |
-
-> 💡 MiniMax 需使用 **Token Plan 专属 API Key**（在开放平台「Token Plan」页面获取，与普通按量 API Key 不同）。
+| **Claude** | 网页登录 | Free · Pro · Max 5× · Max 20× · Team · Enterprise | 5 小时限额、周限额（所有模型 / Opus / Sonnet / Claude Design） |
+| **Codex**（ChatGPT） | 网页登录 | 按账户计划自动识别 | 5 小时限额、周限额、Code Review（5 小时 / 周）、续订 / 到期时间 |
+| **Cursor** | 网页登录 | 按账户计划自动识别 | 本周期用量、Auto 用量、API 用量 |
+| **MiniMax** | API Key（Token Plan 专属） | Token Plan | 5 小时限额、周限额（支持「无限制」与额度提升 Boost） |
+| **AIHubMix** | API Key（令牌） | 按量计费账户 | 账户余额、已消费、累计请求次数 |
+| **DeepSeek** | API Key | 按量计费账户 | 账户余额、赠送余额、充值余额 |
 
 ---
 
-## 🧮 不同订阅的功能支持表
+## 不同订阅的功能支持表
 
 下表对照各平台 / 订阅在知余中可享受的功能。✅ 支持 · ➖ 该平台不适用。
 
@@ -66,11 +60,11 @@
 | 后台自动刷新 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | 备份 / 恢复 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-> ℹ️ 余额类平台（AIHubMix、DeepSeek）在状态栏与小组件上以**账户余额**作为主指标；限额类平台则展示**最高用量百分比**。
+> 余额类平台（AIHubMix、DeepSeek）在状态栏与小组件上以**账户余额**作为主指标；限额类平台则展示**最高用量百分比**。
 
 ---
 
-## 🚀 快速开始
+## 快速开始
 
 ```bash
 # 克隆仓库
@@ -94,7 +88,7 @@ cd zhiyu
 
 ---
 
-## 🏗️ 技术架构
+## 技术架构
 
 采用多模块 + 单向数据流（Repository → UseCase → ViewModel → Compose）的清晰分层。
 
@@ -117,7 +111,7 @@ feature/
 
 ---
 
-## 🔒 隐私说明
+## 隐私说明
 
 - 所有账号会话与 API 密钥均通过 **AES‑256 加密**存储在设备本地。
 - 应用**不部署任何后端**，用量数据直接由设备向各平台官方接口请求获取。
