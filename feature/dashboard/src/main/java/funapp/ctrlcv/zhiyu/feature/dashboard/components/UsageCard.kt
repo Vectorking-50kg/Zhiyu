@@ -250,7 +250,7 @@ internal fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platfo
     Platform.CLAUDE -> usageInfo.planLabel ?: "Unknown"
     Platform.CHATGPT -> usageInfo.planLabel ?: "Unknown"
     Platform.CURSOR -> usageInfo.planLabel ?: "Unknown"
-    Platform.ZEN -> "按量计费"
+    Platform.ZEN -> "API"
     Platform.MINIMAX -> "Token Plan"
     Platform.AIHUBMIX -> "API"
     Platform.DEEPSEEK -> "API"
