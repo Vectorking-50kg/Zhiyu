@@ -67,9 +67,9 @@ enum class Platform(
             !url.contains("/auth") && !url.contains("/login")
         CURSOR -> url.contains("cursor.com") && !url.contains("authenticator") &&
             !url.contains("/sign-in") && !url.contains("/login")
-        // 登录完成后 opencode.ai 会离开 /auth 进入 workspace 仪表盘；
-        // 真正的成功信号由会话 Cookie（auth）出现兜底确认。
-        ZEN -> url.contains("opencode.ai") && !url.contains("/auth") && !url.contains("/login")
+        // Zen 的 auth Cookie 在 OAuth 握手阶段就被写入，无法用 Cookie 判定登录；
+        // 只有真正登录后才会进入 workspace 仪表盘，用该 URL 作为唯一可靠的成功信号。
+        ZEN -> url.contains("opencode.ai") && url.contains("/workspace")
         MINIMAX, AIHUBMIX, DEEPSEEK -> false
     }
 
@@ -92,20 +92,16 @@ enum class Platform(
     }
 
     /**
-     * 判断一串 Cookie 中是否已含「有效会话凭据」，用于 WebView 自动确认登录。
+     * 是否可「仅凭 Cookie」判定已登录——用于 WebView 中无需等到登录后页面就自动确认。
      *
-     * 大多数平台的会话 Cookie 名足够独特，出现即代表已登录，用名字子串匹配即可。
-     * 但 Zen 的会话名是宽泛的 `auth`/`__Host-auth`，登录页常预置含 "auth" 的
-     * csrf/state Cookie，子串匹配会在页面刚加载时误判为已登录并直接退出。因此 Zen
-     * 必须按 Iron 令牌特征（值以 `Fe26.2` 开头）识别，且要求 Cookie 名精确为
-     * auth / __Host-auth（避免 oauth 之类误命中）。
+     * Claude / Codex / Cursor 的会话 Cookie 名足够独特，出现即代表已登录。
+     * 但 Zen 的 `auth`/`__Host-auth` Cookie 在 OAuth 握手阶段（点击 GitHub/Google、
+     * 尚未完成认证）就会被写入，且同样是 Iron（`Fe26.2`）格式，单看 Cookie 无法区分
+     * 「中间态」与「已登录」，否则点一下登录就会被误判而秒退。因此 Zen 返回 false，
+     * 改由到达 workspace 仪表盘（[isLoggedIn]）来确认登录。
      */
     fun hasSessionCookie(cookieHeader: String): Boolean = when (this) {
-        ZEN -> ZEN_SESSION_REGEX.containsMatchIn(cookieHeader)
+        ZEN -> false
         else -> cookieHeader.contains(getCookieName())
-    }
-
-    companion object {
-        private val ZEN_SESSION_REGEX = Regex("(?:^|[;\\s])(?:__Host-)?auth=Fe26\\.2")
     }
 }
