@@ -39,7 +39,7 @@ class AuthViewModel @Inject constructor(
 
     private var loginHandled = false
 
-    fun onLoginSuccess(cookie: String) {
+    fun onLoginSuccess(cookie: String, url: String? = null) {
         if (loginHandled) return
         viewModelScope.launch {
             val platform = _uiState.value.platform
@@ -50,6 +50,13 @@ class AuthViewModel @Inject constructor(
                 val accountId = existingAccounts.firstOrNull()?.id
                     ?: UUID.randomUUID().toString().take(8)
                 tokenStore.save(platform, accountId, cookieValue)
+                // Zen：登录成功瞬间 WebView 正停在 /workspace/{id}，把 id 存下来，
+                // 取余额时直接精确抓取该仪表盘页，避免靠营销/文档根域名盲猜入口。
+                if (platform == Platform.ZEN && url != null) {
+                    ZEN_WORKSPACE_ID_REGEX.find(url)?.groupValues?.getOrNull(1)?.let { wid ->
+                        tokenStore.saveExtra(platform, accountId, SecureTokenStore.EXTRA_ZEN_WORKSPACE_ID, wid)
+                    }
+                }
                 if (existingAccounts.isEmpty()) {
                     accountStore.saveAccount(
                         Account(
@@ -101,5 +108,10 @@ class AuthViewModel @Inject constructor(
         if (chunked.isNotBlank()) return chunked
 
         return null
+    }
+
+    companion object {
+        // 从 opencode.ai/workspace/{id} 的登录后 URL 中提取 workspace id
+        private val ZEN_WORKSPACE_ID_REGEX = Regex("/workspace/([A-Za-z0-9_-]{4,})")
     }
 }

@@ -70,4 +70,9 @@ class SecureTokenStore @Inject constructor(
         data.forEach { (key, value) -> editor.putString(key, value) }
         editor.apply()
     }
+
+    companion object {
+        /** OpenCode Zen：登录时捕获的 workspace id，取余额时直接定位仪表盘页 */
+        const val EXTRA_ZEN_WORKSPACE_ID = "workspace_id"
+    }
 }

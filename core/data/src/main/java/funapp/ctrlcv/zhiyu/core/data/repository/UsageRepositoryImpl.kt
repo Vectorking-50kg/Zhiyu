@@ -57,7 +57,10 @@ class UsageRepositoryImpl @Inject constructor(
     override suspend fun getZenUsage(accountId: String): Result<UsageInfo> = runCatching {
         val cookie = tokenStore.get(Platform.ZEN, accountId)
             ?: throw NoCookieException(Platform.ZEN)
-        val usage = api.getZenUsage(cookie)
+        val workspaceId = tokenStore.getExtra(
+            Platform.ZEN, accountId, SecureTokenStore.EXTRA_ZEN_WORKSPACE_ID
+        )
+        val usage = api.getZenUsage(cookie, workspaceId)
         cache.save(Platform.ZEN, usage)
         usage
     }.recoverCatching { e ->

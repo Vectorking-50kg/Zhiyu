@@ -1,5 +1,6 @@
 package funapp.ctrlcv.zhiyu.core.network.api
 
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
@@ -402,12 +403,13 @@ class UsageApiService @Inject constructor(
     //
     // 刻意不走 /_server?id=<hash> 这种 SolidStart 内部 RPC：它的 id 是构建哈希，控制台每次
     // 重新部署都会变，极易失效。直接解析稳定 URL 的 SSR 页面更耐久（与 CodexBar 思路一致）。
-    suspend fun getZenUsage(cookieHeader: String): UsageInfo = withContext(Dispatchers.IO) {
-        val balance = fetchZenBalance(cookieHeader)
+    suspend fun getZenUsage(cookieHeader: String, workspaceId: String? = null): UsageInfo = withContext(Dispatchers.IO) {
+        val balance = fetchZenBalance(cookieHeader, workspaceId)
             ?: throw ApiStructureChangedException(
                 Platform.ZEN,
                 "未能从 workspace 仪表盘解析到余额（页面结构可能已变化）"
             )
+        Log.d(ZEN_TAG, "balance parsed = \$$balance (workspaceId=${workspaceId ?: "none"})")
         UsageInfo(
             platform = Platform.ZEN,
             items = listOf(
@@ -421,23 +423,34 @@ class UsageApiService @Inject constructor(
         )
     }
 
-    // 控制台入口：先打开 workspace 索引（登录态会重定向到用户自己的 workspace），再退回站点根。
-    // 任一页面解析到余额即返回；否则从中提取 workspace id 后精确抓取对应仪表盘页。
-    private fun fetchZenBalance(cookieHeader: String): Double? {
+    // 入口优先级：登录时捕获的 /workspace/{id}（最准）→ workspace 索引（登录态会重定向到
+    // 用户自己的 workspace）→ 站点根。任一页面解析到余额即返回；否则从中提取 workspace id
+    // 后再精确抓取对应仪表盘页。
+    private fun fetchZenBalance(cookieHeader: String, workspaceId: String?): Double? {
         val fetchedWorkspaceIds = mutableSetOf<String>()
-        for (entry in listOf("https://opencode.ai/workspace", "https://opencode.ai/")) {
+        val entries = buildList {
+            if (!workspaceId.isNullOrBlank()) {
+                add("https://opencode.ai/workspace/$workspaceId")
+                fetchedWorkspaceIds.add(workspaceId)
+            }
+            add("https://opencode.ai/workspace")
+            add("https://opencode.ai/")
+        }
+        for (entry in entries) {
             // 单个入口不可用（如 404）时跳到下一个；但会话失效要原样抛出以提示重新登录
             val (finalUrl, html) = fetchZenPageOrNull(entry, cookieHeader) ?: continue
             throwIfZenSignedOut(finalUrl)
             parseZenBalance(html)?.let { return it }
+            logZenParseMiss(finalUrl, html)
 
-            val workspaceId = extractZenWorkspaceId(finalUrl) ?: extractZenWorkspaceId(html)
-            if (workspaceId != null && fetchedWorkspaceIds.add(workspaceId)) {
+            val foundId = extractZenWorkspaceId(finalUrl) ?: extractZenWorkspaceId(html)
+            if (foundId != null && fetchedWorkspaceIds.add(foundId)) {
                 val (wsUrl, wsHtml) = fetchZenPageOrNull(
-                    "https://opencode.ai/workspace/$workspaceId", cookieHeader
+                    "https://opencode.ai/workspace/$foundId", cookieHeader
                 ) ?: continue
                 throwIfZenSignedOut(wsUrl)
                 parseZenBalance(wsHtml)?.let { return it }
+                logZenParseMiss(wsUrl, wsHtml)
             }
         }
         return null
@@ -462,10 +475,30 @@ class UsageApiService @Inject constructor(
             .build()
 
         client.newCall(request).execute().use { response ->
+            val finalUrl = response.request.url.toString()
+            Log.d(ZEN_TAG, "GET $url -> ${response.code} final=$finalUrl")
             val body = readOrThrow(response, Platform.ZEN)
             // OkHttp 同域重定向会保留 Cookie 头；取最终 URL 用于登出判断与 workspace id 提取
-            return response.request.url.toString() to body
+            return finalUrl to body
         }
+    }
+
+    // 解析不到余额时输出可诊断的（脱敏）线索：页面长度、关键词命中、首个 balance/$ 附近片段。
+    // 便于在官网页面结构变化时定位需要调整的正则；不打印整页 HTML 以减少敏感信息。
+    private fun logZenParseMiss(finalUrl: String, html: String) {
+        val lower = html.lowercase()
+        val balanceKw = Regex("balance").findAll(lower).count()
+        val zanKw = html.split("残高").size - 1
+        val dollarKw = html.count { it == '$' }
+        val anchor = lower.indexOf("balance").takeIf { it >= 0 } ?: html.indexOf('$')
+        val snippet = if (anchor >= 0) {
+            html.substring((anchor - 60).coerceAtLeast(0), (anchor + 90).coerceAtMost(html.length))
+                .replace(Regex("\\s+"), " ")
+        } else "(无 balance/残高/$ 关键词)"
+        Log.d(
+            ZEN_TAG,
+            "parse-miss $finalUrl len=${html.length} balance=$balanceKw 残高=$zanKw \$=$dollarKw snippet=$snippet"
+        )
     }
 
     // 未登录时控制台会把 /workspace 重定向到 /auth（HTTP 200），据此判定会话失效。
@@ -854,6 +887,9 @@ class UsageApiService @Inject constructor(
 
         // MiniMax Token Plan：current_*_status == 3 表示该窗口无上限（无限制）
         private const val MINIMAX_STATUS_UNLIMITED = 3
+
+        // OpenCode Zen 余额抓取的诊断日志 TAG（logcat 过滤用）
+        private const val ZEN_TAG = "ZhiyuZen"
 
         // 从 /workspace/{id} 链接里提取 workspace id（注意 [$] 在正则里匹配字面美元符）
         private val ZEN_WORKSPACE_ID = Regex("/workspace/([A-Za-z0-9_-]{4,})")
