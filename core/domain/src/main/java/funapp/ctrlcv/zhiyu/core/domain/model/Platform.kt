@@ -90,4 +90,22 @@ enum class Platform(
         ZEN -> listOf("https://opencode.ai")
         MINIMAX, AIHUBMIX, DEEPSEEK -> emptyList()
     }
+
+    /**
+     * 判断一串 Cookie 中是否已含「有效会话凭据」，用于 WebView 自动确认登录。
+     *
+     * 大多数平台的会话 Cookie 名足够独特，出现即代表已登录，用名字子串匹配即可。
+     * 但 Zen 的会话名是宽泛的 `auth`/`__Host-auth`，登录页常预置含 "auth" 的
+     * csrf/state Cookie，子串匹配会在页面刚加载时误判为已登录并直接退出。因此 Zen
+     * 必须按 Iron 令牌特征（值以 `Fe26.2` 开头）识别，且要求 Cookie 名精确为
+     * auth / __Host-auth（避免 oauth 之类误命中）。
+     */
+    fun hasSessionCookie(cookieHeader: String): Boolean = when (this) {
+        ZEN -> ZEN_SESSION_REGEX.containsMatchIn(cookieHeader)
+        else -> cookieHeader.contains(getCookieName())
+    }
+
+    companion object {
+        private val ZEN_SESSION_REGEX = Regex("(?:^|[;\\s])(?:__Host-)?auth=Fe26\\.2")
+    }
 }

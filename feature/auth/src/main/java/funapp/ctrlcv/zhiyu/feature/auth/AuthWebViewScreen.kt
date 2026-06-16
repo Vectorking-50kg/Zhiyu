@@ -229,7 +229,7 @@ fun AuthWebViewScreen(
                                     } else {
                                         Log.w(TAG, "[${uiState.platform.key}] Login detected but no cookie found")
                                     }
-                                } else if (cookie != null && cookie.contains(uiState.platform.getCookieName())) {
+                                } else if (cookie != null && uiState.platform.hasSessionCookie(cookie)) {
                                     Log.d(TAG, "[${uiState.platform.key}] Session cookie found in cookies! Auto-confirming...")
                                     viewModel.onLoginSuccess(cookie)
                                 }
