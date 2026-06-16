@@ -39,7 +39,7 @@ class AuthViewModel @Inject constructor(
 
     private var loginHandled = false
 
-    fun onLoginSuccess(cookie: String) {
+    fun onLoginSuccess(cookie: String, url: String? = null) {
         if (loginHandled) return
         viewModelScope.launch {
             val platform = _uiState.value.platform
@@ -50,6 +50,13 @@ class AuthViewModel @Inject constructor(
                 val accountId = existingAccounts.firstOrNull()?.id
                     ?: UUID.randomUUID().toString().take(8)
                 tokenStore.save(platform, accountId, cookieValue)
+                // Zen：登录成功瞬间 WebView 正停在 /workspace/{id}，把 id 存下来，
+                // 取余额时直接精确抓取该仪表盘页，避免靠营销/文档根域名盲猜入口。
+                if (platform == Platform.ZEN && url != null) {
+                    ZEN_WORKSPACE_ID_REGEX.find(url)?.groupValues?.getOrNull(1)?.let { wid ->
+                        tokenStore.saveExtra(platform, accountId, SecureTokenStore.EXTRA_ZEN_WORKSPACE_ID, wid)
+                    }
+                }
                 if (existingAccounts.isEmpty()) {
                     accountStore.saveAccount(
                         Account(
@@ -72,6 +79,21 @@ class AuthViewModel @Inject constructor(
     }
 
     private fun extractCookieValue(platform: Platform, rawCookie: String): String? {
+        // OpenCode Zen 的会话 Cookie 是 Hapi/Iron 令牌，服务端按原名读取（auth 或 __Host-auth，
+        // https 下还可能两者并存）。仅保留名字精确为 auth / __Host-auth 的会话段，原样作为完整
+        // Cookie 头存储 / 回传：既避免 __Host- 前缀被裁掉导致鉴权失败，也避免把登录页的
+        // csrf/state（如 auth_state）误当成会话，从而在登录页就「自动确认」并退出。
+        if (platform == Platform.ZEN) {
+            return rawCookie.split(";")
+                .map { it.trim() }
+                .filter {
+                    val name = it.substringBefore("=").trim()
+                    name == "auth" || name == "__Host-auth"
+                }
+                .joinToString("; ")
+                .ifBlank { null }
+        }
+
         val cookieName = platform.getCookieName()
         val cookies = rawCookie.split(";").map { it.trim() }
 
@@ -86,5 +108,10 @@ class AuthViewModel @Inject constructor(
         if (chunked.isNotBlank()) return chunked
 
         return null
+    }
+
+    companion object {
+        // 从 opencode.ai/workspace/{id} 的登录后 URL 中提取 workspace id
+        private val ZEN_WORKSPACE_ID_REGEX = Regex("/workspace/([A-Za-z0-9_-]{4,})")
     }
 }

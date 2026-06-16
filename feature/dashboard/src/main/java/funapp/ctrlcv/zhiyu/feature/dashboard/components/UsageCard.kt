@@ -41,7 +41,7 @@ fun UsageCard(usageInfo: UsageInfo) {
     val maxPercent: Float? = items.filter { it.percent >= 0f && !it.unlimited }.maxOfOrNull { it.percent }
     val balanceText: String? = when (usageInfo.platform) {
         Platform.AIHUBMIX -> usageInfo.items.firstOrNull { it.label == "余额" }?.valueText?.let { formatBalance(it) }
-        Platform.DEEPSEEK -> usageInfo.items.firstOrNull { it.label == "账户余额" }?.valueText?.let { formatBalance(it) }
+        Platform.DEEPSEEK, Platform.ZEN -> usageInfo.items.firstOrNull { it.label == "账户余额" }?.valueText?.let { formatBalance(it) }
         else -> null
     }
     val brandConfig = LocalBrandConfig.current
@@ -239,6 +239,7 @@ internal fun getPlatformIconRes(platform: Platform): Int = when (platform) {
     Platform.CLAUDE -> R.drawable.ic_brand_anthropic
     Platform.CHATGPT -> R.drawable.ic_brand_openai
     Platform.CURSOR -> R.drawable.ic_brand_cursor
+    Platform.ZEN -> R.drawable.ic_brand_opencode
     Platform.MINIMAX -> R.drawable.ic_brand_minimax
     Platform.AIHUBMIX -> R.drawable.ic_brand_aihubmix
     Platform.DEEPSEEK -> R.drawable.ic_brand_deepseek
@@ -249,6 +250,7 @@ internal fun getPlanLabel(usageInfo: UsageInfo): String = when (usageInfo.platfo
     Platform.CLAUDE -> usageInfo.planLabel ?: "Unknown"
     Platform.CHATGPT -> usageInfo.planLabel ?: "Unknown"
     Platform.CURSOR -> usageInfo.planLabel ?: "Unknown"
+    Platform.ZEN -> "Zen"
     Platform.MINIMAX -> "Token Plan"
     Platform.AIHUBMIX -> "API"
     Platform.DEEPSEEK -> "API"

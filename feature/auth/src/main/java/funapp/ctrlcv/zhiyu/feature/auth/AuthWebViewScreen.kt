@@ -225,13 +225,13 @@ fun AuthWebViewScreen(
                                 if (uiState.platform.isLoggedIn(url)) {
                                     Log.d(TAG, "[${uiState.platform.key}] Login detected! Extracting cookie...")
                                     if (cookie != null) {
-                                        viewModel.onLoginSuccess(cookie)
+                                        viewModel.onLoginSuccess(cookie, url)
                                     } else {
                                         Log.w(TAG, "[${uiState.platform.key}] Login detected but no cookie found")
                                     }
-                                } else if (cookie != null && cookie.contains(uiState.platform.getCookieName())) {
+                                } else if (cookie != null && uiState.platform.hasSessionCookie(cookie)) {
                                     Log.d(TAG, "[${uiState.platform.key}] Session cookie found in cookies! Auto-confirming...")
-                                    viewModel.onLoginSuccess(cookie)
+                                    viewModel.onLoginSuccess(cookie, url)
                                 }
                             }
 
@@ -283,7 +283,7 @@ fun AuthWebViewScreen(
                         Log.d(TAG, "[${uiState.platform.key}] Manual cookie($domain): len=${c?.length ?: 0}")
                     }
                     if (cookie != null) {
-                        viewModel.onLoginSuccess(cookie)
+                        viewModel.onLoginSuccess(cookie, currentUrl)
                     } else {
                         viewModel.onLoginError("未检测到登录 Cookie，请确认已完成登录")
                     }
