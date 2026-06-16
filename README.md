@@ -63,7 +63,7 @@
 
 > 余额类平台（AIHubMix、DeepSeek、OpenCode Zen）在状态栏与小组件上以**账户余额**作为主指标；限额类平台则展示**最高用量百分比**。
 >
-> **OpenCode Zen 余额说明：** Zen 目前没有官方余额接口，余额仅在网页控制台的 workspace 仪表盘可见。知余在内置 WebView 登录 `opencode.ai` 后复用其会话 Cookie，直接解析仪表盘 SSR 页面上的「Current balance / 現在の残高」金额——无需任何后端，凭据仅留本机。该方式依赖控制台页面结构，若官方上线 `GET /zen/v1/balance` 接口将迁移至更稳定的实现。
+> **OpenCode Zen 余额说明：** Zen 目前没有官方余额接口，余额仅在网页控制台的 workspace 仪表盘可见。知余在内置 WebView 登录 `opencode.ai` 后复用其会话 Cookie 取数：优先解析仪表盘 SSR 页面，命中不到再回退到控制台内部的 SolidStart server function（`/_server`，参考 CodexBar 的实现）——无需任何后端，凭据仅留本机。其中 server function 的 id 为构建哈希，官方部署变更时可能需要同步更新；若官方上线 `GET /zen/v1/balance` 接口将迁移至更稳定的实现。
 
 ---
 

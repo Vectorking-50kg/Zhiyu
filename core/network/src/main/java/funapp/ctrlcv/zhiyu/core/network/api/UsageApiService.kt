@@ -2,6 +2,7 @@ package funapp.ctrlcv.zhiyu.core.network.api
 
 import android.util.Log
 import com.google.gson.Gson
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
 import funapp.ctrlcv.zhiyu.core.domain.model.ApiStructureChangedException
@@ -11,6 +12,7 @@ import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -396,20 +398,29 @@ class UsageApiService @Inject constructor(
     }
 
     // ── OpenCode Zen ─────────────────────────────────────────────────────────
-    // Zen 没有官方「查余额」接口（issue anomalyco/opencode#10448 仍 Open）。余额只在网页
-    // 控制台 opencode.ai 的 workspace 仪表盘可见，页面以 SSR 渲染「Current balance /
-    // 現在の残高 $X.XX」。这里用网页登录得到的 Hapi/Iron 会话 Cookie（auth / __Host-auth）
-    // 抓取仪表盘 HTML 并正则解析余额。
-    //
-    // 刻意不走 /_server?id=<hash> 这种 SolidStart 内部 RPC：它的 id 是构建哈希，控制台每次
-    // 重新部署都会变，极易失效。直接解析稳定 URL 的 SSR 页面更耐久（与 CodexBar 思路一致）。
+    // Zen 没有官方「查余额」接口（issue anomalyco/opencode#10448 仍 Open）。余额来自网页控制台
+    // opencode.ai 的 workspace 仪表盘。复用网页登录得到的 Hapi/Iron 会话 Cookie（auth /
+    // __Host-auth），按 CodexBar 的实现取数：
+    //   1) 先抓 /workspace/{id} 仪表盘 SSR 页面解析余额（无需构建哈希，命中最省事）；
+    //   2) 命中不到时回退到 Zen 的 SolidStart server function：
+    //      GET /_server?id=<billingHash>&args=["<wid>"]，返回 text/javascript，
+    //      从中解析 customerID + balance（balance / 1e8 = 美元）。
+    // 注意：server function 的 id 是构建哈希，opencode.ai 每次部署可能变化，失效时需对照
+    // CodexBar 的 OpenCodeGoUsageFetcher 更新 ZEN_*_SERVER_ID。
     suspend fun getZenUsage(cookieHeader: String, workspaceId: String? = null): UsageInfo = withContext(Dispatchers.IO) {
-        val balance = fetchZenBalance(cookieHeader, workspaceId)
+        val wid = resolveZenWorkspaceId(cookieHeader, workspaceId)
             ?: throw ApiStructureChangedException(
                 Platform.ZEN,
-                "未能从 workspace 仪表盘解析到余额（页面结构可能已变化）"
+                "未能确定 workspace（请在设置中重新登录 Zen）"
             )
-        Log.d(ZEN_TAG, "balance parsed = \$$balance (workspaceId=${workspaceId ?: "none"})")
+
+        val balance = fetchZenBalance(cookieHeader, wid)
+            ?: throw ApiStructureChangedException(
+                Platform.ZEN,
+                "未能解析到余额（控制台页面或接口结构可能已变化）"
+            )
+
+        Log.d(ZEN_TAG, "balance parsed = \$$balance (workspace=$wid)")
         UsageInfo(
             platform = Platform.ZEN,
             items = listOf(
@@ -423,37 +434,143 @@ class UsageApiService @Inject constructor(
         )
     }
 
-    // 入口优先级：登录时捕获的 /workspace/{id}（最准）→ workspace 索引（登录态会重定向到
-    // 用户自己的 workspace）→ 站点根。任一页面解析到余额即返回；否则从中提取 workspace id
-    // 后再精确抓取对应仪表盘页。
-    private fun fetchZenBalance(cookieHeader: String, workspaceId: String?): Double? {
-        val fetchedWorkspaceIds = mutableSetOf<String>()
-        val entries = buildList {
-            if (!workspaceId.isNullOrBlank()) {
-                add("https://opencode.ai/workspace/$workspaceId")
-                fetchedWorkspaceIds.add(workspaceId)
-            }
-            add("https://opencode.ai/workspace")
-            add("https://opencode.ai/")
+    // 确定 workspace id：优先用登录时捕获的；缺失时调 workspaces server function 发现。
+    private fun resolveZenWorkspaceId(cookieHeader: String, captured: String?): String? {
+        normalizeZenWorkspaceId(captured)?.let { return it }
+
+        val text = fetchZenServer(ZEN_WORKSPACES_SERVER_ID, args = null, method = "GET", referer = ZEN_BASE_URL, cookieHeader = cookieHeader)
+            ?: fetchZenServer(ZEN_WORKSPACES_SERVER_ID, args = "[]", method = "POST", referer = ZEN_BASE_URL, cookieHeader = cookieHeader)
+        if (text != null) {
+            if (zenServerLooksSignedOut(text)) throw SessionExpiredException(Platform.ZEN)
+            ZEN_WORKSPACE_ID_IN_TEXT.find(text)?.value?.let { return it }
         }
-        for (entry in entries) {
-            // 单个入口不可用（如 404）时跳到下一个；但会话失效要原样抛出以提示重新登录
-            val (finalUrl, html) = fetchZenPageOrNull(entry, cookieHeader) ?: continue
+        return null
+    }
+
+    private fun normalizeZenWorkspaceId(raw: String?): String? {
+        val trimmed = raw?.trim().orEmpty()
+        if (trimmed.startsWith("wrk_") && trimmed.length > 4) return trimmed
+        return ZEN_WORKSPACE_ID_IN_TEXT.find(trimmed)?.value
+    }
+
+    private fun fetchZenBalance(cookieHeader: String, workspaceId: String): Double? {
+        val dashboardUrl = "https://opencode.ai/workspace/$workspaceId"
+
+        // 1) 仪表盘页面（SSR 命中则无需碰构建哈希）
+        fetchZenPageOrNull(dashboardUrl, cookieHeader)?.let { (finalUrl, html) ->
             throwIfZenSignedOut(finalUrl)
             parseZenBalance(html)?.let { return it }
             logZenParseMiss(finalUrl, html)
+        }
 
-            val foundId = extractZenWorkspaceId(finalUrl) ?: extractZenWorkspaceId(html)
-            if (foundId != null && fetchedWorkspaceIds.add(foundId)) {
-                val (wsUrl, wsHtml) = fetchZenPageOrNull(
-                    "https://opencode.ai/workspace/$foundId", cookieHeader
-                ) ?: continue
-                throwIfZenSignedOut(wsUrl)
-                parseZenBalance(wsHtml)?.let { return it }
-                logZenParseMiss(wsUrl, wsHtml)
+        // 2) billing server function（可靠来源）
+        val billingText = fetchZenServer(
+            serverId = ZEN_BILLING_SERVER_ID,
+            args = "[\"$workspaceId\"]",
+            method = "GET",
+            referer = dashboardUrl,
+            cookieHeader = cookieHeader,
+        ) ?: return null
+        if (zenServerLooksSignedOut(billingText)) throw SessionExpiredException(Platform.ZEN)
+        return parseZenBillingBalance(billingText)
+    }
+
+    // 调 opencode.ai 的 SolidStart server function（/_server）。GET 时 id/args 走查询参数，
+    // 非 GET 时 args 作为 JSON 请求体；统一带 X-Server-Id 等头。失败返回 null（会话失效抛出）。
+    private fun fetchZenServer(
+        serverId: String,
+        args: String?,
+        method: String,
+        referer: String,
+        cookieHeader: String,
+    ): String? {
+        val url = if (method.equals("GET", ignoreCase = true)) {
+            val builder = ZEN_SERVER_URL.toHttpUrl().newBuilder().addQueryParameter("id", serverId)
+            if (!args.isNullOrEmpty()) builder.addQueryParameter("args", args)
+            builder.build()
+        } else {
+            ZEN_SERVER_URL.toHttpUrl()
+        }
+
+        val requestBuilder = Request.Builder()
+            .url(url)
+            .header("Cookie", cookieHeader)
+            .header("X-Server-Id", serverId)
+            .header("X-Server-Instance", "server-fn:${java.util.UUID.randomUUID()}")
+            .header("User-Agent", USER_AGENT)
+            .header("Origin", ZEN_BASE_URL)
+            .header("Referer", referer)
+            .header("Accept", "text/javascript, application/json;q=0.9, */*;q=0.8")
+            .tag(Platform::class.java, Platform.ZEN)
+
+        if (method.equals("GET", ignoreCase = true)) {
+            requestBuilder.get()
+        } else {
+            requestBuilder.method(method.uppercase(), (args ?: "").toRequestBody("application/json".toMediaType()))
+        }
+
+        return try {
+            client.newCall(requestBuilder.build()).execute().use { response ->
+                Log.d(ZEN_TAG, "SERVER $method id=${serverId.take(8)}… -> ${response.code}")
+                if (response.code == 401 || response.code == 403) throw SessionExpiredException(Platform.ZEN)
+                val body = response.body?.string()
+                if (response.isSuccessful) body else null
             }
+        } catch (e: SessionExpiredException) {
+            throw e
+        } catch (e: Exception) {
+            Log.d(ZEN_TAG, "SERVER $method id=${serverId.take(8)}… failed: ${e.message}")
+            null
+        }
+    }
+
+    // 解析 billing server function 响应（text/javascript，seroval 序列化）：
+    // 先按 JSON 尝试（找同时含非空 customerID 与 balance 的对象），失败再用正则。balance / 1e8 = 美元。
+    private fun parseZenBillingBalance(text: String): Double? {
+        runCatching {
+            val root = gson.fromJson(text, JsonElement::class.java)
+            findRawZenBillingBalance(root)?.let { return it / ZEN_BILLING_SCALE }
+        }
+        if (!ZEN_BILLING_CUSTOMER.containsMatchIn(text)) return null
+        val raw = ZEN_BILLING_BALANCE.find(text)?.groupValues?.getOrNull(1)?.toDoubleOrNull() ?: return null
+        return raw / ZEN_BILLING_SCALE
+    }
+
+    // 递归查找含「非空 customerID + balance」的对象，返回原始 balance（未缩放）。
+    private fun findRawZenBillingBalance(el: JsonElement?): Double? {
+        when {
+            el == null || el.isJsonNull -> return null
+            el.isJsonObject -> {
+                val obj = el.asJsonObject
+                if (obj.has("balance")) {
+                    val customer = obj.get("customerID")?.takeIf { it.isJsonPrimitive }?.asString
+                    if (!customer.isNullOrEmpty()) {
+                        zenBillingDouble(obj.get("balance"))?.let { return it }
+                    }
+                }
+                for (entry in obj.entrySet()) findRawZenBillingBalance(entry.value)?.let { return it }
+            }
+            el.isJsonArray -> for (item in el.asJsonArray) findRawZenBillingBalance(item)?.let { return it }
         }
         return null
+    }
+
+    private fun zenBillingDouble(el: JsonElement?): Double? {
+        val p = el?.takeIf { it.isJsonPrimitive }?.asJsonPrimitive ?: return null
+        return when {
+            p.isBoolean -> null
+            p.isNumber -> p.asDouble
+            p.isString -> p.asString.trim().replace(",", "").toDoubleOrNull()
+            else -> null
+        }
+    }
+
+    // server function 在未登录时返回的特征文案（对齐 CodexBar 的 looksSignedOut 强信号）。
+    private fun zenServerLooksSignedOut(text: String): Boolean {
+        val lower = text.lowercase()
+        return lower.contains("auth/authorize") ||
+            lower.contains("not associated with an account") ||
+            lower.contains("actor of type \"public\"")
     }
 
     private fun fetchZenPageOrNull(url: String, cookieHeader: String): Pair<String, String>? =
@@ -478,7 +595,7 @@ class UsageApiService @Inject constructor(
             val finalUrl = response.request.url.toString()
             Log.d(ZEN_TAG, "GET $url -> ${response.code} final=$finalUrl")
             val body = readOrThrow(response, Platform.ZEN)
-            // OkHttp 同域重定向会保留 Cookie 头；取最终 URL 用于登出判断与 workspace id 提取
+            // OkHttp 同域重定向会保留 Cookie 头；取最终 URL 用于登出判断
             return finalUrl to body
         }
     }
@@ -507,9 +624,6 @@ class UsageApiService @Inject constructor(
             throw SessionExpiredException(Platform.ZEN)
         }
     }
-
-    private fun extractZenWorkspaceId(text: String): String? =
-        ZEN_WORKSPACE_ID.find(text)?.groupValues?.getOrNull(1)
 
     private fun parseZenBalance(html: String): Double? {
         for (pattern in ZEN_BALANCE_PATTERNS) {
@@ -891,8 +1005,22 @@ class UsageApiService @Inject constructor(
         // OpenCode Zen 余额抓取的诊断日志 TAG（logcat 过滤用）
         private const val ZEN_TAG = "ZhiyuZen"
 
-        // 从 /workspace/{id} 链接里提取 workspace id（注意 [$] 在正则里匹配字面美元符）
-        private val ZEN_WORKSPACE_ID = Regex("/workspace/([A-Za-z0-9_-]{4,})")
+        // ── OpenCode Zen / opencode.ai server function 常量 ──
+        private const val ZEN_BASE_URL = "https://opencode.ai"
+        private const val ZEN_SERVER_URL = "https://opencode.ai/_server"
+        // 原始 balance 的缩放：balance / 1e8 = 美元（对齐 CodexBar billingScale）
+        private const val ZEN_BILLING_SCALE = 100_000_000.0
+        // SolidStart server function 的 id 是构建哈希，opencode.ai 每次部署可能变化；
+        // 失效时对照 CodexBar 的 OpenCodeGoUsageFetcher.swift 更新这两个值。
+        private const val ZEN_BILLING_SERVER_ID = "c83b78a614689c38ebee981f9b39a8b377716db85c1fd7dbab604adc02d3313d"
+        private const val ZEN_WORKSPACES_SERVER_ID = "def39973159c7f0483d8793a822b8dbb10d067e12c65455fcb4608459ba0234f"
+
+        // workspace id 形如 wrk_xxx
+        private val ZEN_WORKSPACE_ID_IN_TEXT = Regex("wrk_[A-Za-z0-9]+")
+        // billing 响应（text/javascript / seroval）里 customerID 与 balance 的提取，
+        // 兼容 seroval 的 $R[n]= 引用前缀。
+        private val ZEN_BILLING_CUSTOMER = Regex("(?:\"customerID\"|customerID)\\s*:\\s*(?:\\\$R\\[\\d+\\]\\s*=\\s*)?\"[^\"]+\"")
+        private val ZEN_BILLING_BALANCE = Regex("(?:\"balance\"|balance)\\s*:\\s*(?:\\\$R\\[\\d+\\]\\s*=\\s*)?(-?[0-9]+(?:\\.[0-9]+)?)")
 
         // 依次尝试解析 Zen 余额（取首个命中分组）：
         // 1) 「Current balance / Zen balance / 現在の残高」标签后紧跟的美元金额
