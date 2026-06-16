@@ -41,10 +41,10 @@ fun UsageInfo.primaryMetric(): UsageMetric {
 /** 仅取主指标文案，便于折叠态摘要等纯文本场景复用。 */
 fun UsageInfo.primaryMetricText(): String = primaryMetric().text
 
-/** 余额类平台（AIHubMix「余额」、DeepSeek「账户余额」）的余额条目，含有效 valueText 时才返回。 */
+/** 余额类平台（AIHubMix「余额」、DeepSeek / OpenCode Zen「账户余额」）的余额条目，含有效 valueText 时才返回。 */
 private fun UsageInfo.balanceItem(): UsageItem? = when (platform) {
     Platform.AIHUBMIX -> items.firstOrNull { it.label == "余额" }
-    Platform.DEEPSEEK -> items.firstOrNull { it.label == "账户余额" }
+    Platform.DEEPSEEK, Platform.ZEN -> items.firstOrNull { it.label == "账户余额" }
     else -> null
 }?.takeIf { it.valueText != null }
 

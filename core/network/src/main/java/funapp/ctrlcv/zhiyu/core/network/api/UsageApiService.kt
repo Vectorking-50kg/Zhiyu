@@ -394,6 +394,98 @@ class UsageApiService @Inject constructor(
         }
     }
 
+    // ── OpenCode Zen ─────────────────────────────────────────────────────────
+    // Zen 没有官方「查余额」接口（issue anomalyco/opencode#10448 仍 Open）。余额只在网页
+    // 控制台 opencode.ai 的 workspace 仪表盘可见，页面以 SSR 渲染「Current balance /
+    // 現在の残高 $X.XX」。这里用网页登录得到的 Hapi/Iron 会话 Cookie（auth / __Host-auth）
+    // 抓取仪表盘 HTML 并正则解析余额。
+    //
+    // 刻意不走 /_server?id=<hash> 这种 SolidStart 内部 RPC：它的 id 是构建哈希，控制台每次
+    // 重新部署都会变，极易失效。直接解析稳定 URL 的 SSR 页面更耐久（与 CodexBar 思路一致）。
+    suspend fun getZenUsage(cookieHeader: String): UsageInfo = withContext(Dispatchers.IO) {
+        val balance = fetchZenBalance(cookieHeader)
+            ?: throw ApiStructureChangedException(
+                Platform.ZEN,
+                "未能从 workspace 仪表盘解析到余额（页面结构可能已变化）"
+            )
+        UsageInfo(
+            platform = Platform.ZEN,
+            items = listOf(
+                UsageItem(
+                    label = "账户余额",
+                    percent = -1f,
+                    valueText = "\$${String.format("%.2f", balance)}"
+                )
+            ),
+            updatedAt = System.currentTimeMillis()
+        )
+    }
+
+    // 控制台入口：先打开 workspace 索引（登录态会重定向到用户自己的 workspace），再退回站点根。
+    // 任一页面解析到余额即返回；否则从中提取 workspace id 后精确抓取对应仪表盘页。
+    private fun fetchZenBalance(cookieHeader: String): Double? {
+        val fetchedWorkspaceIds = mutableSetOf<String>()
+        for (entry in listOf("https://opencode.ai/workspace", "https://opencode.ai/")) {
+            // 单个入口不可用（如 404）时跳到下一个；但会话失效要原样抛出以提示重新登录
+            val (finalUrl, html) = fetchZenPageOrNull(entry, cookieHeader) ?: continue
+            throwIfZenSignedOut(finalUrl)
+            parseZenBalance(html)?.let { return it }
+
+            val workspaceId = extractZenWorkspaceId(finalUrl) ?: extractZenWorkspaceId(html)
+            if (workspaceId != null && fetchedWorkspaceIds.add(workspaceId)) {
+                val (wsUrl, wsHtml) = fetchZenPageOrNull(
+                    "https://opencode.ai/workspace/$workspaceId", cookieHeader
+                ) ?: continue
+                throwIfZenSignedOut(wsUrl)
+                parseZenBalance(wsHtml)?.let { return it }
+            }
+        }
+        return null
+    }
+
+    private fun fetchZenPageOrNull(url: String, cookieHeader: String): Pair<String, String>? =
+        try {
+            fetchZenPage(url, cookieHeader)
+        } catch (e: SessionExpiredException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+
+    private fun fetchZenPage(url: String, cookieHeader: String): Pair<String, String> {
+        val request = Request.Builder()
+            .url(url)
+            .header("Cookie", cookieHeader)
+            .header("User-Agent", USER_AGENT)
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+            .tag(Platform::class.java, Platform.ZEN)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val body = readOrThrow(response, Platform.ZEN)
+            // OkHttp 同域重定向会保留 Cookie 头；取最终 URL 用于登出判断与 workspace id 提取
+            return response.request.url.toString() to body
+        }
+    }
+
+    // 未登录时控制台会把 /workspace 重定向到 /auth（HTTP 200），据此判定会话失效。
+    private fun throwIfZenSignedOut(finalUrl: String) {
+        if (finalUrl.contains("/auth") || finalUrl.contains("/login")) {
+            throw SessionExpiredException(Platform.ZEN)
+        }
+    }
+
+    private fun extractZenWorkspaceId(text: String): String? =
+        ZEN_WORKSPACE_ID.find(text)?.groupValues?.getOrNull(1)
+
+    private fun parseZenBalance(html: String): Double? {
+        for (pattern in ZEN_BALANCE_PATTERNS) {
+            val raw = pattern.find(html)?.groupValues?.getOrNull(1) ?: continue
+            raw.replace(",", "").toDoubleOrNull()?.let { return it }
+        }
+        return null
+    }
+
     private fun formatChatGptPlan(plan: String): String = when (plan.lowercase()) {
         "plus", "chatgptplusplan" -> "Plus"
         "pro", "chatgptproplan" -> "Pro"
@@ -762,5 +854,18 @@ class UsageApiService @Inject constructor(
 
         // MiniMax Token Plan：current_*_status == 3 表示该窗口无上限（无限制）
         private const val MINIMAX_STATUS_UNLIMITED = 3
+
+        // 从 /workspace/{id} 链接里提取 workspace id（注意 [$] 在正则里匹配字面美元符）
+        private val ZEN_WORKSPACE_ID = Regex("/workspace/([A-Za-z0-9_-]{4,})")
+
+        // 依次尝试解析 Zen 余额（取首个命中分组）：
+        // 1) 「Current balance / Zen balance / 現在の残高」标签后紧跟的美元金额
+        // 2) SSR 水合数据里的余额字段（驼峰 / 下划线均覆盖）
+        // 3) 兜底：「balance / 残高」附近的美元金额
+        private val ZEN_BALANCE_PATTERNS = listOf(
+            Regex("(?i)(?:current\\s+balance|zen\\s+balance|現在の残高)[^$]{0,80}[$]\\s*([0-9][0-9,]*(?:\\.[0-9]+)?)"),
+            Regex("(?i)\"(?:zen_?balance|current_?balance(?:_?usd)?|balance_?usd|usd_?balance)\"\\s*:\\s*\"?([0-9][0-9.]+)\"?"),
+            Regex("(?i)(?:balance|残高)[\\s\\S]{0,120}?[$]\\s*([0-9][0-9,]*(?:\\.[0-9]+)?)"),
+        )
     }
 }

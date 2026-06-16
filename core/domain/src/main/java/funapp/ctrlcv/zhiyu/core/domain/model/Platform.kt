@@ -28,6 +28,15 @@ enum class Platform(
         loginUrl = "https://cursor.com/login",
         baseUrl = "https://api2.cursor.sh"
     ),
+    ZEN(
+        key = "zen",
+        displayName = "OpenCode Zen",
+        // OpenCode Zen 没有官方余额接口；余额只在网页控制台的 workspace 仪表盘可见。
+        // 在内置 WebView 登录 opencode.ai 后复用其 Hapi/Iron 会话 Cookie（auth），
+        // 直接抓取 SSR 渲染的 workspace 页面解析「Current balance / 現在の残高」。
+        loginUrl = "https://opencode.ai/auth",
+        baseUrl = "https://opencode.ai"
+    ),
     MINIMAX(
         key = "minimax",
         displayName = "MiniMax",
@@ -58,6 +67,9 @@ enum class Platform(
             !url.contains("/auth") && !url.contains("/login")
         CURSOR -> url.contains("cursor.com") && !url.contains("authenticator") &&
             !url.contains("/sign-in") && !url.contains("/login")
+        // 登录完成后 opencode.ai 会离开 /auth 进入 workspace 仪表盘；
+        // 真正的成功信号由会话 Cookie（auth）出现兜底确认。
+        ZEN -> url.contains("opencode.ai") && !url.contains("/auth") && !url.contains("/login")
         MINIMAX, AIHUBMIX, DEEPSEEK -> false
     }
 
@@ -65,6 +77,9 @@ enum class Platform(
         CLAUDE -> "sessionKey"
         CHATGPT -> "__Secure-next-auth.session-token"
         CURSOR -> "WorkosCursorSessionToken"
+        // opencode.ai 用 Hapi/Iron 会话 Cookie，名字可能是 auth 或 __Host-auth，
+        // 二者都包含 "auth"，用作 WebView 中的存在性匹配子串。
+        ZEN -> "auth"
         MINIMAX, AIHUBMIX, DEEPSEEK -> "api_key"
     }
 
@@ -72,6 +87,7 @@ enum class Platform(
         CLAUDE -> listOf("https://claude.ai")
         CHATGPT -> listOf("https://chatgpt.com", "https://chat.openai.com")
         CURSOR -> listOf("https://cursor.sh", "https://authenticator.cursor.sh", "https://api2.cursor.sh", "https://www.cursor.com", "https://cursor.com")
+        ZEN -> listOf("https://opencode.ai")
         MINIMAX, AIHUBMIX, DEEPSEEK -> emptyList()
     }
 }

@@ -32,7 +32,7 @@ fun UsageCardList(usageInfo: UsageInfo) {
     val maxPercent = usageInfo.items.filter { it.percent >= 0f }.maxOfOrNull { it.percent }
     val balanceText = when (usageInfo.platform) {
         Platform.AIHUBMIX -> usageInfo.items.firstOrNull { it.label == "余额" }?.valueText?.let { formatBalance(it) }
-        Platform.DEEPSEEK -> usageInfo.items.firstOrNull { it.label == "账户余额" }?.valueText?.let { formatBalance(it) }
+        Platform.DEEPSEEK, Platform.ZEN -> usageInfo.items.firstOrNull { it.label == "账户余额" }?.valueText?.let { formatBalance(it) }
         else -> null
     }
 

@@ -72,6 +72,17 @@ class AuthViewModel @Inject constructor(
     }
 
     private fun extractCookieValue(platform: Platform, rawCookie: String): String? {
+        // OpenCode Zen 的会话 Cookie 是 Hapi/Iron 令牌，服务端按原名读取（auth 或 __Host-auth，
+        // https 下还可能两者并存）。这里保留所有「名字含 auth」的 Cookie 段，原样作为完整
+        // Cookie 头存储 / 回传，避免因 __Host- 前缀被裁掉导致鉴权失败。
+        if (platform == Platform.ZEN) {
+            return rawCookie.split(";")
+                .map { it.trim() }
+                .filter { it.contains("=") && it.substringBefore("=").contains("auth", ignoreCase = true) }
+                .joinToString("; ")
+                .ifBlank { null }
+        }
+
         val cookieName = platform.getCookieName()
         val cookies = rawCookie.split(";").map { it.trim() }
 

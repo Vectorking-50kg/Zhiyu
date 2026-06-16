@@ -54,6 +54,16 @@ class UsageRepositoryImpl @Inject constructor(
         cache.get(Platform.CURSOR)?.copy(stale = true) ?: throw e
     }
 
+    override suspend fun getZenUsage(accountId: String): Result<UsageInfo> = runCatching {
+        val cookie = tokenStore.get(Platform.ZEN, accountId)
+            ?: throw NoCookieException(Platform.ZEN)
+        val usage = api.getZenUsage(cookie)
+        cache.save(Platform.ZEN, usage)
+        usage
+    }.recoverCatching { e ->
+        cache.get(Platform.ZEN)?.copy(stale = true) ?: throw e
+    }
+
     override suspend fun getMiniMaxUsage(accountId: String): Result<UsageInfo> = runCatching {
         val apiKey = tokenStore.get(Platform.MINIMAX, accountId)
             ?: throw NoCookieException(Platform.MINIMAX)
@@ -89,6 +99,7 @@ class UsageRepositoryImpl @Inject constructor(
             Platform.CLAUDE -> getClaudeUsage(accountId)
             Platform.CHATGPT -> getChatGptUsage(accountId)
             Platform.CURSOR -> getCursorUsage(accountId)
+            Platform.ZEN -> getZenUsage(accountId)
             Platform.MINIMAX -> getMiniMaxUsage(accountId)
             Platform.AIHUBMIX -> getAiHubMixUsage(accountId)
             Platform.DEEPSEEK -> getDeepSeekUsage(accountId)
