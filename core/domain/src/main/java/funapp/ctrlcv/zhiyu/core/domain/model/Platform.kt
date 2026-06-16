@@ -30,7 +30,7 @@ enum class Platform(
     ),
     ZEN(
         key = "zen",
-        displayName = "OpenCode Zen",
+        displayName = "OpenCode",
         // OpenCode Zen 没有官方余额接口；余额只在网页控制台的 workspace 仪表盘可见。
         // 在内置 WebView 登录 opencode.ai 后复用其 Hapi/Iron 会话 Cookie（auth），
         // 直接抓取 SSR 渲染的 workspace 页面解析「Current balance / 現在の残高」。
