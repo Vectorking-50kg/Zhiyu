@@ -91,19 +91,25 @@ fun UsageCardList(usageInfo: UsageInfo) {
                     )
                 }
             }
-            when {
-                balanceText != null -> Text(
-                    text = balanceText,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                maxPercent != null -> Text(
-                    text = "${maxPercent.toInt()}%",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = getSemanticColor(maxPercent)
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StaleBadge(usageInfo = usageInfo)
+                if (usageInfo.stale) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+                when {
+                    balanceText != null -> Text(
+                        text = balanceText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    maxPercent != null -> Text(
+                        text = "${maxPercent.toInt()}%",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = getSemanticColor(maxPercent)
+                    )
+                }
             }
         }
     }

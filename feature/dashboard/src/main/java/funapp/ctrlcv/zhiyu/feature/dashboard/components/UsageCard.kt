@@ -74,10 +74,10 @@ fun UsageCard(usageInfo: UsageInfo) {
                 }
             }
 
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(modifier = Modifier.height(10.dp))
             usageInfo.resetInfo?.let { resetInfo ->
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Outlined.CalendarMonth,
@@ -92,7 +92,9 @@ fun UsageCard(usageInfo: UsageInfo) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                Spacer(modifier = Modifier.height(6.dp))
             }
+            CardFreshnessFooter(usageInfo = usageInfo)
         }
     }
 }
