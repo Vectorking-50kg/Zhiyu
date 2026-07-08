@@ -117,12 +117,6 @@ fun UsageCardWaterfall(usageInfo: UsageInfo) {
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
-            CardFreshnessFooter(
-                usageInfo = usageInfo,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
         }
     }
 }
