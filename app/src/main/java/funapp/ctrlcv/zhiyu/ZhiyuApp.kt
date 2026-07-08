@@ -8,6 +8,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import funapp.ctrlcv.zhiyu.core.data.notification.BalanceNotificationManager
+import funapp.ctrlcv.zhiyu.core.data.notification.UsageAlertManager
 import funapp.ctrlcv.zhiyu.core.data.worker.RefreshWorker
 import javax.inject.Inject
 
@@ -37,7 +38,7 @@ class ZhiyuApp : Application(), Configuration.Provider {
         val manager = getSystemService(NotificationManager::class.java)
 
         val warnChannel = NotificationChannel(
-            "usage_warn",
+            UsageAlertManager.CHANNEL_WARN,
             "用量警告",
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
@@ -45,7 +46,7 @@ class ZhiyuApp : Application(), Configuration.Provider {
         }
 
         val dangerChannel = NotificationChannel(
-            "usage_danger",
+            UsageAlertManager.CHANNEL_DANGER,
             "用量紧急",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
@@ -54,13 +55,23 @@ class ZhiyuApp : Application(), Configuration.Provider {
         }
 
         val expiredChannel = NotificationChannel(
-            "session_expired",
+            UsageAlertManager.CHANNEL_EXPIRED,
             "登录过期",
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
             description = "Cookie过期需要重新登录"
         }
 
-        manager.createNotificationChannels(listOf(warnChannel, dangerChannel, expiredChannel))
+        val resetChannel = NotificationChannel(
+            UsageAlertManager.CHANNEL_RESET,
+            "额度重置",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "限额接近用尽后，额度重置时提醒"
+        }
+
+        manager.createNotificationChannels(
+            listOf(warnChannel, dangerChannel, expiredChannel, resetChannel)
+        )
     }
 }

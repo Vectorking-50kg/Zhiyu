@@ -9,7 +9,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 状态栏常驻余额通知的用户偏好：总开关 + 选中固定到状态栏的平台集合。
+ * 通知相关的用户偏好：常驻通知总开关、固定到状态栏的平台集合，以及各类事件提醒开关。
  *
  * 不含敏感数据，使用普通 SharedPreferences；可被 RefreshWorker 与设置页共同读写。
  */
@@ -24,6 +24,21 @@ class NotificationPreferences @Inject constructor(
     var persistentEnabled: Boolean
         get() = prefs.getBoolean(KEY_ENABLED, false)
         set(value) = prefs.edit { putBoolean(KEY_ENABLED, value) }
+
+    /** 用量阈值提醒（≥80% 警告 / ≥95% 紧急），默认开启，实际能否弹出仍受系统通知权限约束。 */
+    var usageAlertEnabled: Boolean
+        get() = prefs.getBoolean(KEY_USAGE_ALERT, true)
+        set(value) = prefs.edit { putBoolean(KEY_USAGE_ALERT, value) }
+
+    /** 额度重置提醒：限额接近用尽后，检测到额度重置时提醒。 */
+    var resetReminderEnabled: Boolean
+        get() = prefs.getBoolean(KEY_RESET_REMINDER, true)
+        set(value) = prefs.edit { putBoolean(KEY_RESET_REMINDER, value) }
+
+    /** 登录过期提醒：网页平台会话失效时提醒重新登录。 */
+    var sessionExpiredAlertEnabled: Boolean
+        get() = prefs.getBoolean(KEY_SESSION_EXPIRED_ALERT, true)
+        set(value) = prefs.edit { putBoolean(KEY_SESSION_EXPIRED_ALERT, value) }
 
     /** 当前固定到状态栏的平台。 */
     fun pinnedPlatforms(): Set<Platform> {
@@ -42,5 +57,8 @@ class NotificationPreferences @Inject constructor(
         private const val PREFS_NAME = "notification_prefs"
         private const val KEY_ENABLED = "persistent_enabled"
         private const val KEY_PINNED = "pinned_platforms"
+        private const val KEY_USAGE_ALERT = "usage_alert_enabled"
+        private const val KEY_RESET_REMINDER = "reset_reminder_enabled"
+        private const val KEY_SESSION_EXPIRED_ALERT = "session_expired_alert_enabled"
     }
 }
