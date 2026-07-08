@@ -7,6 +7,8 @@ import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
 import funapp.ctrlcv.zhiyu.core.domain.model.ApiStructureChangedException
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
+import funapp.ctrlcv.zhiyu.core.domain.model.ResetCredit
+import funapp.ctrlcv.zhiyu.core.domain.model.ResetCredits
 import funapp.ctrlcv.zhiyu.core.domain.model.SessionExpiredException
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageItem
@@ -165,6 +167,7 @@ class UsageApiService @Inject constructor(
             .tag(Platform::class.java, Platform.CHATGPT)
             .build()
 
+        var resetCredits: ResetCredits? = null
         val planFromUsage = client.newCall(request).execute().use { response ->
             val body = readOrThrow(response, Platform.CHATGPT)
             try {
@@ -175,12 +178,17 @@ class UsageApiService @Inject constructor(
                 val codeReview = json.optObject("code_review_rate_limit")
                 parseChatGptWindow(codeReview, "primary_window", "Code Review｜5 小时")?.let(items::add)
                 parseChatGptWindow(codeReview, "secondary_window", "Code Review｜周")?.let(items::add)
+                resetCredits = parseChatGptResetCredits(json.optObject("rate_limit_reset_credits"))
                 json.get("plan_type")?.takeUnless { it.isJsonNull }?.asString
             } catch (e: Exception) {
                 if (e is ApiStructureChangedException || e is SessionExpiredException) throw e
                 throw ApiStructureChangedException(Platform.CHATGPT, "Failed to parse usage: ${e.message}")
             }
         }
+
+        // 重置卡明细来自半私有的兄弟接口（best-effort，永不拖垮卡片）：wham/usage 里的
+        // rate_limit_reset_credits 通常只给张数，这个接口才带每张卡的到期时间。
+        fetchChatGptResetCreditList(accessToken)?.let { resetCredits = it }
 
         // Plan type + renewal date come from accounts/check (best-effort; never fails the card).
         val planInfo = fetchChatGptPlanInfo(accessToken)
@@ -207,7 +215,8 @@ class UsageApiService @Inject constructor(
             platform = Platform.CHATGPT,
             items = items,
             planLabel = planType?.let { formatChatGptPlan(it) },
-            updatedAt = System.currentTimeMillis()
+            updatedAt = System.currentTimeMillis(),
+            resetCredits = resetCredits
         )
     }
 
@@ -268,6 +277,63 @@ class UsageApiService @Inject constructor(
                     ?: runCatching { formatResetTime(el.asString) }.getOrNull()
             }
         return UsageItem(label = label, percent = percent, resetCountdown = resetCountdown)
+    }
+
+    // Codex「重置卡」= 使用后可立即重置 5 小时 / 周限额的官方道具。数据来自 wham 的
+    // rate_limit_reset_credits：{ available_count, credits: [{ status, reset_type, granted_at, expires_at }] }。
+    // 规则对齐 TokenTracker：仅计入 status=="available"、reset_type 为 codex_rate_limits（若存在）、
+    // 且 expires_at 为未来时刻的卡；按到期时间升序，最多 50 张。
+    private fun parseChatGptResetCredits(node: JsonObject?): ResetCredits? {
+        if (node == null) return null
+        val availableCount = node.get("available_count")
+            ?.takeUnless { it.isJsonNull }
+            ?.let { runCatching { it.asInt }.getOrNull() }
+            ?.takeIf { it >= 0 }
+
+        val now = System.currentTimeMillis()
+        val credits = if (availableCount == 0) {
+            emptyList()
+        } else {
+            node.get("credits")?.takeIf { it.isJsonArray }?.asJsonArray
+                ?.mapNotNull { el -> parseChatGptResetCredit(el as? JsonObject ?: return@mapNotNull null, now) }
+                ?.sortedBy { it.expiresAt }
+                ?.take(50)
+                ?: emptyList()
+        }
+
+        if (availableCount == null && credits.isEmpty()) return null
+        return ResetCredits(availableCount = availableCount ?: credits.size, credits = credits)
+    }
+
+    private fun parseChatGptResetCredit(row: JsonObject, now: Long): ResetCredit? {
+        if (row.get("status")?.takeUnless { it.isJsonNull }?.asString != "available") return null
+        val resetType = row.get("reset_type")?.takeUnless { it.isJsonNull }?.asString
+        if (resetType != null && resetType != "codex_rate_limits") return null
+        val expiresAt = row.get("expires_at")?.takeUnless { it.isJsonNull }?.asString ?: return null
+        val expiresMs = runCatching { java.time.Instant.parse(expiresAt).toEpochMilli() }.getOrNull() ?: return null
+        if (expiresMs < now) return null
+        val grantedMs = row.get("granted_at")?.takeUnless { it.isJsonNull }?.asString
+            ?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
+        return ResetCredit(expiresAt = expiresMs, grantedAt = grantedMs)
+    }
+
+    // 半私有只读接口，带每张重置卡的到期明细。失败一律返回 null，绝不阻塞卡片。
+    private fun fetchChatGptResetCreditList(accessToken: String): ResetCredits? {
+        return try {
+            val request = Request.Builder()
+                .url("https://chatgpt.com/backend-api/wham/rate-limit-reset-credits")
+                .header("Authorization", "Bearer $accessToken")
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", "application/json")
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val body = response.body?.string() ?: return null
+                parseChatGptResetCredits(gson.fromJson(body, JsonObject::class.java))
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     suspend fun getCursorUsage(cookie: String): UsageInfo = withContext(Dispatchers.IO) {

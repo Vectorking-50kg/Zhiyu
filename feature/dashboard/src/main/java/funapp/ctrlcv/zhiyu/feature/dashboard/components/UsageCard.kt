@@ -74,6 +74,15 @@ fun UsageCard(usageInfo: UsageInfo) {
                 }
             }
 
+            usageInfo.resetCredits?.let { resetCredits ->
+                if (resetCredits.availableCount > 0 || resetCredits.credits.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    ResetCreditsSection(resetCredits = resetCredits)
+                }
+            }
+
             usageInfo.resetInfo?.let { resetInfo ->
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

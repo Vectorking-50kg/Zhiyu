@@ -6,7 +6,32 @@ data class UsageInfo(
     val planLabel: String? = null,
     val resetInfo: String? = null,
     val updatedAt: Long = System.currentTimeMillis(),
-    val stale: Boolean = false
+    val stale: Boolean = false,
+    // Codex 限额「重置卡」（rate-limit reset credits）：使用后可立即重置 5 小时 / 周限额的官方道具。
+    // 仅 Codex 平台会填充；其余平台为 null。
+    val resetCredits: ResetCredits? = null
+)
+
+/**
+ * Codex 重置卡账户状态。
+ *
+ * @param availableCount 当前可用张数。
+ * @param credits 每张卡的明细（含到期时间），按到期时间升序；官方未下发明细时为空。
+ */
+data class ResetCredits(
+    val availableCount: Int,
+    val credits: List<ResetCredit> = emptyList()
+)
+
+/**
+ * 单张 Codex 重置卡。
+ *
+ * @param expiresAt 到期时间（epoch 毫秒），过期后不可用。
+ * @param grantedAt 发放时间（epoch 毫秒），用于估算剩余寿命；官方未下发时为 null。
+ */
+data class ResetCredit(
+    val expiresAt: Long,
+    val grantedAt: Long? = null
 )
 
 data class UsageItem(
