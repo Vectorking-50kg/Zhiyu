@@ -42,6 +42,9 @@ data class SettingsUiState(
     val showColorModeDialog: Boolean = false,
     val persistentNotificationEnabled: Boolean = false,
     val pinnedPlatforms: Set<Platform> = emptySet(),
+    val usageAlertEnabled: Boolean = true,
+    val resetReminderEnabled: Boolean = true,
+    val sessionExpiredAlertEnabled: Boolean = true,
 )
 
 @HiltViewModel
@@ -109,8 +112,26 @@ class SettingsViewModel @Inject constructor(
             it.copy(
                 persistentNotificationEnabled = notificationPrefs.persistentEnabled,
                 pinnedPlatforms = notificationPrefs.pinnedPlatforms(),
+                usageAlertEnabled = notificationPrefs.usageAlertEnabled,
+                resetReminderEnabled = notificationPrefs.resetReminderEnabled,
+                sessionExpiredAlertEnabled = notificationPrefs.sessionExpiredAlertEnabled,
             )
         }
+    }
+
+    fun setUsageAlertEnabled(enabled: Boolean) {
+        notificationPrefs.usageAlertEnabled = enabled
+        loadNotificationPrefs()
+    }
+
+    fun setResetReminderEnabled(enabled: Boolean) {
+        notificationPrefs.resetReminderEnabled = enabled
+        loadNotificationPrefs()
+    }
+
+    fun setSessionExpiredAlertEnabled(enabled: Boolean) {
+        notificationPrefs.sessionExpiredAlertEnabled = enabled
+        loadNotificationPrefs()
     }
 
     /** 已登录的网页平台 + 已配置密钥的 API 平台，即可固定到状态栏的候选平台。 */

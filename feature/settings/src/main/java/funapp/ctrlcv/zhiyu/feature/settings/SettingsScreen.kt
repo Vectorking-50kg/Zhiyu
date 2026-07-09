@@ -29,6 +29,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -39,6 +41,7 @@ import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
@@ -119,30 +122,37 @@ fun SettingsScreen(
         }
     }
 
+    // 授权通过后待回放的开关动作：常驻通知与各提醒开关共用同一个权限申请入口
+    val pendingPermissionGrant = remember { mutableStateOf<(() -> Unit)?>(null) }
+
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
+        val action = pendingPermissionGrant.value
+        pendingPermissionGrant.value = null
         if (granted) {
-            viewModel.setPersistentNotificationEnabled(true)
+            action?.invoke()
         } else {
-            pendingNotificationToast.value = "未授予通知权限，无法显示状态栏余额"
+            pendingNotificationToast.value = "未授予通知权限，无法发送通知"
         }
     }
 
-    val onToggleNotification: (Boolean) -> Unit = handler@{ enable ->
-        if (!enable) {
-            viewModel.setPersistentNotificationEnabled(false)
-            return@handler
-        }
+    val withNotificationPermission: (() -> Unit) -> Unit = { action ->
         val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(
                 context, Manifest.permission.POST_NOTIFICATIONS
             ) != PackageManager.PERMISSION_GRANTED
         if (needsPermission) {
+            pendingPermissionGrant.value = action
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
-            viewModel.setPersistentNotificationEnabled(true)
+            action()
         }
+    }
+
+    val onToggleNotification: (Boolean) -> Unit = { enable ->
+        if (!enable) viewModel.setPersistentNotificationEnabled(false)
+        else withNotificationPermission { viewModel.setPersistentNotificationEnabled(true) }
     }
 
     LaunchedEffect(pendingNotificationToast.value) {
@@ -206,6 +216,26 @@ fun SettingsScreen(
                     configured = uiState.loggedInPlatforms + uiState.configuredApiPlatforms,
                     onToggleEnabled = onToggleNotification,
                     onTogglePlatform = { viewModel.togglePinnedPlatform(it) },
+                )
+            }
+
+            item("alerts") {
+                AlertNotificationSection(
+                    usageAlertEnabled = uiState.usageAlertEnabled,
+                    resetReminderEnabled = uiState.resetReminderEnabled,
+                    sessionExpiredAlertEnabled = uiState.sessionExpiredAlertEnabled,
+                    onToggleUsageAlert = { enable ->
+                        if (!enable) viewModel.setUsageAlertEnabled(false)
+                        else withNotificationPermission { viewModel.setUsageAlertEnabled(true) }
+                    },
+                    onToggleResetReminder = { enable ->
+                        if (!enable) viewModel.setResetReminderEnabled(false)
+                        else withNotificationPermission { viewModel.setResetReminderEnabled(true) }
+                    },
+                    onToggleSessionExpiredAlert = { enable ->
+                        if (!enable) viewModel.setSessionExpiredAlertEnabled(false)
+                        else withNotificationPermission { viewModel.setSessionExpiredAlertEnabled(true) }
+                    },
                 )
             }
 
@@ -368,6 +398,58 @@ private fun NotificationSection(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AlertNotificationSection(
+    usageAlertEnabled: Boolean,
+    resetReminderEnabled: Boolean,
+    sessionExpiredAlertEnabled: Boolean,
+    onToggleUsageAlert: (Boolean) -> Unit,
+    onToggleResetReminder: (Boolean) -> Unit,
+    onToggleSessionExpiredAlert: (Boolean) -> Unit,
+) {
+    CardGroup(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        title = { Text("提醒通知") },
+    ) {
+        item(
+            onClick = { onToggleUsageAlert(!usageAlertEnabled) },
+            leadingContent = { Icon(Icons.Outlined.NotificationsActive, null) },
+            headlineContent = { Text("用量阈值提醒") },
+            supportingContent = { Text("用量超过 80% 时提醒，超过 95% 时强提醒") },
+            trailingContent = {
+                Switch(
+                    checked = usageAlertEnabled,
+                    onCheckedChange = onToggleUsageAlert,
+                )
+            },
+        )
+        item(
+            onClick = { onToggleResetReminder(!resetReminderEnabled) },
+            leadingContent = { Icon(Icons.Outlined.Autorenew, null) },
+            headlineContent = { Text("额度重置提醒") },
+            supportingContent = { Text("限额接近用尽后，额度重置时提醒") },
+            trailingContent = {
+                Switch(
+                    checked = resetReminderEnabled,
+                    onCheckedChange = onToggleResetReminder,
+                )
+            },
+        )
+        item(
+            onClick = { onToggleSessionExpiredAlert(!sessionExpiredAlertEnabled) },
+            leadingContent = { Icon(Icons.AutoMirrored.Outlined.Logout, null) },
+            headlineContent = { Text("登录过期提醒") },
+            supportingContent = { Text("网页平台登录失效时提醒重新登录") },
+            trailingContent = {
+                Switch(
+                    checked = sessionExpiredAlertEnabled,
+                    onCheckedChange = onToggleSessionExpiredAlert,
+                )
+            },
+        )
     }
 }
 

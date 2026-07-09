@@ -1,6 +1,7 @@
 package funapp.ctrlcv.zhiyu.core.data.repository
 
 import funapp.ctrlcv.zhiyu.core.data.cache.UsageCache
+import funapp.ctrlcv.zhiyu.core.data.notification.UsageAlertManager
 import funapp.ctrlcv.zhiyu.core.domain.model.NoCookieException
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.SessionExpiredException
@@ -20,16 +21,23 @@ class UsageRepositoryImpl @Inject constructor(
     private val tokenStore: SecureTokenStore,
     private val accountStore: AccountStore,
     private val cache: UsageCache,
-    private val sessionEventBus: SessionEventBus
+    private val sessionEventBus: SessionEventBus,
+    private val alertManager: UsageAlertManager
 ) : UsageRepository {
+
+    /** 新鲜数据的统一落地点：写缓存并驱动阈值 / 重置提醒评估。 */
+    private fun store(platform: Platform, usage: UsageInfo): UsageInfo {
+        cache.save(platform, usage)
+        alertManager.onUsageUpdated(usage)
+        return usage
+    }
 
     override suspend fun getClaudeUsage(accountId: String): Result<UsageInfo> = runCatching {
         val cookie = tokenStore.get(Platform.CLAUDE, accountId)
             ?: throw NoCookieException(Platform.CLAUDE)
         val orgInfo = api.getClaudeOrgInfo(cookie)
         val usage = api.getClaudeUsage(cookie, orgInfo)
-        cache.save(Platform.CLAUDE, usage)
-        usage
+        store(Platform.CLAUDE, usage)
     }.recoverCatching { e ->
         cache.get(Platform.CLAUDE)?.copy(stale = true) ?: throw e
     }
@@ -38,8 +46,7 @@ class UsageRepositoryImpl @Inject constructor(
         val cookie = tokenStore.get(Platform.CHATGPT, accountId)
             ?: throw NoCookieException(Platform.CHATGPT)
         val usage = api.getChatGptUsage(cookie)
-        cache.save(Platform.CHATGPT, usage)
-        usage
+        store(Platform.CHATGPT, usage)
     }.recoverCatching { e ->
         cache.get(Platform.CHATGPT)?.copy(stale = true) ?: throw e
     }
@@ -48,8 +55,7 @@ class UsageRepositoryImpl @Inject constructor(
         val cookie = tokenStore.get(Platform.CURSOR, accountId)
             ?: throw NoCookieException(Platform.CURSOR)
         val usage = api.getCursorUsage(cookie)
-        cache.save(Platform.CURSOR, usage)
-        usage
+        store(Platform.CURSOR, usage)
     }.recoverCatching { e ->
         cache.get(Platform.CURSOR)?.copy(stale = true) ?: throw e
     }
@@ -61,8 +67,7 @@ class UsageRepositoryImpl @Inject constructor(
             Platform.ZEN, accountId, SecureTokenStore.EXTRA_ZEN_WORKSPACE_ID
         )
         val usage = api.getZenUsage(cookie, workspaceId)
-        cache.save(Platform.ZEN, usage)
-        usage
+        store(Platform.ZEN, usage)
     }.recoverCatching { e ->
         cache.get(Platform.ZEN)?.copy(stale = true) ?: throw e
     }
@@ -71,8 +76,7 @@ class UsageRepositoryImpl @Inject constructor(
         val apiKey = tokenStore.get(Platform.MINIMAX, accountId)
             ?: throw NoCookieException(Platform.MINIMAX)
         val usage = api.getMiniMaxUsage(apiKey)
-        cache.save(Platform.MINIMAX, usage)
-        usage
+        store(Platform.MINIMAX, usage)
     }.recoverCatching { e ->
         cache.get(Platform.MINIMAX)?.copy(stale = true) ?: throw e
     }
@@ -81,8 +85,7 @@ class UsageRepositoryImpl @Inject constructor(
         val token = tokenStore.get(Platform.AIHUBMIX, accountId)
             ?: throw NoCookieException(Platform.AIHUBMIX)
         val usage = api.getAiHubMixUsage(token)
-        cache.save(Platform.AIHUBMIX, usage)
-        usage
+        store(Platform.AIHUBMIX, usage)
     }.recoverCatching { e ->
         cache.get(Platform.AIHUBMIX)?.copy(stale = true) ?: throw e
     }
@@ -91,8 +94,7 @@ class UsageRepositoryImpl @Inject constructor(
         val apiKey = tokenStore.get(Platform.DEEPSEEK, accountId)
             ?: throw NoCookieException(Platform.DEEPSEEK)
         val usage = api.getDeepSeekUsage(apiKey)
-        cache.save(Platform.DEEPSEEK, usage)
-        usage
+        store(Platform.DEEPSEEK, usage)
     }.recoverCatching { e ->
         cache.get(Platform.DEEPSEEK)?.copy(stale = true) ?: throw e
     }
