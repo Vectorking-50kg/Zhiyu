@@ -117,6 +117,17 @@ fun UsageCardWaterfall(usageInfo: UsageInfo) {
                     )
                 }
             }
+
+            usageInfo.resetCredits?.takeIf { it.availableCount > 0 }?.let { resetCredits ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "重置卡 ×${resetCredits.availableCount}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
         }
     }
 }
