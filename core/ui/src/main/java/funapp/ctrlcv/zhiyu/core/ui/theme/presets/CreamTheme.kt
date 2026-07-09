@@ -23,9 +23,8 @@ val CreamThemePreset by lazy {
         brandConfig = BrandThemeConfig(
             cardCornerRadius = 20.dp,
             cardInnerCornerRadius = 5.dp,
-            cardBorderWidth = 0.dp,
+            cardBorderWidth = 1.dp,
             cardBorderAlpha = 1f,
-            cardBorderHairline = true,
             cardPadding = 18.dp,
             progressBarHeight = 14.dp,
             progressBarCornerRadius = 7.dp,

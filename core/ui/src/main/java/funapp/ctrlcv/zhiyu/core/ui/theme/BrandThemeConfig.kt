@@ -9,10 +9,6 @@ data class BrandThemeConfig(
     val cardItemSpacing: Dp = 2.dp,
     val cardBorderWidth: Dp = 0.dp,
     val cardBorderAlpha: Float = 0f,
-    // 卡片描边是否画成「发丝线」：固定 1 个物理像素粗细，不随屏幕密度缩放
-    // （通过 Modifier.border(width = 0.dp, ...) 触发 Skia 的 hairline 渲染实现）。
-    // 打开后会忽略 cardBorderWidth 的具体数值，仅用它是否 > 0 或本开关来判断要不要画边框。
-    val cardBorderHairline: Boolean = false,
     val cardElevation: Dp = 0.dp,
     val cardPadding: Dp = 18.dp,
     val progressBarHeight: Dp = 10.dp,
