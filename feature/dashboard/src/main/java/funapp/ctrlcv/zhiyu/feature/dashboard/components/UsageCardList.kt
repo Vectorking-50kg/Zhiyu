@@ -42,7 +42,7 @@ fun UsageCardList(usageInfo: UsageInfo) {
         modifier = Modifier
             .fillMaxWidth()
             .then(
-                if (brandConfig.cardBorderWidth > 0.dp) Modifier.border(
+                if (brandConfig.cardBorderWidth > 0.dp || brandConfig.cardBorderHairline) Modifier.border(
                     width = brandConfig.cardBorderWidth,
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = brandConfig.cardBorderAlpha),
                     shape = RoundedCornerShape(brandConfig.cardCornerRadius),
