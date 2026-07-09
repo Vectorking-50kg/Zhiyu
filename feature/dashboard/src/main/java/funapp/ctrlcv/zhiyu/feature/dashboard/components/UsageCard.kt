@@ -1,11 +1,14 @@
 package funapp.ctrlcv.zhiyu.feature.dashboard.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -26,8 +29,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import funapp.ctrlcv.zhiyu.feature.dashboard.R
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
@@ -192,16 +197,26 @@ private fun ProgressItem(item: UsageItem) {
 
         Spacer(modifier = Modifier.height(7.dp))
 
-        LinearProgressIndicator(
-            progress = { if (item.unlimited) 1f else (item.percent / 100f).coerceIn(0f, 1f) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(brandConfig.progressBarHeight)
-                .clip(RoundedCornerShape(brandConfig.progressBarCornerRadius)),
-            color = if (item.unlimited) MaterialTheme.colorScheme.primary else getSemanticColor(item.percent),
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            drawStopIndicator = {}
-        )
+        val elapsedPercent = item.elapsedPercent
+        if (brandConfig.progressBarShowTimeSegment && !item.unlimited && elapsedPercent != null) {
+            DualSegmentProgressBar(
+                usagePercent = item.percent,
+                timePercent = elapsedPercent,
+                height = brandConfig.progressBarHeight,
+                cornerRadius = brandConfig.progressBarCornerRadius,
+            )
+        } else {
+            LinearProgressIndicator(
+                progress = { if (item.unlimited) 1f else (item.percent / 100f).coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(brandConfig.progressBarHeight)
+                    .clip(RoundedCornerShape(brandConfig.progressBarCornerRadius)),
+                color = if (item.unlimited) MaterialTheme.colorScheme.primary else getSemanticColor(item.percent),
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                drawStopIndicator = {}
+            )
+        }
 
         // boost 提升期间展示「总额度 X%」；其余平台沿用 valueText 作为补充说明
         val secondaryText: String? = item.boostPercent?.let { "总额度 $it%" } ?: item.valueText
@@ -213,6 +228,37 @@ private fun ProgressItem(item: UsageItem) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+/**
+ * 双段进度条：深色段表示用量消耗，浅色段（用量色与轨道色的过渡色）表示该窗口已经过去的时间比例。
+ * 两段独立起始于左端，用量段叠加在时间段之上，语义色仍按用量百分比取绿/黄/红。
+ */
+@Composable
+private fun DualSegmentProgressBar(usagePercent: Float, timePercent: Float, height: Dp, cornerRadius: Dp) {
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val usageColor = getSemanticColor(usagePercent)
+    val timeColor = lerp(usageColor, trackColor, 0.55f)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(trackColor)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(fraction = (timePercent / 100f).coerceIn(0f, 1f))
+                .background(timeColor)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(fraction = (usagePercent / 100f).coerceIn(0f, 1f))
+                .background(usageColor)
+        )
     }
 }
 

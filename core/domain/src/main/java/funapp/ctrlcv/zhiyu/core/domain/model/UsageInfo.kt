@@ -45,5 +45,8 @@ data class UsageItem(
     // MiniMax Token Plan 专用：该窗口为无上限（无限制），不展示百分比进度
     val unlimited: Boolean = false,
     // MiniMax Token Plan 专用：boost 提升后的总额度百分比（如 200 表示「总额度 200%」），仅在有提升时展示
-    val boostPercent: Int? = null
+    val boostPercent: Int? = null,
+    // 该限额窗口已经过去的时间比例（0-100）；仅在窗口总时长固定已知（5 小时 / 7 天）时提供，
+    // 用于「奶油」主题进度条的双段渲染（深色=用量，浅色=时间）
+    val elapsedPercent: Float? = null
 )
