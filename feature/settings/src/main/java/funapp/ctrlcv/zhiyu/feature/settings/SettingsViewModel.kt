@@ -12,6 +12,7 @@ import funapp.ctrlcv.zhiyu.core.domain.model.ColorMode
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.storage.AccountStore
 import funapp.ctrlcv.zhiyu.core.storage.BackupManager
+import funapp.ctrlcv.zhiyu.core.storage.HomePlatformPreferences
 import funapp.ctrlcv.zhiyu.core.storage.SecureTokenStore
 import funapp.ctrlcv.zhiyu.core.ui.theme.DEFAULT_THEME_ID
 import funapp.ctrlcv.zhiyu.core.ui.theme.KEY_COLOR_MODE
@@ -33,6 +34,7 @@ data class ApiKeyDialogState(
 data class SettingsUiState(
     val loggedInPlatforms: Set<Platform> = emptySet(),
     val configuredApiPlatforms: Set<Platform> = emptySet(),
+    val visibleHomePlatforms: Set<Platform> = Platform.entries.toSet(),
     val apiKeyDialog: ApiKeyDialogState? = null,
     val exportJson: String? = null,
     val showImportConfirm: Boolean = false,
@@ -53,6 +55,7 @@ class SettingsViewModel @Inject constructor(
     private val accountStore: AccountStore,
     private val tokenStore: SecureTokenStore,
     private val backupManager: BackupManager,
+    private val homePlatformPreferences: HomePlatformPreferences,
     private val notificationPrefs: NotificationPreferences,
     private val balanceNotifier: BalanceNotificationManager
 ) : ViewModel() {
@@ -68,6 +71,7 @@ class SettingsViewModel @Inject constructor(
         loadAccounts()
         loadThemePrefs()
         loadNotificationPrefs()
+        observeVisibleHomePlatforms()
     }
 
     private fun loadThemePrefs() {
@@ -117,6 +121,21 @@ class SettingsViewModel @Inject constructor(
                 sessionExpiredAlertEnabled = notificationPrefs.sessionExpiredAlertEnabled,
             )
         }
+    }
+
+    private fun observeVisibleHomePlatforms() {
+        viewModelScope.launch {
+            homePlatformPreferences.visiblePlatforms.collect { visiblePlatforms ->
+                _uiState.update { it.copy(visibleHomePlatforms = visiblePlatforms) }
+            }
+        }
+    }
+
+    fun toggleHomePlatform(platform: Platform) {
+        homePlatformPreferences.setVisible(
+            platform = platform,
+            visible = platform !in _uiState.value.visibleHomePlatforms,
+        )
     }
 
     fun setUsageAlertEnabled(enabled: Boolean) {

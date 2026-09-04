@@ -57,6 +57,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val visibleUsageList = uiState.usageList.filter { it.platform in uiState.visiblePlatforms }
 
     var layoutModeOrdinal by rememberSaveable { mutableIntStateOf(0) }
     val layoutMode = LayoutMode.values()[layoutModeOrdinal]
@@ -118,7 +119,7 @@ fun DashboardScreen(
                 }
             }
 
-            items(uiState.usageList, key = { "${it.platform.key}_${it.updatedAt}" }) { usage ->
+            items(visibleUsageList, key = { "${it.platform.key}_${it.updatedAt}" }) { usage ->
                 when (layoutMode) {
                     LayoutMode.DETAILED -> UsageCard(usageInfo = usage)
                     LayoutMode.LIST -> UsageCardList(usageInfo = usage)
@@ -126,7 +127,7 @@ fun DashboardScreen(
                 }
             }
 
-            if (uiState.usageList.isEmpty() && !uiState.isRefreshing) {
+            if (visibleUsageList.isEmpty() && !uiState.isRefreshing) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Box(
                         modifier = Modifier
@@ -135,7 +136,11 @@ fun DashboardScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "暂无数据，请先在设置中登录平台账号",
+                            text = if (uiState.usageList.isNotEmpty()) {
+                                "首页供应商均已隐藏，可在设置中重新显示"
+                            } else {
+                                "暂无数据，请先在设置中登录平台账号"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

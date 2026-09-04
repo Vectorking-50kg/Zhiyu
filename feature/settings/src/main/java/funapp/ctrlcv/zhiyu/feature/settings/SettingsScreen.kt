@@ -44,6 +44,8 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -209,6 +211,13 @@ fun SettingsScreen(
                 )
             }
 
+            item("homePlatforms") {
+                HomePlatformSection(
+                    visiblePlatforms = uiState.visibleHomePlatforms,
+                    onTogglePlatform = { viewModel.toggleHomePlatform(it) },
+                )
+            }
+
             item("notification") {
                 NotificationSection(
                     enabled = uiState.persistentNotificationEnabled,
@@ -292,6 +301,46 @@ fun SettingsScreen(
                 importLauncher.launch(arrayOf("application/json", "*/*"))
             }
         )
+    }
+}
+
+@Composable
+private fun HomePlatformSection(
+    visiblePlatforms: Set<Platform>,
+    onTogglePlatform: (Platform) -> Unit,
+) {
+    CardGroup(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        title = { Text("首页供应商") },
+    ) {
+        Platform.entries.forEach { platform ->
+            val visible = platform in visiblePlatforms
+            item(
+                onClick = { onTogglePlatform(platform) },
+                leadingContent = {
+                    Icon(
+                        imageVector = if (visible) {
+                            Icons.Outlined.Visibility
+                        } else {
+                            Icons.Outlined.VisibilityOff
+                        },
+                        contentDescription = null,
+                        tint = if (visible) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                headlineContent = { Text(platform.displayName) },
+                supportingContent = {
+                    Text(if (visible) "显示在首页" else "已从首页隐藏")
+                },
+                trailingContent = {
+                    Switch(
+                        checked = visible,
+                        onCheckedChange = { onTogglePlatform(platform) },
+                    )
+                },
+            )
+        }
     }
 }
 

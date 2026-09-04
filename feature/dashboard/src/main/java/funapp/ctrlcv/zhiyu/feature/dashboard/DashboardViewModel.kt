@@ -10,6 +10,7 @@ import funapp.ctrlcv.zhiyu.core.domain.model.SessionEvent
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.usecase.UsageRepository
 import funapp.ctrlcv.zhiyu.core.network.interceptor.SessionEventBus
+import funapp.ctrlcv.zhiyu.core.storage.HomePlatformPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +20,7 @@ import javax.inject.Inject
 
 data class DashboardUiState(
     val usageList: List<UsageInfo> = emptyList(),
+    val visiblePlatforms: Set<Platform> = Platform.entries.toSet(),
     val isRefreshing: Boolean = false,
     val lastUpdated: Long = 0L,
     val authRequired: Platform? = null,
@@ -29,13 +31,15 @@ data class DashboardUiState(
 class DashboardViewModel @Inject constructor(
     private val application: Application,
     private val repository: UsageRepository,
-    private val sessionEventBus: SessionEventBus
+    private val sessionEventBus: SessionEventBus,
+    private val homePlatformPreferences: HomePlatformPreferences,
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
+        observeVisiblePlatforms()
         viewModelScope.launch {
             // 先把缓存数据立刻渲染，避免首次打开空白屏
             val cached = repository.getCachedUsage()
@@ -85,6 +89,9 @@ class DashboardViewModel @Inject constructor(
             sessionEventBus.events.collect { event ->
                 when (event) {
                     is SessionEvent.SessionExpired -> {
+                        if (event.platform !in _uiState.value.visiblePlatforms) {
+                            return@collect
+                        }
                         if (!event.platform.requiresApiKey) {
                             _uiState.update { it.copy(authRequired = event.platform) }
                         } else {
@@ -96,6 +103,21 @@ class DashboardViewModel @Inject constructor(
                     is SessionEvent.RefreshCompleted -> {
                         if (event.success) loadUsage()
                     }
+                }
+            }
+        }
+    }
+
+    private fun observeVisiblePlatforms() {
+        viewModelScope.launch {
+            homePlatformPreferences.visiblePlatforms.collect { visiblePlatforms ->
+                _uiState.update {
+                    it.copy(
+                        visiblePlatforms = visiblePlatforms,
+                        authRequired = it.authRequired?.takeIf { platform ->
+                            platform in visiblePlatforms
+                        },
+                    )
                 }
             }
         }
