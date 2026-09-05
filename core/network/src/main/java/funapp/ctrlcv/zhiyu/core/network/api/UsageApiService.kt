@@ -114,10 +114,12 @@ class UsageApiService @Inject constructor(
         if (util == null || util.isJsonNull) return null
         val percent = util.asFloat
         val resetAt = obj.get("resets_at")?.takeUnless { it.isJsonNull }?.asString
+        val windowSeconds = if (key == "five_hour") FIVE_HOUR_SECONDS else WEEKLY_SECONDS
         return UsageItem(
             label = label,
             percent = percent,
-            resetCountdown = resetAt?.let { formatResetTime(it) }
+            resetCountdown = resetAt?.let { formatResetTime(it) },
+            elapsedPercent = resetAt?.let { elapsedPercentFromResetAt(it, windowSeconds) }
         )
     }
 
@@ -173,11 +175,11 @@ class UsageApiService @Inject constructor(
             try {
                 val json = gson.fromJson(body, JsonObject::class.java)
                 val rateLimit = json.optObject("rate_limit")
-                parseChatGptWindow(rateLimit, "primary_window", "5 小时限额")?.let(items::add)
-                parseChatGptWindow(rateLimit, "secondary_window", "周限额")?.let(items::add)
+                parseChatGptWindow(rateLimit, "primary_window", "5 小时限额", FIVE_HOUR_SECONDS)?.let(items::add)
+                parseChatGptWindow(rateLimit, "secondary_window", "周限额", WEEKLY_SECONDS)?.let(items::add)
                 val codeReview = json.optObject("code_review_rate_limit")
-                parseChatGptWindow(codeReview, "primary_window", "Code Review｜5 小时")?.let(items::add)
-                parseChatGptWindow(codeReview, "secondary_window", "Code Review｜周")?.let(items::add)
+                parseChatGptWindow(codeReview, "primary_window", "Code Review｜5 小时", FIVE_HOUR_SECONDS)?.let(items::add)
+                parseChatGptWindow(codeReview, "secondary_window", "Code Review｜周", WEEKLY_SECONDS)?.let(items::add)
                 resetCredits = parseChatGptResetCredits(json.optObject("rate_limit_reset_credits"))
                 json.get("plan_type")?.takeUnless { it.isJsonNull }?.asString
             } catch (e: Exception) {
@@ -263,20 +265,25 @@ class UsageApiService @Inject constructor(
     private fun JsonObject.optObject(key: String): JsonObject? =
         get(key)?.takeIf { it.isJsonObject }?.asJsonObject
 
-    private fun parseChatGptWindow(rateLimit: JsonObject?, key: String, label: String): UsageItem? {
+    private fun parseChatGptWindow(rateLimit: JsonObject?, key: String, label: String, windowSeconds: Long): UsageItem? {
         val node = rateLimit?.get(key)
         if (node == null || node.isJsonNull) return null
         val obj = node.asJsonObject
         val percentEl = obj.get("used_percent")
         if (percentEl == null || percentEl.isJsonNull) return null
         val percent = percentEl.asFloat.coerceIn(0f, 100f)
-        val resetCountdown = obj.get("reset_after_seconds")?.takeUnless { it.isJsonNull }?.asLong
-            ?.let { formatResetSeconds(it) }
+
+        val remainingSeconds = obj.get("reset_after_seconds")?.takeUnless { it.isJsonNull }?.asLong
             ?: obj.get("reset_at")?.takeUnless { it.isJsonNull }?.let { el ->
-                runCatching { formatResetTimestamp(el.asLong) }.getOrNull()
-                    ?: runCatching { formatResetTime(el.asString) }.getOrNull()
+                runCatching { el.asLong - System.currentTimeMillis() / 1000L }.getOrNull()
+                    ?: runCatching {
+                        java.time.Duration.between(java.time.Instant.now(), java.time.Instant.parse(el.asString)).seconds
+                    }.getOrNull()
             }
-        return UsageItem(label = label, percent = percent, resetCountdown = resetCountdown)
+
+        val resetCountdown = remainingSeconds?.let { formatResetSeconds(it) }
+        val elapsedPercent = remainingSeconds?.let { elapsedPercentFromRemaining(it, windowSeconds) }
+        return UsageItem(label = label, percent = percent, resetCountdown = resetCountdown, elapsedPercent = elapsedPercent)
     }
 
     // Codex「重置卡」= 使用后可立即重置 5 小时 / 周限额的官方道具。数据来自 wham 的
@@ -776,7 +783,8 @@ class UsageApiService @Inject constructor(
                         statusKey = "current_interval_status",
                         remainingPercentKey = "current_interval_remaining_percent",
                         remainsTimeKey = "remains_time",
-                        boostKey = "interval_boost_permille"
+                        boostKey = "interval_boost_permille",
+                        windowSeconds = FIVE_HOUR_SECONDS
                     ),
                     buildMinimaxUsageItem(
                         obj = general,
@@ -784,7 +792,8 @@ class UsageApiService @Inject constructor(
                         statusKey = "current_weekly_status",
                         remainingPercentKey = "current_weekly_remaining_percent",
                         remainsTimeKey = "weekly_remains_time",
-                        boostKey = "weekly_boost_permille"
+                        boostKey = "weekly_boost_permille",
+                        windowSeconds = WEEKLY_SECONDS
                     )
                 )
 
@@ -807,7 +816,8 @@ class UsageApiService @Inject constructor(
         statusKey: String,
         remainingPercentKey: String,
         remainsTimeKey: String,
-        boostKey: String
+        boostKey: String,
+        windowSeconds: Long
     ): UsageItem {
         val status = obj.get(statusKey)?.asInt ?: 0
         if (status == MINIMAX_STATUS_UNLIMITED) {
@@ -822,7 +832,8 @@ class UsageApiService @Inject constructor(
             label = label,
             percent = usedPercent,
             resetCountdown = remainsTimeMs?.let { formatMinimaxResetCountdown(it) },
-            boostPercent = boostPercent
+            boostPercent = boostPercent,
+            elapsedPercent = remainsTimeMs?.let { elapsedPercentFromRemaining(it / 1000L, windowSeconds) }
         )
     }
 
@@ -1032,22 +1043,15 @@ class UsageApiService @Inject constructor(
         }
     }
 
-    private fun formatResetTimestamp(timestamp: Long): String {
-        return try {
-            val instant = java.time.Instant.ofEpochSecond(timestamp)
-            val now = java.time.Instant.now()
-            val duration = java.time.Duration.between(now, instant)
-            val hours = duration.toHours()
-            val minutes = duration.toMinutes() % 60
-            when {
-                hours > 24 -> "${hours / 24}天后重置"
-                hours > 0 -> "${hours}小时${if (minutes > 0) "${minutes}分钟" else ""}后重置"
-                minutes > 0 -> "${minutes}分钟后重置"
-                else -> "即将重置"
-            }
-        } catch (e: Exception) {
-            ""
-        }
+    // 窗口已过去的时间比例（0-100），供「奶油」主题双段进度条使用；windowSeconds 为该窗口固定总时长。
+    private fun elapsedPercentFromRemaining(remainingSeconds: Long, windowSeconds: Long): Float =
+        (((windowSeconds - remainingSeconds).toFloat() / windowSeconds) * 100f).coerceIn(0f, 100f)
+
+    private fun elapsedPercentFromResetAt(isoTime: String, windowSeconds: Long): Float? {
+        val remaining = runCatching {
+            java.time.Duration.between(java.time.Instant.now(), java.time.Instant.parse(isoTime)).seconds
+        }.getOrNull() ?: return null
+        return elapsedPercentFromRemaining(remaining, windowSeconds)
     }
 
     private fun formatTokenCount(count: Long): String = when {
@@ -1067,6 +1071,10 @@ class UsageApiService @Inject constructor(
 
         // MiniMax Token Plan：current_*_status == 3 表示该窗口无上限（无限制）
         private const val MINIMAX_STATUS_UNLIMITED = 3
+
+        // 固定窗口总时长（秒），用于推算「时间已过去比例」（elapsedPercent）
+        private const val FIVE_HOUR_SECONDS = 5 * 60 * 60L
+        private const val WEEKLY_SECONDS = 7 * 24 * 60 * 60L
 
         // OpenCode Zen 余额抓取的诊断日志 TAG（logcat 过滤用）
         private const val ZEN_TAG = "ZhiyuZen"

@@ -5,6 +5,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.runtime.compositionLocalOf
 import funapp.ctrlcv.zhiyu.core.ui.theme.presets.AppleThemePreset
 import funapp.ctrlcv.zhiyu.core.ui.theme.presets.ClaudeThemePreset
+import funapp.ctrlcv.zhiyu.core.ui.theme.presets.CreamThemePreset
 import funapp.ctrlcv.zhiyu.core.ui.theme.presets.CursorThemePreset
 import funapp.ctrlcv.zhiyu.core.ui.theme.presets.LinearThemePreset
 import funapp.ctrlcv.zhiyu.core.ui.theme.presets.NotionThemePreset
@@ -38,6 +39,7 @@ val PresetThemes by lazy {
         NotionThemePreset,
         StripeThemePreset,
         AppleThemePreset,
+        CreamThemePreset,
     )
 }
 
