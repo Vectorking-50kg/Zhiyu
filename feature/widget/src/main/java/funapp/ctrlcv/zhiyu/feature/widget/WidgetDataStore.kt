@@ -1,42 +1,21 @@
 package funapp.ctrlcv.zhiyu.feature.widget
 
 import android.content.Context
-import android.content.SharedPreferences
-import com.google.gson.Gson
-
-data class WidgetPlatformItem(
-    val name: String,
-    val mainPercent: Float,
-    val resetInfo: String? = null
-)
-
-data class WidgetUsageData(
-    val items: List<WidgetPlatformItem> = emptyList(),
-    val lastUpdated: Long = 0L
-)
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+import funapp.ctrlcv.zhiyu.core.domain.usecase.UsageRepository
 
 object WidgetDataStore {
-    private const val PREFS_NAME = "widget_data"
-    private const val KEY_DATA = "usage_data"
-    private val gson = Gson()
+    // No network or credential access: use the app's account-scoped snapshots.
+    fun read(context: Context): WidgetUsageData = EntryPointAccessors.fromApplication(
+        context.applicationContext, WidgetDataEntryPoint::class.java
+    ).usageRepository().getCachedUsage().toWidgetUsageData()
+}
 
-    fun read(context: Context): WidgetUsageData {
-        val prefs = getPrefs(context)
-        val json = prefs.getString(KEY_DATA, null) ?: return WidgetUsageData()
-        return try {
-            gson.fromJson(json, WidgetUsageData::class.java)
-        } catch (e: Exception) {
-            WidgetUsageData()
-        }
-    }
-
-    fun write(context: Context, data: WidgetUsageData) {
-        getPrefs(context).edit()
-            .putString(KEY_DATA, gson.toJson(data))
-            .apply()
-    }
-
-    private fun getPrefs(context: Context): SharedPreferences {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    }
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface WidgetDataEntryPoint {
+    fun usageRepository(): UsageRepository
 }

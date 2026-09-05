@@ -9,7 +9,10 @@ data class UsageInfo(
     val stale: Boolean = false,
     // Codex 限额「重置卡」（rate-limit reset credits）：使用后可立即重置 5 小时 / 周限额的官方道具。
     // 仅 Codex 平台会填充；其余平台为 null。
-    val resetCredits: ResetCredits? = null
+    val resetCredits: ResetCredits? = null,
+    val accountId: String? = null,
+    val providerAccountId: String? = null,
+    val refreshFailure: UsageFailure? = null
 )
 
 /**
@@ -48,5 +51,9 @@ data class UsageItem(
     val boostPercent: Int? = null,
     // 该限额窗口已经过去的时间比例（0-100）；仅在窗口总时长固定已知（5 小时 / 7 天）时提供，
     // 用于「奶油」主题进度条的双段渲染（深色=用量，浅色=时间）
-    val elapsedPercent: Float? = null
+    val elapsedPercent: Float? = null,
+    /** Absolute provider reset time in epoch milliseconds, retained in cached snapshots. */
+    val resetAt: Long? = null,
+    val windowDurationSeconds: Long? = null,
+    val windowId: String? = null
 )

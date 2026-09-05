@@ -39,4 +39,5 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.workmanager)
+    testImplementation("junit:junit:4.13.2")
 }

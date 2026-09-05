@@ -14,6 +14,12 @@ interface UsageRepository {
     suspend fun getUsage(platform: Platform, accountId: String): Result<UsageInfo>
     suspend fun getAllUsage(): List<UsageInfo>
     fun getCachedUsage(): List<UsageInfo>
+    /** Invalidate data and any in-flight refresh before replacing an account's credentials. */
+    suspend fun invalidateCache(platform: Platform, accountId: String)
+    /** Keep refreshes blocked while the caller commits a validated account session. */
+    suspend fun updateAccount(platform: Platform, accountId: String, validatedUsage: UsageInfo? = null, commit: () -> Unit)
+    /** Atomically block affected account refreshes for one backup/import commit. */
+    suspend fun updateAccounts(accounts: Collection<Pair<Platform, String>>, commit: () -> Unit)
 }
 
 class GetUsageUseCase(private val repository: UsageRepository) {

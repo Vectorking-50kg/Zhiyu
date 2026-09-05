@@ -1,6 +1,5 @@
 package funapp.ctrlcv.zhiyu.core.network.interceptor
 
-import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.SessionEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import okhttp3.Interceptor
@@ -18,16 +17,11 @@ class SessionEventBus @Inject constructor() {
 }
 
 class CookieInterceptor(
-    private val eventBus: SessionEventBus
+    @Suppress("UNUSED_PARAMETER") eventBus: SessionEventBus
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
-        val response = chain.proceed(chain.request())
-        when (response.code) {
-            401, 403 -> {
-                val platform = chain.request().tag(Platform::class.java)
-                platform?.let { eventBus.emit(SessionEvent.SessionExpired(it)) }
-            }
-        }
-        return response
+        // A first 401 may be recovered by token refresh, or belong to a login validation.
+        // Only the repository knows when an established account truly needs a new login.
+        return chain.proceed(chain.request())
     }
 }

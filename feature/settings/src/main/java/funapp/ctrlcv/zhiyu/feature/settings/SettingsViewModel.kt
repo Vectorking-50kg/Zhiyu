@@ -10,6 +10,7 @@ import funapp.ctrlcv.zhiyu.core.data.notification.NotificationPreferences
 import funapp.ctrlcv.zhiyu.core.domain.model.Account
 import funapp.ctrlcv.zhiyu.core.domain.model.ColorMode
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
+import funapp.ctrlcv.zhiyu.core.domain.usecase.UsageRepository
 import funapp.ctrlcv.zhiyu.core.storage.AccountStore
 import funapp.ctrlcv.zhiyu.core.storage.BackupManager
 import funapp.ctrlcv.zhiyu.core.storage.HomePlatformPreferences
@@ -19,6 +20,7 @@ import funapp.ctrlcv.zhiyu.core.ui.theme.KEY_COLOR_MODE
 import funapp.ctrlcv.zhiyu.core.ui.theme.KEY_THEME_ID
 import funapp.ctrlcv.zhiyu.core.ui.theme.THEME_PREFS_NAME
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,7 +59,8 @@ class SettingsViewModel @Inject constructor(
     private val backupManager: BackupManager,
     private val homePlatformPreferences: HomePlatformPreferences,
     private val notificationPrefs: NotificationPreferences,
-    private val balanceNotifier: BalanceNotificationManager
+    private val balanceNotifier: BalanceNotificationManager,
+    private val repository: UsageRepository,
 ) : ViewModel() {
 
     private val themePrefs by lazy {
@@ -110,6 +113,9 @@ class SettingsViewModel @Inject constructor(
 
         _uiState.update { it.copy(loggedInPlatforms = loggedIn, configuredApiPlatforms = configured) }
     }
+
+    /** Re-read credentials after returning from a separate login destination. */
+    fun onForeground() = loadAccounts()
 
     private fun loadNotificationPrefs() {
         _uiState.update {
@@ -202,25 +208,62 @@ class SettingsViewModel @Inject constructor(
 
         if (apiKey.isEmpty()) return
 
-        tokenStore.save(platform, "default", apiKey)
-
-        accountStore.saveAccount(
-            Account(
-                id = "default",
-                platform = platform,
-                displayName = platform.displayName,
-                planType = "API"
-            )
-        )
-
-        loadAccounts()
-        _uiState.update { it.copy(apiKeyDialog = null) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                repository.updateAccount(platform, "default") {
+                    commitAccountMutation(platform, "default") {
+                        tokenStore.save(platform, "default", apiKey, durable = true)
+                        accountStore.saveAccount(
+                            Account("default", platform, platform.displayName, "API"),
+                            durable = true,
+                        )
+                    }
+                }
+                loadAccounts()
+                _uiState.update {
+                    if (it.apiKeyDialog == dialog) it.copy(apiKeyDialog = null) else it
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                loadAccounts()
+                _uiState.update { it.copy(backupMessage = "密钥保存失败，请重试") }
+            }
+        }
     }
 
     fun clearApiKey(platform: Platform) {
-        tokenStore.clear(platform, "default")
-        accountStore.removeAccount(platform, "default")
-        loadAccounts()
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                repository.updateAccount(platform, "default") {
+                    commitAccountMutation(platform, "default") {
+                        tokenStore.clear(platform, "default", durable = true)
+                        accountStore.removeAccount(platform, "default", durable = true)
+                    }
+                }
+                loadAccounts()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                loadAccounts()
+                _uiState.update { it.copy(backupMessage = "密钥删除失败，请重试") }
+            }
+        }
+    }
+
+    /** Called only while repository holds the corresponding account gate. */
+    private fun commitAccountMutation(platform: Platform, accountId: String, commit: () -> Unit) {
+        val previousTokens = tokenStore.snapshot(platform, accountId)
+        val previousAccount = accountStore.getAccounts(platform).firstOrNull { it.id == accountId }
+        commitSettingsAccount(
+            commit = commit,
+            restore = {
+                tokenStore.restore(platform, accountId, previousTokens)
+                if (previousAccount != null) accountStore.saveAccount(previousAccount, durable = true)
+                else accountStore.removeAccount(platform, accountId, durable = true)
+            },
+            quarantine = { tokenStore.clear(platform, accountId, durable = true) },
+        )
     }
 
     fun prepareExport() {
@@ -228,8 +271,10 @@ class SettingsViewModel @Inject constructor(
             try {
                 val json = backupManager.export()
                 _uiState.update { it.copy(exportJson = json) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(backupMessage = "导出失败：${e.message}") }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                _uiState.update { it.copy(backupMessage = "导出失败，请重试") }
             }
         }
     }
@@ -253,11 +298,15 @@ class SettingsViewModel @Inject constructor(
     fun importData(json: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                backupManager.import(json)
+                val prepared = backupManager.prepareImport(json)
+                repository.updateAccounts(prepared.affectedAccounts) { backupManager.import(prepared) }
                 loadAccounts()
                 _uiState.update { it.copy(backupMessage = "备份已成功导入") }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(backupMessage = "导入失败：${e.message}") }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                loadAccounts()
+                _uiState.update { it.copy(backupMessage = "导入失败，请检查备份文件后重试") }
             }
         }
     }

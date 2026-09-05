@@ -4,6 +4,8 @@
 -dontwarn sun.misc.**
 -keep class com.google.gson.** { *; }
 -keep class funapp.ctrlcv.zhiyu.core.domain.model.** { *; }
+-keep class funapp.ctrlcv.zhiyu.core.storage.OAuthCredential { *; }
+-keep class funapp.ctrlcv.zhiyu.core.storage.BackupData { *; }
 -keep class funapp.ctrlcv.zhiyu.feature.widget.WidgetUsageData { *; }
 -keep class funapp.ctrlcv.zhiyu.feature.widget.WidgetPlatformItem { *; }
 

@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -43,7 +45,13 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import funapp.ctrlcv.zhiyu.core.ui.theme.CustomColors
+import funapp.ctrlcv.zhiyu.core.domain.model.messageFor
 import funapp.ctrlcv.zhiyu.feature.dashboard.components.UsageCard
 import funapp.ctrlcv.zhiyu.feature.dashboard.components.UsageCardList
 import funapp.ctrlcv.zhiyu.feature.dashboard.components.UsageCardWaterfall
@@ -58,6 +66,16 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val visibleUsageList = uiState.usageList.filter { it.platform in uiState.visiblePlatforms }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.loadUsage()
+            while (isActive) {
+                viewModel.updateClock()
+                delay(30_000)
+            }
+        }
+    }
 
     var layoutModeOrdinal by rememberSaveable { mutableIntStateOf(0) }
     val layoutMode = LayoutMode.values()[layoutModeOrdinal]
@@ -111,7 +129,7 @@ fun DashboardScreen(
             if (uiState.lastUpdated > 0) {
                 item(key = "last_updated", span = { GridItemSpan(maxLineSpan) }) {
                     Text(
-                        text = "上次更新：${formatTimeSince(uiState.lastUpdated)}",
+                        text = "上次更新：${formatTimeSince(uiState.lastUpdated, uiState.currentTime)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 2.dp, bottom = 4.dp)
@@ -119,11 +137,30 @@ fun DashboardScreen(
                 }
             }
 
-            items(visibleUsageList, key = { "${it.platform.key}_${it.updatedAt}" }) { usage ->
-                when (layoutMode) {
-                    LayoutMode.DETAILED -> UsageCard(usageInfo = usage)
-                    LayoutMode.LIST -> UsageCardList(usageInfo = usage)
-                    LayoutMode.WATERFALL -> UsageCardWaterfall(usageInfo = usage)
+            items(visibleUsageList, key = { "${it.platform.key}_${it.accountId ?: "legacy"}" }) { usage ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    when (layoutMode) {
+                        LayoutMode.DETAILED -> UsageCard(usageInfo = usage)
+                        LayoutMode.LIST -> UsageCardList(usageInfo = usage)
+                        LayoutMode.WATERFALL -> UsageCardWaterfall(usageInfo = usage)
+                    }
+                    val failure = usage.refreshFailure
+                    if (failure != null || usage.stale) {
+                        Text(
+                            text = buildString {
+                                if (failure != null) append(failure.messageFor(usage.platform)) else append("数据可能已过时")
+                                if (usage.items.isNotEmpty()) {
+                                    append(" · 显示${formatTimeSince(usage.updatedAt, uiState.currentTime)}的缓存")
+                                }
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (failure != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                    }
+                    if (failure?.requiresLogin == true && !usage.platform.requiresApiKey) {
+                        TextButton(onClick = { onNavigateToAuth(usage.platform.key) }) { Text("重新登录") }
+                    }
                 }
             }
 
@@ -228,8 +265,8 @@ private fun DashboardTopBar(
     )
 }
 
-private fun formatTimeSince(timestamp: Long): String {
-    val diff = System.currentTimeMillis() - timestamp
+private fun formatTimeSince(timestamp: Long, now: Long = System.currentTimeMillis()): String {
+    val diff = (now - timestamp).coerceAtLeast(0)
     val minutes = diff / 60_000
     return when {
         minutes < 1 -> "刚刚"
