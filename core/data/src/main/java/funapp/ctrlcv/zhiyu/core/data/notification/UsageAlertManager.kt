@@ -79,7 +79,7 @@ class UsageAlertManager @Inject constructor(
         saveState(
             info.platform,
             PlatformAlertState(
-                percents = quotaItems.associate { it.label to it.percent },
+                percents = quotaItems.associate { (it.windowId ?: it.label) to it.percent },
                 notifiedLevel = level,
             ),
         )
@@ -94,7 +94,7 @@ class UsageAlertManager @Inject constructor(
     ) {
         prev ?: return
         val resetItems = items.filter { item ->
-            val old = prev.percents[item.label] ?: return@filter false
+            val old = prev.percents[item.windowId ?: item.label] ?: prev.percents[item.label] ?: return@filter false
             old >= RESET_TRACK_PERCENT && item.percent <= old - RESET_DROP_PERCENT
         }
         if (resetItems.isEmpty() || !prefs.resetReminderEnabled || !canNotify()) return

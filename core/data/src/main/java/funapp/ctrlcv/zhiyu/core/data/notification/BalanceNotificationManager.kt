@@ -20,6 +20,7 @@ import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.model.primaryMetric
 import funapp.ctrlcv.zhiyu.core.domain.model.primaryMetricText
+import funapp.ctrlcv.zhiyu.core.domain.model.messageFor
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -80,11 +81,12 @@ class BalanceNotificationManager @Inject constructor(
         val title = if (stale) "AI 用量 / 余额（缓存）" else "AI 用量 / 余额"
         // 更新时间走系统标准时间槽：setWhen + setShowWhen 渲染到头部「应用名 · 时间」一行，
         // 系统以灰色小字呈现，不抢标题视觉。取所有置顶平台中最近的一次更新。
-        val updatedAt = infos.maxOfOrNull { it.updatedAt }
+        val updatedAt = infos.filter { it.items.isNotEmpty() && it.updatedAt > 0 }.maxOfOrNull { it.updatedAt }
 
         // 折叠态摘要：纯文本一行，展开后由自定义大视图呈现进度条与状态色
         val summary = platforms.joinToString("    ") { platform ->
-            "${platform.displayName} ${byPlatform[platform]?.primaryMetricText() ?: "--"}"
+            val info = byPlatform[platform]
+            "${platform.displayName} ${info?.primaryMetricText() ?: "--"}${if (info?.stale == true) "（缓存）" else ""}"
         }
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -139,7 +141,10 @@ class BalanceNotificationManager @Inject constructor(
             row.setInt(R.id.platform_dot, "setColorFilter", color)
 
             // 数值左侧的含义说明，如「5 小时限额」「账户余额」；无说明时隐藏占位
-            val metricLabel = metric?.label
+            val info = byPlatform[platform]
+            val metricLabel = info?.refreshFailure?.messageFor(platform) ?: metric?.label?.let { label ->
+                if (info?.stale == true) "$label · 缓存" else label
+            }
             if (!metricLabel.isNullOrBlank()) {
                 row.setViewVisibility(R.id.platform_metric_label, View.VISIBLE)
                 row.setTextViewText(R.id.platform_metric_label, metricLabel)

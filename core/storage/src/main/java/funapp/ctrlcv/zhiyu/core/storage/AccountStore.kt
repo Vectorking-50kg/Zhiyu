@@ -7,6 +7,7 @@ import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import funapp.ctrlcv.zhiyu.core.domain.model.Account
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,13 +27,16 @@ class AccountStore @Inject constructor(
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
 
-    fun saveAccount(account: Account) {
-        prefs.edit()
+    fun saveAccount(account: Account, durable: Boolean = false) {
+        val editor = prefs.edit()
             .putString("${account.platform.key}_${account.id}_name", account.displayName)
             .putString("${account.platform.key}_${account.id}_plan", account.planType)
+            .putString("${account.platform.key}_${account.id}_provider_id", account.providerAccountId)
             .putStringSet("accounts_${account.platform.key}",
                 getAccountIds(account.platform) + account.id)
-            .apply()
+        if (durable) {
+            if (!editor.commit()) throw IOException("无法保存账号信息，请重试")
+        } else editor.apply()
     }
 
     fun getAccounts(platform: Platform): List<Account> {
@@ -41,7 +45,8 @@ class AccountStore @Inject constructor(
                 id = id,
                 platform = platform,
                 displayName = prefs.getString("${platform.key}_${id}_name", platform.displayName) ?: platform.displayName,
-                planType = prefs.getString("${platform.key}_${id}_plan", "") ?: ""
+                planType = prefs.getString("${platform.key}_${id}_plan", "") ?: "",
+                providerAccountId = prefs.getString("${platform.key}_${id}_provider_id", null)
             )
         }
     }
@@ -50,13 +55,16 @@ class AccountStore @Inject constructor(
         return Platform.entries.flatMap { getAccounts(it) }
     }
 
-    fun removeAccount(platform: Platform, accountId: String) {
+    fun removeAccount(platform: Platform, accountId: String, durable: Boolean = false) {
         val ids = getAccountIds(platform) - accountId
-        prefs.edit()
+        val editor = prefs.edit()
             .putStringSet("accounts_${platform.key}", ids)
             .remove("${platform.key}_${accountId}_name")
             .remove("${platform.key}_${accountId}_plan")
-            .apply()
+            .remove("${platform.key}_${accountId}_provider_id")
+        if (durable) {
+            if (!editor.commit()) throw IOException("无法更新账号信息，请重试")
+        } else editor.apply()
     }
 
     private fun getAccountIds(platform: Platform): Set<String> {
@@ -76,10 +84,20 @@ class AccountStore @Inject constructor(
         }.toMap()
     }
 
-    fun importAll(strings: Map<String, String>, sets: Map<String, List<String>>) {
+    fun importAll(strings: Map<String, String>, sets: Map<String, List<String>>, durable: Boolean = false) {
         val editor = prefs.edit()
         strings.forEach { (key, value) -> editor.putString(key, value) }
         sets.forEach { (key, value) -> editor.putStringSet(key, value.toSet()) }
-        editor.apply()
+        if (durable) {
+            if (!editor.commit()) throw IOException("无法恢复备份账号信息，请重试")
+        } else editor.apply()
+    }
+
+    /** Exact rollback of both string values and account ID sets. */
+    fun restoreAll(strings: Map<String, String>, sets: Map<String, List<String>>) {
+        val editor = prefs.edit().clear()
+        strings.forEach { (key, value) -> editor.putString(key, value) }
+        sets.forEach { (key, value) -> editor.putStringSet(key, value.toSet()) }
+        if (!editor.commit()) throw IOException("无法恢复原账号信息，请重新登录")
     }
 }

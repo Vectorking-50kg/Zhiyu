@@ -73,13 +73,17 @@ fun SmallWidgetContent(data: WidgetUsageData) {
             )
             Spacer(GlanceModifier.height(8.dp))
             Text(
-                text = "${platform.mainPercent.toInt()}%",
+                text = platform.mainText,
                 style = TextStyle(
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = progressColor(platform.mainPercent)
                 )
             )
+            platform.status?.let {
+                Spacer(GlanceModifier.height(4.dp))
+                Text(it, style = TextStyle(fontSize = 10.sp), maxLines = 2)
+            }
         } else {
             Text(text = "未登录", style = TextStyle(fontSize = 12.sp))
         }
@@ -103,7 +107,7 @@ fun MediumWidgetContent(data: WidgetUsageData) {
             )
             Spacer(GlanceModifier.height(8.dp))
             Text(
-                text = "${platform.mainPercent.toInt()}%",
+                text = platform.mainText,
                 style = TextStyle(
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
@@ -117,6 +121,7 @@ fun MediumWidgetContent(data: WidgetUsageData) {
                     style = TextStyle(fontSize = 10.sp, color = ColorProvider(Color.Gray))
                 )
             }
+            platform.status?.let { Text(it, style = TextStyle(fontSize = 10.sp), maxLines = 2) }
         } else {
             Text(text = "未登录", style = TextStyle(fontSize = 12.sp))
         }
@@ -132,9 +137,9 @@ fun LargeWidgetContent(data: WidgetUsageData) {
             .background(GlanceTheme.colors.background),
         horizontalAlignment = Alignment.Horizontal.CenterHorizontally
     ) {
-        data.items.forEachIndexed { index, item ->
+        data.items.take(3).forEachIndexed { index, item ->
             PlatformColumn(item)
-            if (index < data.items.size - 1) {
+            if (index < minOf(data.items.size, 3) - 1) {
                 Spacer(GlanceModifier.width(8.dp))
             }
         }
@@ -157,7 +162,7 @@ fun PlatformColumn(item: WidgetPlatformItem) {
         )
         Spacer(GlanceModifier.height(8.dp))
         Text(
-            text = "${item.mainPercent.toInt()}%",
+            text = item.mainText,
             style = TextStyle(
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
@@ -171,11 +176,13 @@ fun PlatformColumn(item: WidgetPlatformItem) {
                 style = TextStyle(fontSize = 9.sp, color = ColorProvider(Color.Gray))
             )
         }
+        item.status?.let { Text(it, style = TextStyle(fontSize = 9.sp), maxLines = 2) }
     }
 }
 
 fun progressColor(percent: Float): ColorProvider = when {
+    percent < 0f -> ColorProvider(Color.Gray)
     percent < 80f -> ColorProvider(Color(0xFF22C55E))
-    percent < 90f -> ColorProvider(Color(0xFFEAB308))
+    percent < 95f -> ColorProvider(Color(0xFFEAB308))
     else -> ColorProvider(Color(0xFFEF4444))
 }

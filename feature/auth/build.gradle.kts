@@ -31,8 +31,10 @@ android {
 dependencies {
     implementation(project(":core:domain"))
     implementation(project(":core:storage"))
+    implementation(project(":core:network"))
 
     implementation(libs.core.ktx)
+    implementation(libs.activity.compose)
     implementation(libs.webkit)
 
     implementation(platform(libs.compose.bom))
@@ -47,4 +49,5 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
+    testImplementation("junit:junit:4.13.2")
 }

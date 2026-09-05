@@ -49,4 +49,5 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
+    testImplementation("junit:junit:4.13.2")
 }

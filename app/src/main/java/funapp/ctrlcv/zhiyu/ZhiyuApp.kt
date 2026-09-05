@@ -10,6 +10,17 @@ import dagger.hilt.android.HiltAndroidApp
 import funapp.ctrlcv.zhiyu.core.data.notification.BalanceNotificationManager
 import funapp.ctrlcv.zhiyu.core.data.notification.UsageAlertManager
 import funapp.ctrlcv.zhiyu.core.data.worker.RefreshWorker
+import funapp.ctrlcv.zhiyu.core.domain.model.SessionEvent
+import funapp.ctrlcv.zhiyu.core.network.interceptor.SessionEventBus
+import funapp.ctrlcv.zhiyu.feature.widget.UsageWidgetReceiver
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -21,17 +32,31 @@ class ZhiyuApp : Application(), Configuration.Provider {
     @Inject
     lateinit var balanceNotifier: BalanceNotificationManager
 
+    @Inject
+    lateinit var sessionEvents: SessionEventBus
+
+    private val surfaceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
             .build()
 
+    @OptIn(FlowPreview::class)
     override fun onCreate() {
         super.onCreate()
         if (BuildConfig.USE_DEMO_DATA) {
             DemoUsageSeeder.seed(this)
         }
         createNotificationChannels()
+        // One completed fetch updates every surface, without launching another network request.
+        surfaceScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            sessionEvents.events.filterIsInstance<SessionEvent.RefreshCompleted>().debounce(250).collect {
+                // Notification permission can be revoked between checking it and posting.
+                try { balanceNotifier.refresh() } catch (_: SecurityException) { }
+                UsageWidgetReceiver.updateAll(this@ZhiyuApp)
+            }
+        }
         RefreshWorker.schedule(this)
         // 进程重建（重启 / 被系统回收后重新拉起）时，依据缓存恢复状态栏常驻通知
         balanceNotifier.refresh()
@@ -62,7 +87,7 @@ class ZhiyuApp : Application(), Configuration.Provider {
             "登录过期",
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "Cookie过期需要重新登录"
+            description = "登录凭据失效时提醒重新登录"
         }
 
         val resetChannel = NotificationChannel(

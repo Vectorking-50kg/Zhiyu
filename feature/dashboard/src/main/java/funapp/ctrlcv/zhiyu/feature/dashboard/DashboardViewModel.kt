@@ -4,10 +4,11 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import funapp.ctrlcv.zhiyu.core.data.worker.RefreshWorker
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.SessionEvent
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
+import funapp.ctrlcv.zhiyu.core.domain.model.atTime
+import funapp.ctrlcv.zhiyu.core.domain.model.toUsageFailure
 import funapp.ctrlcv.zhiyu.core.domain.usecase.UsageRepository
 import funapp.ctrlcv.zhiyu.core.network.interceptor.SessionEventBus
 import funapp.ctrlcv.zhiyu.core.storage.HomePlatformPreferences
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
 data class DashboardUiState(
@@ -24,7 +27,8 @@ data class DashboardUiState(
     val isRefreshing: Boolean = false,
     val lastUpdated: Long = 0L,
     val authRequired: Platform? = null,
-    val error: String? = null
+    val error: String? = null,
+    val currentTime: Long = System.currentTimeMillis()
 )
 
 @HiltViewModel
@@ -37,6 +41,7 @@ class DashboardViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+    private var refreshJob: Job? = null
 
     init {
         observeVisiblePlatforms()
@@ -58,26 +63,41 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun loadUsage() {
-        viewModelScope.launch {
+        if (refreshJob?.isActive == true) return
+        refreshJob = viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, error = null) }
             try {
                 val usageList = repository.getAllUsage()
                 _uiState.update {
                     it.copy(
-                        usageList = usageList,
+                        usageList = usageList.map { info -> info.atTime() },
                         isRefreshing = false,
-                        lastUpdated = System.currentTimeMillis()
+                        lastUpdated = usageList.filter { info -> info.items.isNotEmpty() }
+                            .maxOfOrNull { info -> info.updatedAt } ?: 0L,
+                        currentTime = System.currentTimeMillis()
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, error = e.message) }
+                _uiState.update { it.copy(error = e.toUsageFailure().message) }
+            } finally {
+                _uiState.update { it.copy(isRefreshing = false) }
             }
         }
     }
 
     fun refresh() {
-        RefreshWorker.refreshNow(application)
+        // The visible screen owns this refresh; scheduling a second worker here duplicates it.
         loadUsage()
+    }
+
+    fun updateClock() {
+        val now = System.currentTimeMillis()
+        _uiState.update { state -> state.copy(
+            currentTime = now,
+            usageList = state.usageList.map { it.atTime(now) }
+        ) }
     }
 
     fun dismissAuthRequired() {
@@ -101,7 +121,13 @@ class DashboardViewModel @Inject constructor(
                         }
                     }
                     is SessionEvent.RefreshCompleted -> {
-                        if (event.success) loadUsage()
+                        // A worker has already fetched; use its cache instead of fetching again.
+                        val cached = repository.getCachedUsage()
+                        _uiState.update { state -> state.copy(
+                            usageList = cached,
+                            lastUpdated = cached.filter { it.items.isNotEmpty() }.maxOfOrNull { it.updatedAt } ?: 0L,
+                            currentTime = System.currentTimeMillis()
+                        ) }
                     }
                 }
             }
