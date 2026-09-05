@@ -13,6 +13,7 @@ local.properties
 *.dex
 .kotlin
 /docs
+/design
 node_modules/
 package.json
 package-lock.json

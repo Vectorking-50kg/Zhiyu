@@ -28,6 +28,9 @@ class ZhiyuApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        if (BuildConfig.USE_DEMO_DATA) {
+            DemoUsageSeeder.seed(this)
+        }
         createNotificationChannels()
         RefreshWorker.schedule(this)
         // 进程重建（重启 / 被系统回收后重新拉起）时，依据缓存恢复状态栏常驻通知
