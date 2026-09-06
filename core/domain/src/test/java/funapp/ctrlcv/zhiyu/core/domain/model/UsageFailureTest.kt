@@ -33,7 +33,7 @@ class UsageFailureTest {
 
     @Test fun `API key errors guide to configuration rather than web login`() {
         val failure = UsageFailure(UsageFailureKind.AUTH_REQUIRED)
-        assertEquals("API 密钥无效，请在设置中重新配置", failure.messageFor(Platform.DEEPSEEK))
+        assertEquals("API 密钥无效，请检查后重试", failure.messageFor(Platform.DEEPSEEK))
         assertEquals("登录已失效，请重新登录", failure.messageFor(Platform.CLAUDE))
     }
 

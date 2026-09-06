@@ -22,6 +22,22 @@ class BackupPlanTest {
         assertEquals("PreparedBackup([REDACTED])", PreparedBackup(data, backupAccountKeys(data)).toString())
     }
 
+    @Test fun accountMonitoringPreferencesRoundTripWithLegacyBackups() {
+        val data = parseBackup("""{"version":1,"tokens":{},"accountStrings":{
+            "chatgpt_account_name":"Work", "chatgpt_account_monitoring":"false",
+            "chatgpt_account_visible":"false", "chatgpt_account_alerts":"true",
+            "chatgpt_account_pinned":"true"},"accountSets":{"accounts_chatgpt":["account"]}}""")
+        assertEquals(setOf(Platform.CHATGPT to "account"), backupAccountKeys(data))
+        assertEquals("false", data.accountStrings["chatgpt_account_monitoring"])
+        assertEquals("true", data.accountStrings["chatgpt_account_pinned"])
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun invalidMonitoringPreferenceIsRejectedBeforeImport() {
+        parseBackup("""{"version":1,"tokens":{},"accountStrings":{
+            "chatgpt_account_monitoring":"not-a-boolean"},"accountSets":{"accounts_chatgpt":["account"]}}""")
+    }
+
     @Test fun longestKnownAccountIdOwnsItsExtrasAndCredentialFields() {
         val data = parseBackup("""{
             "version":1,

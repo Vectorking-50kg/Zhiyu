@@ -32,6 +32,10 @@ class AccountStore @Inject constructor(
             .putString("${account.platform.key}_${account.id}_name", account.displayName)
             .putString("${account.platform.key}_${account.id}_plan", account.planType)
             .putString("${account.platform.key}_${account.id}_provider_id", account.providerAccountId)
+            .putString("${account.platform.key}_${account.id}_monitoring", account.monitoringEnabled.toString())
+            .putString("${account.platform.key}_${account.id}_visible", account.showOnOverview?.toString())
+            .putString("${account.platform.key}_${account.id}_alerts", account.usageAlertEnabled.toString())
+            .putString("${account.platform.key}_${account.id}_pinned", account.pinned?.toString())
             .putStringSet("accounts_${account.platform.key}",
                 getAccountIds(account.platform) + account.id)
         if (durable) {
@@ -46,7 +50,11 @@ class AccountStore @Inject constructor(
                 platform = platform,
                 displayName = prefs.getString("${platform.key}_${id}_name", platform.displayName) ?: platform.displayName,
                 planType = prefs.getString("${platform.key}_${id}_plan", "") ?: "",
-                providerAccountId = prefs.getString("${platform.key}_${id}_provider_id", null)
+                providerAccountId = prefs.getString("${platform.key}_${id}_provider_id", null),
+                monitoringEnabled = prefs.getString("${platform.key}_${id}_monitoring", null)?.toBooleanStrictOrNull() ?: true,
+                showOnOverview = prefs.getString("${platform.key}_${id}_visible", null)?.toBooleanStrictOrNull(),
+                usageAlertEnabled = prefs.getString("${platform.key}_${id}_alerts", null)?.toBooleanStrictOrNull() ?: true,
+                pinned = prefs.getString("${platform.key}_${id}_pinned", null)?.toBooleanStrictOrNull(),
             )
         }
     }
@@ -62,6 +70,10 @@ class AccountStore @Inject constructor(
             .remove("${platform.key}_${accountId}_name")
             .remove("${platform.key}_${accountId}_plan")
             .remove("${platform.key}_${accountId}_provider_id")
+            .remove("${platform.key}_${accountId}_monitoring")
+            .remove("${platform.key}_${accountId}_visible")
+            .remove("${platform.key}_${accountId}_alerts")
+            .remove("${platform.key}_${accountId}_pinned")
         if (durable) {
             if (!editor.commit()) throw IOException("无法更新账号信息，请重试")
         } else editor.apply()

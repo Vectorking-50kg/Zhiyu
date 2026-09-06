@@ -656,7 +656,7 @@ private fun AboutSection() {
     ) {
         item(
             leadingContent = { AppIcon(AppIcons.Info, null) },
-            headlineContent = { Text("知余 v1.0.0") },
+            headlineContent = { Text("知余 v0.1.0") },
             supportingContent = { Text("所有数据仅存储在本设备") },
         )
         item(

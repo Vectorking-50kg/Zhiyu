@@ -19,6 +19,7 @@ import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.model.toUsageFailure
 import funapp.ctrlcv.zhiyu.core.domain.usecase.UsageRepository
 import funapp.ctrlcv.zhiyu.core.storage.AccountStore
+import funapp.ctrlcv.zhiyu.core.storage.RefreshPreferences
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -57,7 +58,7 @@ class RefreshWorker @AssistedInject constructor(
         private const val IMMEDIATE_WORK_NAME = "usage_refresh_now"
 
         fun schedule(ctx: Context) {
-            val request = PeriodicWorkRequestBuilder<RefreshWorker>(15, TimeUnit.MINUTES)
+            val request = PeriodicWorkRequestBuilder<RefreshWorker>(RefreshPreferences(ctx).intervalMinutes, TimeUnit.MINUTES)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -68,7 +69,7 @@ class RefreshWorker @AssistedInject constructor(
 
             WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
                 WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
+                ExistingPeriodicWorkPolicy.UPDATE,
                 request
             )
         }

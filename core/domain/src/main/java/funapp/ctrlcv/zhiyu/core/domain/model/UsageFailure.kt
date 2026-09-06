@@ -32,7 +32,7 @@ data class UsageFailure(
 }
 
 fun UsageFailure.messageFor(platform: Platform): String =
-    if (requiresLogin && platform.requiresApiKey) "API 密钥无效，请在设置中重新配置" else message
+    if (requiresLogin && platform.requiresApiKey) "API 密钥无效，请检查后重试" else message
 
 fun Throwable.toUsageFailure(now: Long = System.currentTimeMillis()): UsageFailure = when (this) {
     is CancellationException -> throw this

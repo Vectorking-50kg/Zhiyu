@@ -19,7 +19,6 @@ fun ZhiyuTheme(
     content: @Composable () -> Unit
 ) {
     val colorMode by rememberColorMode()
-    val themeId by rememberThemeId()
 
     val systemDark = isSystemInDarkTheme()
     val darkTheme = when (colorMode) {
@@ -28,8 +27,8 @@ fun ZhiyuTheme(
         ColorMode.DARK -> true
     }
 
-    val preset = findPresetTheme(themeId)
-    val colorScheme = preset.getColorScheme(darkTheme)
+    val palette = if (darkTheme) MonitorDark else MonitorLight
+    val colorScheme = palette.materialColors(darkTheme)
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -44,11 +43,12 @@ fun ZhiyuTheme(
 
     CompositionLocalProvider(
         LocalDarkMode provides darkTheme,
-        LocalBrandConfig provides preset.brandConfig,
+        LocalBrandConfig provides BrandThemeConfig(),
+        LocalMonitorPalette provides palette,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = preset.typography,
+            typography = MonitorTypography,
             content = content
         )
     }

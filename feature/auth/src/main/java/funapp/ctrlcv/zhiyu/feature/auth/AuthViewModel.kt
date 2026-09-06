@@ -59,7 +59,11 @@ class AuthViewModel @Inject constructor(
     private val repository: UsageRepository
 ) : ViewModel() {
     private val platform = Platform.entries.firstOrNull { it.key == savedStateHandle.get<String>("platform") }
-        ?: Platform.CLAUDE
+        ?: Platform.CHATGPT
+    private val requestedAccountId = savedStateHandle.get<String>("accountId")
+    private fun existingAccount() = accountStore.getAccounts(platform).let { accounts ->
+        if (requestedAccountId != null) accounts.firstOrNull { it.id == requestedAccountId } else accounts.firstOrNull()
+    }
     private val _uiState = MutableStateFlow(AuthUiState(platform = platform))
     val uiState = _uiState.asStateFlow()
     private val attempts = AuthAttemptGate()
@@ -152,7 +156,7 @@ class AuthViewModel @Inject constructor(
     private suspend fun offerCandidate(candidate: LoginCandidate) {
         currentCoroutineContext().ensureActive()
         if (!attempts.isCurrent(candidate.attempt)) return
-        val existing = accountStore.getAccounts(platform).firstOrNull()
+        val existing = existingAccount()
         if (requiresAccountSwitchConfirmation(existing != null, existing?.providerAccountId, candidate.providerAccountId)) {
             pending = candidate
             _uiState.update { it.copy(isLoading = false, switchNeedsConfirmation = true, switchAccountName = candidate.displayName) }
@@ -174,7 +178,7 @@ class AuthViewModel @Inject constructor(
 
     private suspend fun persist(candidate: LoginCandidate) {
         if (!attempts.isCurrent(candidate.attempt)) return
-        val existing = accountStore.getAccounts(platform).firstOrNull()
+        val existing = existingAccount()
         val accountId = existing?.id ?: UUID.randomUUID().toString()
         // Cancel previous reads and commit credentials under the same repository gate.
         // Rotation is durable, so encrypted disk writes stay off the UI thread.
@@ -201,7 +205,11 @@ class AuthViewModel @Inject constructor(
                         id = accountId, platform = platform,
                         displayName = candidate.displayName ?: platform.displayName,
                         planType = candidate.usage.planLabel ?: "",
-                        providerAccountId = candidate.providerAccountId
+                        providerAccountId = candidate.providerAccountId,
+                        monitoringEnabled = existing?.monitoringEnabled ?: true,
+                        showOnOverview = existing?.showOnOverview,
+                        usageAlertEnabled = existing?.usageAlertEnabled ?: true,
+                        pinned = existing?.pinned,
                     ), durable = true)
                 }, restore = {
                     try {

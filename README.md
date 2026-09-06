@@ -8,7 +8,7 @@
 ![Min SDK](https://img.shields.io/badge/minSdk-26%20(Android%208.0)-3DDC84)
 ![Language](https://img.shields.io/badge/Kotlin-100%25-7F52FF?logo=kotlin&logoColor=white)
 ![UI](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4)
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-0.1.0-blue)
 
 </div>
 
@@ -16,11 +16,13 @@
 
 ## 功能简介
 
-- **多平台聚合面板** —— 一个首页同时展示所有平台的限额进度与账户余额，瀑布流卡片布局，加载/陈旧状态一目了然。
+- **多平台聚合面板** —— 卡片式概览聚合套餐额度与账户余额，支持分类筛选；同一条进度条用深色表示用量、浅色表示时间进度。
+- **独立账户管理** —— 首次打开引导添加第一个账户；在「账户」页搜索和连接供应商，修改名称、概览显示、监控、提醒与状态栏固定。
+- **Compose 界面** —— 概览、账户、设置使用带文字的底部悬浮导航，支持浅色、深色和跟随系统。
 - **状态栏常驻通知** —— 将任意平台「固定」到状态栏，持续显示用量百分比或余额，并标注最近更新时间。
 - **阈值与重置提醒** —— 用量升破 80% / 95% 时分级提醒（同级别只提醒一次，回落后自动解除）；限额接近用尽后，检测到额度重置时通知；网页平台登录过期时提醒重新登录。三类提醒均可在设置中独立开关。
 - **桌面小组件** —— 2×2 主屏小组件，每 30 分钟自动刷新，无需打开 App 即可查看。
-- **后台自动刷新** —— 基于 WorkManager 定时拉取最新数据，配合本地缓存，离线也能看到上次结果。
+- **后台自动刷新** —— 可选择 15 / 30 / 60 分钟的 WorkManager 刷新间隔；暂停单个账户后保留缓存并停止新的查询。
 - **可靠的刷新与缓存** —— 同账号并发刷新合并，缓存按账号隔离；网络失败、权限问题、限流和登录失效分别提示。失败时保留上次有效数据及更新时间，并遵守平台的重试等待时间。
 - **本地加密存储** —— 登录凭据与 API 密钥使用 `EncryptedSharedPreferences`（AES‑256）加密，**所有数据仅保存在本机**，不上传任何服务器。
 - **网页登录、授权登录与 API Key** —— 默认在内置 WebView 中登录；Claude 可选 OAuth 授权，ChatGPT 可选浏览器设备码授权，手机无需安装 CLI。登录凭据通过额度校验后才保存；更换账号会提示确认。
@@ -91,10 +93,10 @@ cd zhiyu
 构建产物位于 `app/build/outputs/apk/`。环境要求：JDK 17、Android SDK 35。
 
 **使用步骤：**
-1. 打开 App → 进入「设置」。
-2. 网页平台（Claude / ChatGPT / Cursor / OpenCode Zen）点击「账号管理」在内置 WebView 中登录。
-3. 托管平台（MiniMax / AIHubMix / DeepSeek）点击「API 密钥」粘贴对应 Key。
-4. 返回首页即可查看额度；按需在「状态栏通知」中固定平台，或在主屏添加小组件。
+1. 首次打开点击「添加第一个账户」，或进入「账户」页点击右上角的添加图标。
+2. 选择 ChatGPT / Claude / Cursor / OpenCode，通过官方网页登录连接；MiniMax / AIHubMix / DeepSeek 使用对应的 API 密钥验证并添加。
+3. 返回「概览」查看额度与余额，点击「查看详情」查看附加窗口、重置卡和续订等完整数据。
+4. 在「账户」中修改单个账户的显示、监控与提醒；在「设置」中调整颜色模式、全局通知、刷新间隔以及备份。
 
 **可选授权登录：** 在 Claude 登录页选择「授权登录」，或在 ChatGPT 登录页选择「设备码登录」，按页面指引完成授权。授权失败可返回网页登录，原有登录不会因未完成的新授权而被覆盖。旧版本尚未保存真实账号身份时，首次重新登录也会提示替换确认。OAuth 凭据加密保存，临期自动续期；这类接入依赖平台当前授权流程，真实账号授权仍应在设备上验证。
 
@@ -109,18 +111,18 @@ cd zhiyu
 采用多模块 + 单向数据流（Repository → UseCase → ViewModel → Compose）的清晰分层。
 
 ```
-app/                       应用入口、导航、依赖注入装配
+app/                       应用入口、导航、依赖注入、Compose 概览 / 账户 / 设置
 core/
  ├─ domain/                领域模型（Platform、UsageInfo、UsageMetric…）与 UseCase
  ├─ network/               OkHttp + Gson，各平台用量 API 适配
  ├─ storage/               EncryptedSharedPreferences 加密存储、备份管理
  ├─ data/                  Repository、本地缓存、通知、刷新 Worker
- └─ ui/                    Material 3 主题、配色预设、通用组件
+ └─ ui/                    配色与排版、Compose 通用组件与 Material Symbols
 feature/
  ├─ auth/                  WebView 登录
- ├─ dashboard/             首页用量面板
+ ├─ dashboard/             旧版面板组件（兼容保留）
  ├─ widget/                桌面小组件
- └─ settings/              设置、主题、备份、通知配置
+ └─ settings/              旧版设置组件（兼容保留）
 ```
 
 **技术栈：** Kotlin · Jetpack Compose · Material 3 · Hilt · WorkManager · OkHttp · Gson · AndroidX Security Crypto。
@@ -144,3 +146,5 @@ feature/
 ## 品牌图标
 
 ChatGPT 使用 [Lobe Icons](https://github.com/lobehub/lobe-icons) 的 **OpenAI** 标准图标，固定来源为 `@lobehub/icons-static-svg@1.95.0` 的 [`openai.svg`](https://unpkg.com/@lobehub/icons-static-svg@1.95.0/icons/openai.svg)。项目增加白色圆角底板以适配深浅色，并从同一 SVG 生成 Android 与 HTML 共用的 PNG。MIT 许可附于 `app/src/main/assets/licenses/lobe-icons.txt`。
+
+供应商之外的应用图标使用 Google **Material Symbols Outlined · Weight 300** 官方 Android 矢量资源，Apache 2.0 许可与来源记录位于 `app/src/main/assets/licenses/material-symbols*.txt`。

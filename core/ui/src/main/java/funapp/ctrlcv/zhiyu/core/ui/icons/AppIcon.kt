@@ -11,7 +11,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-val AppIconSize = 28.dp
+val AppIconSize = 24.dp
 
 @Composable
 fun AppIcon(

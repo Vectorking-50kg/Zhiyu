@@ -14,6 +14,7 @@ import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.SessionEvent
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageItem
+import funapp.ctrlcv.zhiyu.core.storage.AccountStore
 import funapp.ctrlcv.zhiyu.core.network.interceptor.SessionEventBus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +44,7 @@ class UsageAlertManager @Inject constructor(
     private val prefs: NotificationPreferences,
     private val gson: Gson,
     sessionEventBus: SessionEventBus,
+    private val accountStore: AccountStore,
 ) {
     private val notificationManager = NotificationManagerCompat.from(context)
     private val state: SharedPreferences =
@@ -65,10 +67,13 @@ class UsageAlertManager @Inject constructor(
         if (info.stale) return
         // 能拿到新鲜数据说明凭据有效，撤销此前的登录过期提醒
         clearSessionExpired(info.platform)
+        if (info.accountId != null && accountStore.getAccounts(info.platform)
+                .firstOrNull { it.id == info.accountId }?.usageAlertEnabled == false) return
 
         val quotaItems = info.items.filter { it.percent >= 0f && !it.unlimited }
         val prev = loadState(info.platform)
         if (quotaItems.isEmpty()) {
+            checkDepletedBalance(info)
             if (prev != null) state.edit { remove(stateKey(info.platform)) }
             return
         }
@@ -193,7 +198,24 @@ class UsageAlertManager @Inject constructor(
         )
     }
 
-    private fun canNotify(): Boolean = notificationManager.areNotificationsEnabled()
+    private fun canNotify(): Boolean = prefs.notificationsEnabled && notificationManager.areNotificationsEnabled()
+
+    @SuppressLint("MissingPermission")
+    private fun checkDepletedBalance(info: UsageInfo) {
+        if (info.platform !in setOf(Platform.ZEN, Platform.AIHUBMIX, Platform.DEEPSEEK) || !prefs.usageAlertEnabled) return
+        val raw = info.items.firstOrNull { it.label in setOf("余额", "账户余额") }?.valueText ?: return
+        val balance = raw.removePrefix("$").removePrefix("¥").replace(",", "").toDoubleOrNull()
+            ?.takeIf { it.isFinite() } ?: return
+        val key = "balance_depleted_${info.platform.key}_${info.accountId.orEmpty()}"
+        val notified = state.getBoolean(key, false)
+        if (balance > 0) { state.edit { putBoolean(key, false) }; return }
+        if (notified || !canNotify()) return
+        notificationManager.notify(ALERT_ID_BASE + info.platform.ordinal, baseBuilder(CHANNEL_WARN)
+            .setContentTitle("${info.platform.displayName} 余额已用尽")
+            .setContentText("当前余额 $raw，请检查账户余额。")
+            .build())
+        state.edit { putBoolean(key, true) }
+    }
 
     private fun levelOf(percent: Float): Int = when {
         percent >= DANGER_PERCENT -> LEVEL_DANGER

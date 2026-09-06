@@ -18,6 +18,8 @@ import funapp.ctrlcv.zhiyu.core.data.R
 import funapp.ctrlcv.zhiyu.core.data.cache.UsageCache
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
+import funapp.ctrlcv.zhiyu.core.domain.model.Account
+import funapp.ctrlcv.zhiyu.core.storage.AccountStore
 import funapp.ctrlcv.zhiyu.core.domain.model.primaryMetric
 import funapp.ctrlcv.zhiyu.core.domain.model.primaryMetricText
 import funapp.ctrlcv.zhiyu.core.domain.model.messageFor
@@ -35,6 +37,7 @@ class BalanceNotificationManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val cache: UsageCache,
     private val prefs: NotificationPreferences,
+    private val accountStore: AccountStore,
 ) {
     private val notificationManager = NotificationManagerCompat.from(context)
 
@@ -48,13 +51,13 @@ class BalanceNotificationManager @Inject constructor(
     @SuppressLint("MissingPermission")
     fun refresh() {
         isRefreshing = false
-        val pinned = prefs.pinnedPlatforms()
-        if (!prefs.persistentEnabled || pinned.isEmpty() || !notificationManager.areNotificationsEnabled()) {
+        val pinned = pinnedAccounts()
+        if (!prefs.notificationsEnabled || !prefs.persistentEnabled || pinned.isEmpty() || !notificationManager.areNotificationsEnabled()) {
             cancel()
             return
         }
         ensureChannel()
-        val infos = cache.getAll().filter { it.platform in pinned }
+        val infos = pinned.mapNotNull { cache.get(it.platform, it.id) }
         notificationManager.notify(NOTIFICATION_ID, buildNotification(pinned, infos))
     }
 
@@ -62,10 +65,10 @@ class BalanceNotificationManager @Inject constructor(
     @SuppressLint("MissingPermission")
     fun showRefreshing() {
         isRefreshing = true
-        val pinned = prefs.pinnedPlatforms()
-        if (!prefs.persistentEnabled || pinned.isEmpty() || !notificationManager.areNotificationsEnabled()) return
+        val pinned = pinnedAccounts()
+        if (!prefs.notificationsEnabled || !prefs.persistentEnabled || pinned.isEmpty() || !notificationManager.areNotificationsEnabled()) return
         ensureChannel()
-        val infos = cache.getAll().filter { it.platform in pinned }
+        val infos = pinned.mapNotNull { cache.get(it.platform, it.id) }
         notificationManager.notify(NOTIFICATION_ID, buildNotification(pinned, infos))
     }
 
@@ -73,10 +76,15 @@ class BalanceNotificationManager @Inject constructor(
         notificationManager.cancel(NOTIFICATION_ID)
     }
 
-    private fun buildNotification(pinned: Set<Platform>, infos: List<UsageInfo>): Notification {
-        val byPlatform = infos.associateBy { it.platform }
+    private fun pinnedAccounts(): List<Account> {
+        val legacy = prefs.pinnedPlatforms()
+        return accountStore.getAllAccounts().filter { it.pinned ?: (it.platform in legacy) }
+    }
+
+    private fun buildNotification(pinned: List<Account>, infos: List<UsageInfo>): Notification {
+        val byPlatform = infos.associateBy { it.platform to it.accountId }
         // 按 Platform 枚举顺序稳定排序，避免每次刷新通知里平台顺序跳动
-        val platforms = Platform.displayOrder.filter { it in pinned }
+        val platforms = pinned
         val stale = infos.isNotEmpty() && infos.all { it.stale }
         val title = if (stale) "AI 用量 / 余额（缓存）" else "AI 用量 / 余额"
         // 更新时间走系统标准时间槽：setWhen + setShowWhen 渲染到头部「应用名 · 时间」一行，
@@ -84,8 +92,9 @@ class BalanceNotificationManager @Inject constructor(
         val updatedAt = infos.filter { it.items.isNotEmpty() && it.updatedAt > 0 }.maxOfOrNull { it.updatedAt }
 
         // 折叠态摘要：纯文本一行，展开后由自定义大视图呈现进度条与状态色
-        val summary = platforms.joinToString("    ") { platform ->
-            val info = byPlatform[platform]
+        val summary = platforms.joinToString("    ") { account ->
+            val platform = account.platform
+            val info = byPlatform[platform to account.id]
             "${platform.displayName} ${info?.primaryMetricText() ?: "--"}${if (info?.stale == true) "（缓存）" else ""}"
         }
 
@@ -122,15 +131,16 @@ class BalanceNotificationManager @Inject constructor(
     /** 构建展开态自定义视图：标题 + 每个平台一行（状态色点、名称、数值、进度条）。 */
     private fun buildExpandedView(
         title: String,
-        platforms: List<Platform>,
-        byPlatform: Map<Platform, UsageInfo>,
+        platforms: List<Account>,
+        byPlatform: Map<Pair<Platform, String?>, UsageInfo>,
     ): RemoteViews {
         val expanded = RemoteViews(context.packageName, R.layout.notification_balance_expanded)
         expanded.setTextViewText(R.id.notif_header, title)
         expanded.removeAllViews(R.id.notif_rows)
 
-        platforms.forEach { platform ->
-            val metric = byPlatform[platform]?.primaryMetric()
+        platforms.forEach { account ->
+            val platform = account.platform
+            val metric = byPlatform[platform to account.id]?.primaryMetric()
             val percent = metric?.percent
             val color = if (percent != null) semanticColor(percent) else BALANCE_COLOR
 
@@ -141,7 +151,7 @@ class BalanceNotificationManager @Inject constructor(
             row.setInt(R.id.platform_dot, "setColorFilter", color)
 
             // 数值左侧的含义说明，如「5 小时限额」「账户余额」；无说明时隐藏占位
-            val info = byPlatform[platform]
+            val info = byPlatform[platform to account.id]
             val metricLabel = info?.refreshFailure?.messageFor(platform) ?: metric?.label?.let { label ->
                 if (info?.stale == true) "$label · 缓存" else label
             }

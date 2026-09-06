@@ -4,6 +4,17 @@ import funapp.ctrlcv.zhiyu.core.ui.R
 
 /** Material Symbols Outlined，Weight 300。 */
 object AppIcons {
+    val Add = R.drawable.ic_ms_add
+    val Close = R.drawable.ic_ms_close
+    val Search = R.drawable.ic_ms_search
+    val Person = R.drawable.ic_ms_person
+    val Group = R.drawable.ic_ms_group
+    val Shield = R.drawable.ic_ms_shield
+    val Language = R.drawable.ic_ms_language
+    val More = R.drawable.ic_ms_more_horiz
+    val Warning = R.drawable.ic_ms_warning
+    val Schedule = R.drawable.ic_ms_schedule
+    val Pause = R.drawable.ic_ms_pause
     val ArrowBack = R.drawable.ic_ms_arrow_back
     val Autorenew = R.drawable.ic_ms_autorenew
     val Backup = R.drawable.ic_ms_backup

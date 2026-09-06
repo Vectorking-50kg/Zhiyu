@@ -44,7 +44,10 @@ internal fun backupAccountKeys(data: BackupData, strict: Boolean = true): Set<Pa
         else ids.forEach { accept(platform to it) }
     }
     data.accountStrings.keys.forEach { key ->
-        accept(accountKey(key, listOf("_provider_id", "_name", "_plan")))
+        accept(accountKey(key, listOf("_provider_id", "_name", "_plan", "_monitoring", "_visible", "_alerts", "_pinned")))
+        if (strict && listOf("_monitoring", "_visible", "_alerts", "_pinned").any(key::endsWith)) {
+            require(data.accountStrings[key] in setOf("true", "false")) { "无效的账户监控偏好" }
+        }
     }
     data.tokens.keys.forEach { key ->
         // Prefer registry/metadata identities, including IDs which themselves contain underscores.

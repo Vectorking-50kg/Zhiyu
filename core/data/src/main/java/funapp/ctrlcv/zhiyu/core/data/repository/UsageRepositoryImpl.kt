@@ -37,6 +37,7 @@ class UsageRepositoryImpl internal constructor(
     private val onRefreshCompleted: (Platform, Boolean) -> Unit = { _, _ -> },
     private val now: () -> Long = System::currentTimeMillis,
     private val flights: UsageRefreshFlights<Pair<Platform, String>, Result<UsageInfo>> = UsageRefreshFlights(),
+    private val shouldRefresh: (Platform, String) -> Boolean = { _, _ -> true },
 ) : UsageRepository {
     // Account creation must not race a backup's snapshot/rollback across the two encrypted stores.
     // Ordinary quota reads still run concurrently per account.
@@ -63,6 +64,7 @@ class UsageRepositoryImpl internal constructor(
         onRefreshCompleted = { platform, success ->
             sessionEventBus.emit(SessionEvent.RefreshCompleted(platform, success))
         },
+        shouldRefresh = { platform, id -> accountStore.getAccounts(platform).firstOrNull { it.id == id }?.monitoringEnabled != false },
     )
 
     override suspend fun getClaudeUsage(accountId: String) = getUsage(Platform.CLAUDE, accountId)
@@ -75,6 +77,10 @@ class UsageRepositoryImpl internal constructor(
 
     override suspend fun getUsage(platform: Platform, accountId: String): Result<UsageInfo> =
         flights.run(platform to accountId) {
+            if (!shouldRefresh(platform, accountId)) {
+                return@run Result.success(cache.get(platform, accountId)
+                    ?: UsageInfo(platform, emptyList(), accountId = accountId, updatedAt = 0))
+            }
             val previousFailure = cache.getFailure(platform, accountId)
             if (previousFailure?.kind == UsageFailureKind.RATE_LIMITED &&
                 (previousFailure.retryAt ?: 0L) > now()) {

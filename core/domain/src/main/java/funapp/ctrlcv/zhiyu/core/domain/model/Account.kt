@@ -5,5 +5,9 @@ data class Account(
     val platform: Platform,
     val displayName: String,
     val planType: String = "",
-    val providerAccountId: String? = null
+    val providerAccountId: String? = null,
+    val monitoringEnabled: Boolean = true,
+    val showOnOverview: Boolean? = null,
+    val usageAlertEnabled: Boolean = true,
+    val pinned: Boolean? = null,
 )

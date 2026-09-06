@@ -40,7 +40,7 @@ class UsageRepositoryImplTest {
         val completed: MutableList<Pair<Platform, Boolean>>,
     )
 
-    private fun TestScope.harness(fetch: suspend (Platform, String) -> UsageInfo): Harness {
+    private fun TestScope.harness(shouldRefresh: (Platform, String) -> Boolean = { _, _ -> true }, fetch: suspend (Platform, String) -> UsageInfo): Harness {
         val cache = UsageCache(MemoryPreferences(), Gson(), { accounts }, { time })
         val authEvents = mutableListOf<Platform>()
         val freshEvents = mutableListOf<UsageInfo>()
@@ -54,8 +54,34 @@ class UsageRepositoryImplTest {
             onRefreshCompleted = { p, success -> completed.add(p to success) },
             now = { time },
             flights = UsageRefreshFlights(backgroundScope),
+            shouldRefresh = shouldRefresh,
         )
         return Harness(repository, cache, authEvents, freshEvents, completed)
+    }
+
+    @Test fun pausedAccountReturnsCacheWithoutFetchingOrReportingFreshness() = runTest {
+        var enabled = false
+        var requests = 0
+        val h = harness(shouldRefresh = { _, _ -> enabled }) { _, _ -> requests++; usage(70f) }
+        h.cache.save(platform, "a", usage(40f))
+        val timestamp = time
+        time += 10_000
+        assertEquals(40f, h.repository.getUsage(platform, "a").getOrThrow().items.single().percent)
+        assertEquals(timestamp, h.repository.getCachedUsage().first().updatedAt)
+        assertEquals(0, requests)
+        assertTrue(h.freshEvents.isEmpty())
+        assertTrue(h.completed.isEmpty())
+        enabled = true
+        assertEquals(70f, h.repository.getUsage(platform, "a").getOrThrow().items.single().percent)
+        assertEquals(1, requests)
+    }
+
+    @Test fun pausedAccountWithoutCacheDoesNotFabricateAZeroQuota() = runTest {
+        val h = harness(shouldRefresh = { _, _ -> false }) { _, _ -> error("Should not fetch") }
+        val result = h.repository.getUsage(platform, "a").getOrThrow()
+        assertTrue(result.items.isEmpty())
+        assertEquals(0L, result.updatedAt)
+        assertEquals("a", result.accountId)
     }
 
     @Test fun overlappingEntrypointsShareOneResultAndCompletedWorkIsNotMemoized() = runTest {

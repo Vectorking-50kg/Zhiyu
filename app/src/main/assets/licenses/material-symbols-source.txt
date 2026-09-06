@@ -1,0 +1,5 @@
+Google Material Symbols Outlined
+Source: https://github.com/google/material-design-icons
+Weight: 300; optical size: 24; fill: 0 (selected legacy variants: 1).
+Android vector paths fetched from official fonts.gstatic.com releases.
+The AppCompat-specific tint is removed; Jetpack Compose supplies color.
