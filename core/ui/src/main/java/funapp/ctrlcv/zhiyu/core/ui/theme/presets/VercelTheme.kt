@@ -25,8 +25,6 @@ val VercelThemePreset by lazy {
             cardBorderWidth = 1.dp,
             cardBorderAlpha = 0.08f,
             cardPadding = 16.dp,
-            progressBarHeight = 6.dp,
-            progressBarCornerRadius = 3.dp,
             buttonCornerRadius = 6.dp,
             sectionTitleWeight = 600,
         ),

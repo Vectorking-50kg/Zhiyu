@@ -25,8 +25,6 @@ val RaycastThemePreset by lazy {
             cardBorderWidth = 1.dp,
             cardBorderAlpha = 0.6f,
             cardPadding = 16.dp,
-            progressBarHeight = 8.dp,
-            progressBarCornerRadius = 4.dp,
             buttonCornerRadius = 8.dp,
             sectionTitleWeight = 500,
         ),

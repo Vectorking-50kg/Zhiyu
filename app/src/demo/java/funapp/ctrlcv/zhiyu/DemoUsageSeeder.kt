@@ -78,9 +78,9 @@ internal object DemoUsageSeeder {
             platform = Platform.CHATGPT,
             planLabel = "Plus",
             items = listOf(
-                UsageItem("5 小时限额", 84f, resetCountdown = "2小时12分钟后重置"),
-                UsageItem("周限额", 48f, resetCountdown = "4天后重置"),
-                UsageItem("Code Review｜周", 17f, resetCountdown = "6天后重置"),
+                UsageItem("5 小时限额", 84f, resetCountdown = "2小时12分钟后重置", elapsedPercent = 56f),
+                UsageItem("周限额", 48f, resetCountdown = "4天后重置", elapsedPercent = 3f / 7f * 100f),
+                UsageItem("Code Review｜周", 17f, resetCountdown = "6天后重置", elapsedPercent = 1f / 7f * 100f),
                 UsageItem("续订时间", -1f, valueText = "21天后"),
             ),
             resetCredits = ResetCredits(
@@ -96,9 +96,9 @@ internal object DemoUsageSeeder {
             platform = Platform.CLAUDE,
             planLabel = "Max 5×",
             items = listOf(
-                UsageItem("5 小时限额", 62f, resetCountdown = "1小时48分钟后重置"),
-                UsageItem("周限额｜所有模型", 78f, resetCountdown = "3天后重置"),
-                UsageItem("周限额｜Opus", 93f, resetCountdown = "3天后重置"),
+                UsageItem("5 小时限额", 62f, resetCountdown = "1小时48分钟后重置", elapsedPercent = 64f),
+                UsageItem("周限额｜所有模型", 78f, resetCountdown = "3天后重置", elapsedPercent = 4f / 7f * 100f),
+                UsageItem("周限额｜Opus", 93f, resetCountdown = "3天后重置", elapsedPercent = 4f / 7f * 100f),
             ),
             updatedAt = now,
         ),
@@ -133,6 +133,7 @@ internal object DemoUsageSeeder {
                     71f,
                     resetCountdown = "2天后重置",
                     boostPercent = 200,
+                    elapsedPercent = 5f / 7f * 100f,
                 ),
             ),
             updatedAt = now - 4 * 60_000,

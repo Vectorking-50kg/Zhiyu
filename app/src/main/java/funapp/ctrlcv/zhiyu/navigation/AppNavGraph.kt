@@ -1,15 +1,9 @@
 package funapp.ctrlcv.zhiyu.navigation
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.Dashboard
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -19,13 +13,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
+import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 import funapp.ctrlcv.zhiyu.feature.auth.AuthWebViewScreen
 import funapp.ctrlcv.zhiyu.feature.dashboard.DashboardScreen
 import funapp.ctrlcv.zhiyu.feature.settings.SettingsScreen
@@ -33,11 +29,11 @@ import funapp.ctrlcv.zhiyu.feature.settings.SettingsScreen
 sealed class Screen(
     val route: String,
     val title: String,
-    val selectedIcon: ImageVector,
-    val unselectedIcon: ImageVector
+    @DrawableRes val selectedIcon: Int,
+    @DrawableRes val unselectedIcon: Int,
 ) {
-    data object Dashboard : Screen("dashboard", "知余", Icons.Filled.Dashboard, Icons.Outlined.Dashboard)
-    data object Settings : Screen("settings", "设置", Icons.Filled.Settings, Icons.Outlined.Settings)
+    data object Dashboard : Screen("dashboard", "知余", AppIcons.DashboardFilled, AppIcons.Dashboard)
+    data object Settings : Screen("settings", "设置", AppIcons.SettingsFilled, AppIcons.Settings)
 }
 
 @Composable
@@ -63,9 +59,9 @@ fun AppNavGraph() {
                             currentDestination?.hierarchy?.any { it.route == screen.route } == true
                         NavigationBarItem(
                             icon = {
-                                Icon(
-                                    imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
-                                    contentDescription = screen.title
+                                AppIcon(
+                                    icon = if (selected) screen.selectedIcon else screen.unselectedIcon,
+                                    contentDescription = screen.title,
                                 )
                             },
                             label = {

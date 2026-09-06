@@ -25,8 +25,6 @@ val LinearThemePreset by lazy {
             cardBorderWidth = 1.dp,
             cardBorderAlpha = 0.3f,
             cardPadding = 24.dp,
-            progressBarHeight = 6.dp,
-            progressBarCornerRadius = 3.dp,
             buttonCornerRadius = 8.dp,
             sectionTitleWeight = 500,
         ),

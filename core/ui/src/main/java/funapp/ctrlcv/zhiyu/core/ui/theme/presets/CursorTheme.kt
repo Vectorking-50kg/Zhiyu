@@ -25,8 +25,6 @@ val CursorThemePreset by lazy {
             cardBorderWidth = 1.dp,
             cardBorderAlpha = 0.5f,
             cardPadding = 24.dp,
-            progressBarHeight = 8.dp,
-            progressBarCornerRadius = 4.dp,
             buttonCornerRadius = 8.dp,
             sectionTitleWeight = 600,
         ),

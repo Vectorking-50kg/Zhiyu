@@ -27,28 +27,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Login
-import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.Autorenew
-import androidx.compose.material.icons.outlined.Backup
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.FileUpload
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Key
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.NotificationsActive
-import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.PushPin
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.MaterialTheme
@@ -84,6 +64,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import funapp.ctrlcv.zhiyu.core.domain.model.ColorMode
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.ui.components.CardGroup
+import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
+import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 import funapp.ctrlcv.zhiyu.core.ui.theme.CustomColors
 import funapp.ctrlcv.zhiyu.core.ui.theme.LocalBrandConfig
 import funapp.ctrlcv.zhiyu.core.ui.theme.PresetThemes
@@ -330,12 +312,8 @@ private fun HomePlatformSection(
             item(
                 onClick = { onTogglePlatform(platform) },
                 leadingContent = {
-                    Icon(
-                        imageVector = if (visible) {
-                            Icons.Outlined.Visibility
-                        } else {
-                            Icons.Outlined.VisibilityOff
-                        },
+                    AppIcon(
+                        icon = if (visible) AppIcons.Visibility else AppIcons.VisibilityOff,
                         contentDescription = null,
                         tint = if (visible) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -368,7 +346,7 @@ private fun AppearanceSection(
     ) {
         item(
             onClick = onClickColorMode,
-            leadingContent = { Icon(Icons.Outlined.DarkMode, null) },
+            leadingContent = { AppIcon(AppIcons.DarkMode, null) },
             headlineContent = { Text("颜色模式") },
             supportingContent = {
                 Text(
@@ -380,15 +358,15 @@ private fun AppearanceSection(
                 )
             },
             trailingContent = {
-                Icon(
-                    Icons.Outlined.ChevronRight,
+                AppIcon(
+                    AppIcons.ChevronRight,
                     null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         )
         item(
-            leadingContent = { Icon(Icons.Outlined.Palette, null) },
+            leadingContent = { AppIcon(AppIcons.Palette, null) },
             headlineContent = { Text("主题") },
             supportingContent = {
                 Text(
@@ -413,7 +391,7 @@ private fun NotificationSection(
     ) {
         item(
             onClick = { onToggleEnabled(!enabled) },
-            leadingContent = { Icon(Icons.Outlined.Notifications, null) },
+            leadingContent = { AppIcon(AppIcons.Notifications, null) },
             headlineContent = { Text("常驻通知") },
             supportingContent = { Text("在状态栏持续显示所选平台的用量或余额") },
             trailingContent = {
@@ -427,7 +405,7 @@ private fun NotificationSection(
         if (enabled) {
             if (configured.isEmpty()) {
                 item(
-                    leadingContent = { Icon(Icons.Outlined.Info, null) },
+                    leadingContent = { AppIcon(AppIcons.Info, null) },
                     headlineContent = { Text("暂无可固定的平台") },
                     supportingContent = { Text("请先登录账号或配置 API 密钥") },
                 )
@@ -438,9 +416,9 @@ private fun NotificationSection(
                     item(
                         onClick = { onTogglePlatform(platform) },
                         leadingContent = {
-                            Icon(
-                                Icons.Outlined.PushPin,
-                                null,
+                            AppIcon(
+                                icon = AppIcons.PushPin,
+                                contentDescription = null,
                                 tint = if (isPinned) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -477,7 +455,7 @@ private fun AlertNotificationSection(
     ) {
         item(
             onClick = { onToggleUsageAlert(!usageAlertEnabled) },
-            leadingContent = { Icon(Icons.Outlined.NotificationsActive, null) },
+            leadingContent = { AppIcon(AppIcons.NotificationsActive, null) },
             headlineContent = { Text("用量阈值提醒") },
             supportingContent = { Text("用量超过 80% 时提醒，超过 95% 时强提醒") },
             trailingContent = {
@@ -489,7 +467,7 @@ private fun AlertNotificationSection(
         )
         item(
             onClick = { onToggleResetReminder(!resetReminderEnabled) },
-            leadingContent = { Icon(Icons.Outlined.Autorenew, null) },
+            leadingContent = { AppIcon(AppIcons.Autorenew, null) },
             headlineContent = { Text("额度重置提醒") },
             supportingContent = { Text("限额接近用尽后，额度重置时提醒") },
             trailingContent = {
@@ -501,7 +479,7 @@ private fun AlertNotificationSection(
         )
         item(
             onClick = { onToggleSessionExpiredAlert(!sessionExpiredAlertEnabled) },
-            leadingContent = { Icon(Icons.AutoMirrored.Outlined.Logout, null) },
+            leadingContent = { AppIcon(AppIcons.Logout, null) },
             headlineContent = { Text("登录过期提醒") },
             supportingContent = { Text("网页平台登录失效时提醒重新登录") },
             trailingContent = {
@@ -551,8 +529,8 @@ private fun WebAccountSection(
             item(
                 onClick = { onClickPlatform(platform.key) },
                 leadingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.Login,
+                    AppIcon(
+                        icon = AppIcons.Login,
                         contentDescription = null,
                         tint = if (hasAccount) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -567,8 +545,8 @@ private fun WebAccountSection(
                     )
                 },
                 trailingContent = {
-                    Icon(
-                        Icons.Outlined.ChevronRight,
+                    AppIcon(
+                        AppIcons.ChevronRight,
                         null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -595,8 +573,8 @@ private fun ApiKeySection(
             item(
                 onClick = { onClickPlatform(platform) },
                 leadingContent = {
-                    Icon(
-                        imageVector = Icons.Outlined.Key,
+                    AppIcon(
+                        icon = AppIcons.Key,
                         contentDescription = null,
                         tint = if (isConfigured) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -613,15 +591,15 @@ private fun ApiKeySection(
                 trailingContent = {
                     if (isConfigured) {
                         IconButton(onClick = { onClearPlatform(platform) }) {
-                            Icon(
-                                Icons.Outlined.Delete,
-                                "清除",
+                            AppIcon(
+                                icon = AppIcons.Delete,
+                                contentDescription = "清除",
                                 tint = MaterialTheme.colorScheme.error,
                             )
                         }
                     } else {
-                        Icon(
-                            Icons.Outlined.ChevronRight,
+                        AppIcon(
+                            AppIcons.ChevronRight,
                             null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -643,12 +621,12 @@ private fun BackupSection(
     ) {
         item(
             onClick = onClickExport,
-            leadingContent = { Icon(Icons.Outlined.FileUpload, null) },
+            leadingContent = { AppIcon(AppIcons.FileUpload, null) },
             headlineContent = { Text("导出备份") },
             supportingContent = { Text("将账号和密钥导出为 JSON 文件") },
             trailingContent = {
-                Icon(
-                    Icons.Outlined.ChevronRight,
+                AppIcon(
+                    AppIcons.ChevronRight,
                     null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -656,12 +634,12 @@ private fun BackupSection(
         )
         item(
             onClick = onClickImport,
-            leadingContent = { Icon(Icons.Outlined.FileDownload, null) },
+            leadingContent = { AppIcon(AppIcons.FileDownload, null) },
             headlineContent = { Text("导入备份") },
             supportingContent = { Text("从备份文件恢复账号和密钥") },
             trailingContent = {
-                Icon(
-                    Icons.Outlined.ChevronRight,
+                AppIcon(
+                    AppIcons.ChevronRight,
                     null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -677,12 +655,12 @@ private fun AboutSection() {
         title = { Text("关于") },
     ) {
         item(
-            leadingContent = { Icon(Icons.Outlined.Info, null) },
+            leadingContent = { AppIcon(AppIcons.Info, null) },
             headlineContent = { Text("知余 v1.0.0") },
             supportingContent = { Text("所有数据仅存储在本设备") },
         )
         item(
-            leadingContent = { Icon(Icons.Outlined.Backup, null) },
+            leadingContent = { AppIcon(AppIcons.Backup, null) },
             headlineContent = { Text("使用提示") },
             supportingContent = { Text("登录账号或配置 API 密钥后即可在首页查看额度") },
         )
@@ -729,11 +707,11 @@ private fun ThemePicker(
                         drawCircle(color = scheme.primary)
                     }
                     if (isSelected) {
-                        Icon(
-                            Icons.Outlined.Check,
+                        AppIcon(
+                            icon = AppIcons.Check,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(16.dp),
+                            size = 18.dp,
                         )
                     }
                 }

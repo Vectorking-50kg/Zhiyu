@@ -24,8 +24,6 @@ val AppleThemePreset by lazy {
             cardInnerCornerRadius = 8.dp,
             cardBorderWidth = 0.dp,
             cardPadding = 18.dp,
-            progressBarHeight = 8.dp,
-            progressBarCornerRadius = 4.dp,
             buttonCornerRadius = 9999.dp,
             sectionTitleWeight = 600,
         ),

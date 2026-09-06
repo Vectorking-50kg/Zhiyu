@@ -26,8 +26,6 @@ val OpenCodeThemePreset by lazy {
             cardBorderWidth = 1.dp,
             cardBorderAlpha = 0.4f,
             cardPadding = 16.dp,
-            progressBarHeight = 6.dp,
-            progressBarCornerRadius = 2.dp,
             buttonCornerRadius = 6.dp,
             sectionTitleWeight = 500,
         ),

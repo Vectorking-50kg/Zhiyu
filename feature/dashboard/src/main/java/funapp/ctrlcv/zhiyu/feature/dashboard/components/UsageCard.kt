@@ -15,13 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,11 +26,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
+import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 import funapp.ctrlcv.zhiyu.feature.dashboard.R
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
@@ -93,10 +96,10 @@ fun UsageCard(usageInfo: UsageInfo) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Outlined.CalendarMonth,
+                    AppIcon(
+                        icon = AppIcons.CalendarMonth,
                         contentDescription = null,
-                        modifier = Modifier.size(13.dp),
+                        size = 16.dp,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.width(5.dp))
@@ -197,26 +200,11 @@ private fun ProgressItem(item: UsageItem) {
 
         Spacer(modifier = Modifier.height(7.dp))
 
-        val elapsedPercent = item.elapsedPercent
-        if (brandConfig.progressBarShowTimeSegment && !item.unlimited && elapsedPercent != null) {
-            DualSegmentProgressBar(
-                usagePercent = item.percent,
-                timePercent = elapsedPercent,
-                height = brandConfig.progressBarHeight,
-                cornerRadius = brandConfig.progressBarCornerRadius,
-            )
-        } else {
-            LinearProgressIndicator(
-                progress = { if (item.unlimited) 1f else (item.percent / 100f).coerceIn(0f, 1f) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(brandConfig.progressBarHeight)
-                    .clip(RoundedCornerShape(brandConfig.progressBarCornerRadius)),
-                color = if (item.unlimited) MaterialTheme.colorScheme.primary else getSemanticColor(item.percent),
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                drawStopIndicator = {}
-            )
-        }
+        UsageProgressBar(
+            item = item,
+            height = brandConfig.progressBarHeight,
+            cornerRadius = brandConfig.progressBarCornerRadius,
+        )
 
         // boost 提升期间展示「总额度 X%」；其余平台沿用 valueText 作为补充说明
         val secondaryText: String? = item.boostPercent?.let { "总额度 $it%" } ?: item.valueText
@@ -232,31 +220,56 @@ private fun ProgressItem(item: UsageItem) {
 }
 
 /**
- * 双段进度条：深色段表示用量消耗，浅色段（用量色与轨道色的过渡色）表示该窗口已经过去的时间比例。
- * 两段独立起始于左端，用量段叠加在时间段之上，语义色仍按用量百分比取绿/黄/红。
+ * 所有主题共用的用量进度条。时间层与用量层同高、同圆角、同起点，仅长度不同；
+ * 用量层覆盖在时间层上方。缺少时间进度或无限额度时只显示用量层。
  */
 @Composable
-private fun DualSegmentProgressBar(usagePercent: Float, timePercent: Float, height: Dp, cornerRadius: Dp) {
+private fun UsageProgressBar(item: UsageItem, height: Dp, cornerRadius: Dp) {
+    val usagePercent = if (item.unlimited) 100f
+        else item.percent.takeIf { it.isFinite() }?.coerceIn(0f, 100f) ?: 0f
+    val timePercent = item.elapsedPercent
+        ?.takeIf { !item.unlimited && it.isFinite() }
+        ?.coerceIn(0f, 100f)
+    val shape = RoundedCornerShape(cornerRadius)
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
-    val usageColor = getSemanticColor(usagePercent)
-    val timeColor = lerp(usageColor, trackColor, 0.55f)
+    val usageColor = if (item.unlimited) MaterialTheme.colorScheme.primary
+        else getSemanticColor(usagePercent)
+    // Match the approved HTML: 45% usage color + 55% white, blended in sRGB.
+    val timeColor = Color(
+        red = usageColor.red * 0.45f + 0.55f,
+        green = usageColor.green * 0.45f + 0.55f,
+        blue = usageColor.blue * 0.45f + 0.55f,
+    )
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(height)
-            .clip(RoundedCornerShape(cornerRadius))
+            .clip(shape)
             .background(trackColor)
+            .semantics {
+                contentDescription = item.label
+                progressBarRangeInfo = ProgressBarRangeInfo(usagePercent / 100f, 0f..1f)
+                stateDescription = when {
+                    item.unlimited -> "无限制"
+                    timePercent != null -> "用量 ${usagePercent.toInt()}%，时间已过 ${timePercent.toInt()}%"
+                    else -> "用量 ${usagePercent.toInt()}%"
+                }
+            }
     ) {
+        timePercent?.let { elapsed ->
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(fraction = elapsed / 100f)
+                    .clip(shape)
+                    .background(timeColor)
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(fraction = (timePercent / 100f).coerceIn(0f, 1f))
-                .background(timeColor)
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(fraction = (usagePercent / 100f).coerceIn(0f, 1f))
+                .fillMaxWidth(fraction = usagePercent / 100f)
+                .clip(shape)
                 .background(usageColor)
         )
     }

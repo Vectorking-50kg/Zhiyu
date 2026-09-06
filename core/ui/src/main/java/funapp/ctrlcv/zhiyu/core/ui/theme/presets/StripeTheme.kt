@@ -27,8 +27,6 @@ val StripeThemePreset by lazy {
             cardElevation = 0.dp,
             cardPadding = 24.dp,
             useShadowElevation = true,
-            progressBarHeight = 8.dp,
-            progressBarCornerRadius = 9999.dp,
             buttonCornerRadius = 9999.dp,
             sectionTitleWeight = 300,
         ),

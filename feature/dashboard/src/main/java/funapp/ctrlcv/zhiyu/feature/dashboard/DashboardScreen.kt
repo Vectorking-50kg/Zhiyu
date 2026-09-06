@@ -17,14 +17,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.GridView
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.ViewAgenda
-import androidx.compose.material.icons.outlined.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +44,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
+import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 import funapp.ctrlcv.zhiyu.core.ui.theme.CustomColors
 import funapp.ctrlcv.zhiyu.core.domain.model.messageFor
 import funapp.ctrlcv.zhiyu.feature.dashboard.components.UsageCard
@@ -240,11 +236,11 @@ private fun DashboardTopBar(
         },
         actions = {
             IconButton(onClick = onToggleLayout) {
-                Icon(
-                    imageVector = when (layoutMode) {
-                        LayoutMode.DETAILED -> Icons.Outlined.ViewAgenda
-                        LayoutMode.LIST -> Icons.Outlined.ViewList
-                        LayoutMode.WATERFALL -> Icons.Outlined.GridView
+                AppIcon(
+                    icon = when (layoutMode) {
+                        LayoutMode.DETAILED -> AppIcons.ViewAgenda
+                        LayoutMode.LIST -> AppIcons.ViewList
+                        LayoutMode.WATERFALL -> AppIcons.GridView
                     },
                     contentDescription = when (layoutMode) {
                         LayoutMode.DETAILED -> "详细布局"
@@ -254,8 +250,8 @@ private fun DashboardTopBar(
                 )
             }
             IconButton(onClick = onRefresh) {
-                Icon(
-                    imageVector = Icons.Outlined.Refresh,
+                AppIcon(
+                    icon = AppIcons.Refresh,
                     contentDescription = "刷新",
                     modifier = if (isRefreshing) Modifier.rotate(rotation) else Modifier,
                 )

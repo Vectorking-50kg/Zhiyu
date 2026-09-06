@@ -7,17 +7,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.RestartAlt
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
+import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 import androidx.compose.ui.unit.dp
 import funapp.ctrlcv.zhiyu.core.domain.model.ResetCredits
 import java.text.SimpleDateFormat
@@ -44,10 +42,10 @@ internal fun ResetCreditsSection(resetCredits: ResetCredits, modifier: Modifier 
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Outlined.RestartAlt,
+                AppIcon(
+                    icon = AppIcons.RestartAlt,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp),
+                    size = 16.dp,
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(5.dp))

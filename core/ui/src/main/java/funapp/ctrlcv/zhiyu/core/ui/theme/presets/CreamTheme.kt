@@ -26,12 +26,9 @@ val CreamThemePreset by lazy {
             cardBorderWidth = 1.dp,
             cardBorderAlpha = 1f,
             cardPadding = 18.dp,
-            progressBarHeight = 14.dp,
-            progressBarCornerRadius = 7.dp,
             useShadowElevation = false,
             buttonCornerRadius = 10.dp,
             sectionTitleWeight = 600,
-            progressBarShowTimeSegment = true,
         ),
     )
 }

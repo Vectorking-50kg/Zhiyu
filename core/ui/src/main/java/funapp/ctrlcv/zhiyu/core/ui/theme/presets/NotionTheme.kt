@@ -24,8 +24,6 @@ val NotionThemePreset by lazy {
             cardInnerCornerRadius = 4.dp,
             cardBorderWidth = 0.dp,
             cardPadding = 18.dp,
-            progressBarHeight = 10.dp,
-            progressBarCornerRadius = 5.dp,
             buttonCornerRadius = 8.dp,
             sectionTitleWeight = 600,
         ),

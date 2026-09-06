@@ -22,16 +22,12 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +51,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
+import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
+import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +72,7 @@ fun AuthWebViewScreen(
         TopAppBar(
             title = { Text("登录 ${state.platform.displayName}") },
             navigationIcon = { IconButton(onClick = leave) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                AppIcon(AppIcons.ArrowBack, contentDescription = "返回")
             } },
             windowInsets = WindowInsets(0)
         )
@@ -258,7 +256,7 @@ private fun LoginBrowser(state: AuthUiState, viewModel: AuthViewModel, modifier:
                         ?: viewModel.onLoginError("未检测到登录 Cookie，请确认已完成登录")
                 },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-                icon = { Icon(Icons.Outlined.CheckCircle, contentDescription = null) },
+                icon = { AppIcon(AppIcons.CheckCircle, contentDescription = null) },
                 text = { Text("已登录，验证额度") }
             )
             if (state.isLoading) Dialog(onDismissRequest = viewModel::useWebLogin) {

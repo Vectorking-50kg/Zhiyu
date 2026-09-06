@@ -25,8 +25,6 @@ val ClaudeThemePreset by lazy {
             cardInnerCornerRadius = 4.dp,
             cardBorderWidth = 0.dp,
             cardPadding = 18.dp,
-            progressBarHeight = 8.dp,
-            progressBarCornerRadius = 4.dp,
             buttonCornerRadius = 8.dp,
             sectionTitleWeight = 500,
         ),
