@@ -43,7 +43,7 @@ class NotificationPreferences @Inject constructor(
     /** 当前固定到状态栏的平台。 */
     fun pinnedPlatforms(): Set<Platform> {
         val keys = prefs.getStringSet(KEY_PINNED, null) ?: return emptySet()
-        return Platform.entries.filter { it.key in keys }.toSet()
+        return Platform.displayOrder.filter { it.key in keys }.toSet()
     }
 
     /** 增删单个固定平台。 */

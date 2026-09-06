@@ -79,7 +79,7 @@ internal object CodexUsageParser {
             }
         }
         // Metadata such as a plan name alone must not make a failed/empty quota lookup successful.
-        if (items.isEmpty()) throw ApiStructureChangedException(Platform.CHATGPT, "Codex response has no valid usage windows or credits")
+        if (items.isEmpty()) throw ApiStructureChangedException(Platform.CHATGPT, "ChatGPT response has no valid usage windows or credits")
         return UsageInfo(
             platform = Platform.CHATGPT, items = items,
             planLabel = root.stringOrNull("plan_type")?.let(::formatCodexPlan),

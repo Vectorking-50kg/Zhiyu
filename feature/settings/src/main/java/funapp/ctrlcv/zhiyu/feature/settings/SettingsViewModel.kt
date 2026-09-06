@@ -36,7 +36,7 @@ data class ApiKeyDialogState(
 data class SettingsUiState(
     val loggedInPlatforms: Set<Platform> = emptySet(),
     val configuredApiPlatforms: Set<Platform> = emptySet(),
-    val visibleHomePlatforms: Set<Platform> = Platform.entries.toSet(),
+    val visibleHomePlatforms: Set<Platform> = Platform.displayOrder.toSet(),
     val apiKeyDialog: ApiKeyDialogState? = null,
     val exportJson: String? = null,
     val showImportConfirm: Boolean = false,
@@ -103,11 +103,11 @@ class SettingsViewModel @Inject constructor(
     }
 
     private fun loadAccounts() {
-        val loggedIn = Platform.entries
+        val loggedIn = Platform.displayOrder
             .filter { !it.requiresApiKey && accountStore.getAccounts(it).isNotEmpty() }
             .toSet()
 
-        val configured = Platform.entries
+        val configured = Platform.displayOrder
             .filter { it.requiresApiKey && tokenStore.hasToken(it, "default") }
             .toSet()
 

@@ -43,7 +43,7 @@ internal object DemoUsageSeeder {
         // Keep one row per platform so UsageRepository returns every cached demo card.
         // The account id intentionally differs from the API settings' "default" token slot:
         // refreshes therefore fall back to cache without sending placeholder credentials.
-        Platform.entries.forEach { platform ->
+        Platform.displayOrder.forEach { platform ->
             accountStore.saveAccount(
                 Account(
                     id = "demo",
@@ -68,22 +68,12 @@ internal object DemoUsageSeeder {
         notificationPreferences.usageAlertEnabled = true
         notificationPreferences.resetReminderEnabled = true
         notificationPreferences.sessionExpiredAlertEnabled = false
-        Platform.entries.forEach { notificationPreferences.setPinned(it, false) }
-        notificationPreferences.setPinned(Platform.CLAUDE, true)
+        Platform.displayOrder.forEach { notificationPreferences.setPinned(it, false) }
+        notificationPreferences.setPinned(Platform.CHATGPT, true)
         notificationPreferences.setPinned(Platform.MINIMAX, true)
     }
 
     private fun demoUsage(now: Long): List<UsageInfo> = listOf(
-        UsageInfo(
-            platform = Platform.CLAUDE,
-            planLabel = "Max 5×",
-            items = listOf(
-                UsageItem("5 小时限额", 62f, resetCountdown = "1小时48分钟后重置"),
-                UsageItem("周限额｜所有模型", 78f, resetCountdown = "3天后重置"),
-                UsageItem("周限额｜Opus", 93f, resetCountdown = "3天后重置"),
-            ),
-            updatedAt = now,
-        ),
         UsageInfo(
             platform = Platform.CHATGPT,
             planLabel = "Plus",
@@ -101,6 +91,16 @@ internal object DemoUsageSeeder {
                 ),
             ),
             updatedAt = now - 45_000,
+        ),
+        UsageInfo(
+            platform = Platform.CLAUDE,
+            planLabel = "Max 5×",
+            items = listOf(
+                UsageItem("5 小时限额", 62f, resetCountdown = "1小时48分钟后重置"),
+                UsageItem("周限额｜所有模型", 78f, resetCountdown = "3天后重置"),
+                UsageItem("周限额｜Opus", 93f, resetCountdown = "3天后重置"),
+            ),
+            updatedAt = now,
         ),
         UsageInfo(
             platform = Platform.CURSOR,

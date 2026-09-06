@@ -52,7 +52,7 @@ class AccountStore @Inject constructor(
     }
 
     fun getAllAccounts(): List<Account> {
-        return Platform.entries.flatMap { getAccounts(it) }
+        return Platform.displayOrder.flatMap { getAccounts(it) }
     }
 
     fun removeAccount(platform: Platform, accountId: String, durable: Boolean = false) {

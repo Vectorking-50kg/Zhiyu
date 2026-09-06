@@ -23,7 +23,7 @@ import javax.inject.Inject
 
 data class DashboardUiState(
     val usageList: List<UsageInfo> = emptyList(),
-    val visiblePlatforms: Set<Platform> = Platform.entries.toSet(),
+    val visiblePlatforms: Set<Platform> = Platform.displayOrder.toSet(),
     val isRefreshing: Boolean = false,
     val lastUpdated: Long = 0L,
     val authRequired: Platform? = null,

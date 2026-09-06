@@ -1,0 +1,7 @@
+Lobe Icons — OpenAI (ChatGPT)
+Repository: https://github.com/lobehub/lobe-icons
+Package: @lobehub/icons-static-svg@1.95.0
+Source: https://unpkg.com/@lobehub/icons-static-svg@1.95.0/icons/openai.svg
+Git commit: 53ead06d734cc6c003db5a87860907c4bbadfbc0
+License: MIT, Copyright (c) 2023 LobeHub
+Adaptation: unchanged OpenAI path on a white rounded tile; rasterized to 256 x 256 PNG.

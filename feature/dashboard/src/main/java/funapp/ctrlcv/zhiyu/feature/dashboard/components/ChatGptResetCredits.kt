@@ -29,7 +29,7 @@ private fun formatResetCreditExpiry(expiresAt: Long): String =
     SimpleDateFormat("MM/dd HH:mm", Locale.getDefault()).format(Date(expiresAt))
 
 /**
- * Codex 重置卡区块：展示可用张数，以及每张卡的到期时间（若官方下发了明细）。
+ * ChatGPT 重置卡区块：展示可用张数，以及每张卡的到期时间（若官方下发了明细）。
  * 「重置卡」= 使用后可立即重置 5 小时 / 周限额的官方道具。
  * 无可用卡时不渲染。
  */

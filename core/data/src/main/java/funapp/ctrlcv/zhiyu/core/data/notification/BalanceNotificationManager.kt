@@ -76,7 +76,7 @@ class BalanceNotificationManager @Inject constructor(
     private fun buildNotification(pinned: Set<Platform>, infos: List<UsageInfo>): Notification {
         val byPlatform = infos.associateBy { it.platform }
         // 按 Platform 枚举顺序稳定排序，避免每次刷新通知里平台顺序跳动
-        val platforms = Platform.entries.filter { it in pinned }
+        val platforms = Platform.displayOrder.filter { it in pinned }
         val stale = infos.isNotEmpty() && infos.all { it.stale }
         val title = if (stale) "AI 用量 / 余额（缓存）" else "AI 用量 / 余额"
         // 更新时间走系统标准时间槽：setWhen + setShowWhen 渲染到头部「应用名 · 时间」一行，

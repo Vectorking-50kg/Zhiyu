@@ -91,7 +91,7 @@ fun AuthWebViewScreen(
             if (state.mode == AuthMode.COOKIE) TextButton(onClick = viewModel::useWebLogin) { Text("重新加载登录页") }
         }
         if (state.mode == AuthMode.OAUTH && state.platform == Platform.CHATGPT) {
-            CodexDeviceLogin(state, viewModel)
+            ChatGptDeviceLogin(state, viewModel)
         } else {
             key(state.pageGeneration) {
                 LoginBrowser(state, viewModel, Modifier.weight(1f))
@@ -114,7 +114,7 @@ fun AuthWebViewScreen(
 }
 
 @Composable
-private fun CodexDeviceLogin(state: AuthUiState, viewModel: AuthViewModel) {
+private fun ChatGptDeviceLogin(state: AuthUiState, viewModel: AuthViewModel) {
     val context = LocalContext.current
     var browserError by remember { mutableStateOf<String?>(null) }
     Column(
@@ -129,7 +129,7 @@ private fun CodexDeviceLogin(state: AuthUiState, viewModel: AuthViewModel) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton(onClick = {
                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-                        .setPrimaryClip(ClipData.newPlainText("Codex 设备码", challenge.userCode))
+                        .setPrimaryClip(ClipData.newPlainText("ChatGPT 设备码", challenge.userCode))
                 }) { Text("复制设备码") }
                 Button(onClick = {
                     try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(challenge.verificationUrl))) }

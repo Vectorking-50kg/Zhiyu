@@ -292,7 +292,7 @@ fun getSemanticColor(percent: Float): Color = when {
 @DrawableRes
 internal fun getPlatformIconRes(platform: Platform): Int = when (platform) {
     Platform.CLAUDE -> R.drawable.ic_brand_anthropic
-    Platform.CHATGPT -> R.drawable.ic_brand_openai
+    Platform.CHATGPT -> R.drawable.ic_brand_chatgpt
     Platform.CURSOR -> R.drawable.ic_brand_cursor
     Platform.ZEN -> R.drawable.ic_brand_opencode
     Platform.MINIMAX -> R.drawable.ic_brand_minimax

@@ -215,7 +215,7 @@ class UsageApiService @Inject constructor(
                 val session = getOpenAISession(cookie)
                 val usage = fetchCodexUsage(session.accessToken, session.providerAccountId, cookie)
                 val identity = usage.providerAccountId
-                    ?: throw ApiStructureChangedException(platform, "Could not identify the Codex account")
+                    ?: throw ApiStructureChangedException(platform, "Could not identify the ChatGPT account")
                 ValidatedSession(identity, session.displayName, usage)
             }
             else -> {

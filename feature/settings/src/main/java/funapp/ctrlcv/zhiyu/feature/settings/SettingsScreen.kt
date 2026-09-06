@@ -325,7 +325,7 @@ private fun HomePlatformSection(
         modifier = Modifier.padding(horizontal = 8.dp),
         title = { Text("首页供应商") },
     ) {
-        Platform.entries.forEach { platform ->
+        Platform.displayOrder.forEach { platform ->
             val visible = platform in visiblePlatforms
             item(
                 onClick = { onTogglePlatform(platform) },
@@ -433,7 +433,7 @@ private fun NotificationSection(
                 )
             } else {
                 // 按 Platform 枚举顺序展示，保持与状态栏通知一致
-                Platform.entries.filter { it in configured }.forEach { platform ->
+                Platform.displayOrder.filter { it in configured }.forEach { platform ->
                     val isPinned = platform in pinned
                     item(
                         onClick = { onTogglePlatform(platform) },
@@ -540,7 +540,7 @@ private fun WebAccountSection(
     loggedIn: Set<Platform>,
     onClickPlatform: (String) -> Unit,
 ) {
-    val platforms = Platform.entries.filter { !it.requiresApiKey }
+    val platforms = Platform.displayOrder.filter { !it.requiresApiKey }
     if (platforms.isEmpty()) return
     CardGroup(
         modifier = Modifier.padding(horizontal = 8.dp),
@@ -584,7 +584,7 @@ private fun ApiKeySection(
     onClickPlatform: (Platform) -> Unit,
     onClearPlatform: (Platform) -> Unit,
 ) {
-    val platforms = Platform.entries.filter { it.requiresApiKey }
+    val platforms = Platform.displayOrder.filter { it.requiresApiKey }
     if (platforms.isEmpty()) return
     CardGroup(
         modifier = Modifier.padding(horizontal = 8.dp),

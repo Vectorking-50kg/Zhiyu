@@ -15,7 +15,7 @@ enum class Platform(
     ),
     CHATGPT(
         key = "chatgpt",
-        displayName = "Codex",
+        displayName = "ChatGPT",
         loginUrl = "https://chat.openai.com/auth/login",
         baseUrl = "https://chatgpt.com"
     ),
@@ -59,6 +59,13 @@ enum class Platform(
         requiresApiKey = true
     );
 
+    companion object {
+        // Keep enum ordinals stable: existing notifications use them as persistent IDs.
+        val displayOrder: List<Platform> = listOf(
+            CHATGPT, CLAUDE, CURSOR, ZEN, MINIMAX, AIHUBMIX, DEEPSEEK,
+        )
+    }
+
     fun isLoggedIn(url: String): Boolean = when (this) {
         CLAUDE -> url.contains("claude.ai") &&
             (url.contains("/new") || url.contains("/chat") ||
@@ -94,7 +101,7 @@ enum class Platform(
     /**
      * 是否可「仅凭 Cookie」判定已登录——用于 WebView 中无需等到登录后页面就自动确认。
      *
-     * Claude / Codex / Cursor 的会话 Cookie 名足够独特，出现即代表已登录。
+     * ChatGPT / Claude / Cursor 的会话 Cookie 名足够独特，出现即代表已登录。
      * 但 Zen 的 `auth`/`__Host-auth` Cookie 在 OAuth 握手阶段（点击 GitHub/Google、
      * 尚未完成认证）就会被写入，且同样是 Iron（`Fe26.2`）格式，单看 Cookie 无法区分
      * 「中间态」与「已登录」，否则点一下登录就会被误判而秒退。因此 Zen 返回 false，

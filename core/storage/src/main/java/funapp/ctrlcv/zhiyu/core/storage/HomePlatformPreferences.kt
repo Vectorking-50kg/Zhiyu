@@ -33,7 +33,7 @@ class HomePlatformPreferences @Inject constructor(
 
     private fun readVisiblePlatforms(): Set<Platform> {
         val hiddenKeys = prefs.getStringSet(KEY_HIDDEN_PLATFORMS, emptySet()).orEmpty()
-        return Platform.entries.filterNot { it.key in hiddenKeys }.toSet()
+        return Platform.displayOrder.filterNot { it.key in hiddenKeys }.toSet()
     }
 
     private companion object {
