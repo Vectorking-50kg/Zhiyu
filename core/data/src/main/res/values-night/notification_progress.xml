@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="notification_usage_good">#65B58B</color>
+    <color name="notification_usage_warning">#D1A548</color>
+    <color name="notification_usage_danger">#E57F7F</color>
+    <color name="notification_time_good">#BADECB</color>
+    <color name="notification_time_warning">#EAD7AD</color>
+    <color name="notification_time_danger">#F3C5C5</color>
+    <color name="notification_progress_track">#2B3237</color>
+</resources>

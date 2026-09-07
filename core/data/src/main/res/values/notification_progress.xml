@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="notificationProgressUsageColor" format="color" />
+    <attr name="notificationProgressTimeColor" format="color" />
+
+    <!-- Match the overview's semantic colors; elapsed time is 45% color + 55% white. -->
+    <color name="notification_usage_good">#4A9D6F</color>
+    <color name="notification_usage_warning">#BB8C21</color>
+    <color name="notification_usage_danger">#CF5555</color>
+    <color name="notification_time_good">#AED3BE</color>
+    <color name="notification_time_warning">#E0CB9B</color>
+    <color name="notification_time_danger">#E9B3B3</color>
+    <color name="notification_progress_track">#EDF0F1</color>
+
+    <!-- Theme overlays also work in RemoteViews on Android 8–11, without API 31 tint setters. -->
+    <style name="NotificationUsage.Good" parent="">
+        <item name="notificationProgressUsageColor">@color/notification_usage_good</item>
+        <item name="notificationProgressTimeColor">@color/notification_time_good</item>
+    </style>
+    <style name="NotificationUsage.Warning" parent="">
+        <item name="notificationProgressUsageColor">@color/notification_usage_warning</item>
+        <item name="notificationProgressTimeColor">@color/notification_time_warning</item>
+    </style>
+    <style name="NotificationUsage.Danger" parent="">
+        <item name="notificationProgressUsageColor">@color/notification_usage_danger</item>
+        <item name="notificationProgressTimeColor">@color/notification_time_danger</item>
+    </style>
+</resources>

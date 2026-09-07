@@ -8,11 +8,14 @@ package funapp.ctrlcv.zhiyu.core.domain.model
  *                余额、无限制、无数据等场景为 null（不绘制进度条）
  * @param label   主指标的含义说明，如「5 小时限额」「账户余额」，用于在数值左侧标注；
  *                无可用数据时为 null
+ * @param elapsedPercent 与主指标同一额度窗口的时间进度，范围为 0..100；
+ *                       没有有效时间数据或不绘制进度条时为 null
  */
 data class UsageMetric(
     val text: String,
     val percent: Int?,
     val label: String? = null,
+    val elapsedPercent: Float? = null,
 )
 
 /**
@@ -26,10 +29,15 @@ fun UsageInfo.primaryMetric(): UsageMetric {
         return UsageMetric(formatBalance(item.valueText!!), percent = null, label = item.label)
     }
     val maxItem = items
-        .filter { it.percent >= 0f && !it.unlimited }
+        .filter { it.percent.isFinite() && it.percent >= 0f && !it.unlimited }
         .maxByOrNull { it.percent }
     return when {
-        maxItem != null -> UsageMetric("${maxItem.percent.toInt()}%", maxItem.percent.toInt(), label = maxItem.label)
+        maxItem != null -> UsageMetric(
+            text = "${maxItem.percent.toInt()}%",
+            percent = maxItem.percent.coerceIn(0f, 100f).toInt(),
+            label = maxItem.label,
+            elapsedPercent = maxItem.elapsedPercent?.takeIf { it.isFinite() }?.coerceIn(0f, 100f),
+        )
         else -> {
             val unlimited = items.firstOrNull { it.unlimited }
             if (unlimited != null) UsageMetric("无限制", percent = null, label = unlimited.label)
@@ -57,4 +65,3 @@ private fun formatBalance(valueText: String): String {
     val num = valueText.removePrefix(prefix).toDoubleOrNull() ?: return valueText
     return "$prefix${String.format("%.2f", num)}"
 }
-

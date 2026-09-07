@@ -7,9 +7,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.res.ColorStateList
-import android.os.Build
-import android.view.View
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -141,51 +138,16 @@ class BalanceNotificationManager @Inject constructor(
         platforms.forEach { account ->
             val platform = account.platform
             val metric = byPlatform[platform to account.id]?.primaryMetric()
-            val percent = metric?.percent
-            val color = if (percent != null) semanticColor(percent) else BALANCE_COLOR
-
-            val row = RemoteViews(context.packageName, R.layout.notification_balance_row)
-            row.setTextViewText(R.id.platform_name, platform.displayName)
-            row.setTextViewText(R.id.platform_value, metric?.text ?: "--")
-            row.setTextColor(R.id.platform_value, color)
-            row.setInt(R.id.platform_dot, "setColorFilter", color)
 
             // 数值左侧的含义说明，如「5 小时限额」「账户余额」；无说明时隐藏占位
             val info = byPlatform[platform to account.id]
             val metricLabel = info?.refreshFailure?.messageFor(platform) ?: metric?.label?.let { label ->
                 if (info?.stale == true) "$label · 缓存" else label
             }
-            if (!metricLabel.isNullOrBlank()) {
-                row.setViewVisibility(R.id.platform_metric_label, View.VISIBLE)
-                row.setTextViewText(R.id.platform_metric_label, metricLabel)
-            } else {
-                row.setViewVisibility(R.id.platform_metric_label, View.GONE)
-            }
-
-            if (percent != null) {
-                row.setViewVisibility(R.id.platform_bar, View.VISIBLE)
-                row.setProgressBar(R.id.platform_bar, 100, percent, false)
-                // 进度条着色需 API 31+；低版本沿用系统主题色，语义由数值文字颜色承担
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    row.setColorStateList(
-                        R.id.platform_bar,
-                        "setProgressTintList",
-                        ColorStateList.valueOf(color),
-                    )
-                }
-            } else {
-                row.setViewVisibility(R.id.platform_bar, View.GONE)
-            }
+            val row = notificationBalanceRow(context, platform.displayName, metric, metricLabel)
             expanded.addView(R.id.notif_rows, row)
         }
         return expanded
-    }
-
-    /** 与首页卡片一致的用量语义色：充裕(绿) / 偏高(琥珀) / 紧张(红)。 */
-    private fun semanticColor(percent: Int): Int = when {
-        percent < 70 -> COLOR_OK
-        percent < 90 -> COLOR_WARN
-        else -> COLOR_DANGER
     }
 
     private fun refreshPendingIntent(): PendingIntent {
@@ -229,11 +191,5 @@ class BalanceNotificationManager @Inject constructor(
         const val ACTION_REFRESH_NOTIFICATION = "funapp.ctrlcv.zhiyu.ACTION_REFRESH_NOTIFICATION"
         private const val NOTIFICATION_ID = 1001
 
-        // 与 dashboard getSemanticColor 取色一致，保证通知与首页观感统一
-        private const val COLOR_OK = 0xFF4A9D6F.toInt()
-        private const val COLOR_WARN = 0xFFD4A027.toInt()
-        private const val COLOR_DANGER = 0xFFD94F4F.toInt()
-        // 余额类平台的状态点 / 数值用中性绿，表达「尚有余额」
-        private const val BALANCE_COLOR = COLOR_OK
     }
 }
