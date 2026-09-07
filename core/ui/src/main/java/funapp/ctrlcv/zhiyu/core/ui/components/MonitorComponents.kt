@@ -100,10 +100,11 @@ fun Platform.monitorDescription() = when (this) {
 @Composable
 fun IconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit,
     modifier: Modifier = Modifier, size: Dp = 44.dp, iconSize: Dp = 22.dp,
-    tint: Color = LocalMonitorPalette.current.muted, enabled: Boolean = true) {
+    tint: Color = LocalMonitorPalette.current.muted, enabled: Boolean = true,
+    iconModifier: Modifier = Modifier) {
     Box(modifier.size(size).clip(CircleShape).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
         .semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
-        AppIcon(icon, null, size = iconSize, tint = tint)
+        AppIcon(icon, null, size = iconSize, tint = tint, modifier = iconModifier)
     }
 }
 

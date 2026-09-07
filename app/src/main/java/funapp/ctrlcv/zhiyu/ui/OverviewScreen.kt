@@ -47,7 +47,7 @@ fun OverviewScreen(state: MonitorState, vm: MonitorViewModel, scroll: ScrollStat
     val pagePadding = LocalMonitorStyle.current.pagePadding
     Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(start = pagePadding, end = pagePadding, top = 21.dp, bottom = bottomPadding)) {
         PageTitle("知余", "${if (state.refreshing) "正在同步账户…" else updatedLabel(state.lastUpdated, state.now)}", statusDot = true) {
-            IconAction(AppIcons.Refresh, "刷新所有账户", vm::refresh, enabled = !state.refreshing)
+            RefreshAction(state.refreshing, vm::refresh)
         }
         Spacer(Modifier.height(22.dp))
         Row(Modifier.fillMaxWidth().height(if (attention.isNotEmpty()) 18.dp else 24.dp), verticalAlignment = Alignment.CenterVertically) {
