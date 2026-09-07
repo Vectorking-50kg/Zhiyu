@@ -21,15 +21,3 @@ interface UsageRepository {
     /** Atomically block affected account refreshes for one backup/import commit. */
     suspend fun updateAccounts(accounts: Collection<Pair<Platform, String>>, commit: () -> Unit)
 }
-
-class GetUsageUseCase(private val repository: UsageRepository) {
-    suspend operator fun invoke(platform: Platform, accountId: String): Result<UsageInfo> {
-        return repository.getUsage(platform, accountId)
-    }
-}
-
-class GetAllUsageUseCase(private val repository: UsageRepository) {
-    suspend operator fun invoke(): List<UsageInfo> {
-        return repository.getAllUsage()
-    }
-}

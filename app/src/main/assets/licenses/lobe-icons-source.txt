@@ -5,3 +5,21 @@ Source: https://unpkg.com/@lobehub/icons-static-svg@1.95.0/icons/openai.svg
 Git commit: 53ead06d734cc6c003db5a87860907c4bbadfbc0
 License: MIT, Copyright (c) 2023 LobeHub
 Adaptation: unchanged OpenAI path on a white rounded tile; rasterized to 256 x 256 PNG.
+
+Additional retained brand PNGs
+Repository: https://github.com/lobehub/lobe-icons
+License: MIT, Copyright (c) 2023 LobeHub; see lobe-icons.txt.
+Claude, Cursor, MiniMax, AIHubMix, DeepSeek: @lobehub/icons-static-png
+Local source commit: 26dcfdcc8b640e0e10d1d7fa8a5640e5a4c4ebf3
+OpenCode: Lobe Icons static-avatar
+Local source commit: 01bf921a4eb5aa69b0021d470b727d13080b292b
+Exact npm versions were not recorded in those historical commits.
+The resources retained in core/ui match the corresponding historical
+feature/dashboard PNGs byte for byte.
+Files and SHA-256:
+core/ui/src/main/res/drawable/ic_brand_anthropic.png  97b53fb85b3bf401ffeb8ee7c5ebad734ce9f6edc3038f242021c53bcc18e23d
+core/ui/src/main/res/drawable/ic_brand_cursor.png  783ac5ded2079c86a2741af24f1d168ea1b7d12846feea4bac54d79ffb061062
+core/ui/src/main/res/drawable/ic_brand_minimax.png  9e596627348deb4030938a948243cc94e96cc1548d645ce4faf1de0e51b9043a
+core/ui/src/main/res/drawable/ic_brand_aihubmix.png  f6f91d8949259753237bf244c19e461c2d3840ab26a56e0fe6e1f6460ec1fab4
+core/ui/src/main/res/drawable/ic_brand_deepseek.png  f98596fd7802ca0c5290c498fec578fa823988646332ee36c43b7920dc4936eb
+core/ui/src/main/res/drawable/ic_brand_opencode.png  3180ae52ecc8dd1ebb1e6b21a8cff6d29657e1ebf6e06c62ecaecdd78cfc247d

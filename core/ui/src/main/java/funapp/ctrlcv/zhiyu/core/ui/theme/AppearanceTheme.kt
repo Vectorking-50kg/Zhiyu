@@ -40,7 +40,7 @@ data class MonitorStyle(
     val cardShape: Shape = RoundedCornerShape(20.dp),
     val groupShape: Shape = RoundedCornerShape(16.dp),
     val titleSize: Int = 30,
-    val fontFamily: FontFamily = InterFontFamily,
+    val fontFamily: FontFamily = FontFamily.Default,
 )
 
 val MaterialMonitorStyle = MonitorStyle()

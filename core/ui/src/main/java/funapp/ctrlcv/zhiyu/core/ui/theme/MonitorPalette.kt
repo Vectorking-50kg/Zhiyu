@@ -8,6 +8,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.sp
@@ -55,7 +56,7 @@ fun MonitorPalette.materialColors(dark: Boolean) = if (dark) darkColorScheme(
 )
 
 fun monitorTextStyle(size: Int, lineHeight: Int = (size * 1.5).toInt(), weight: Int = 400, tracking: Float = 0f) = TextStyle(
-    fontFamily = InterFontFamily, fontSize = size.sp, lineHeight = lineHeight.sp,
+    fontFamily = FontFamily.Default, fontSize = size.sp, lineHeight = lineHeight.sp,
     fontWeight = FontWeight(weight), letterSpacing = tracking.sp,
     platformStyle = PlatformTextStyle(includeFontPadding = false),
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),

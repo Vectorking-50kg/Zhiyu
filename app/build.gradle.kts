@@ -60,9 +60,7 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:ui"))
     implementation(project(":feature:auth"))
-    implementation(project(":feature:dashboard"))
     implementation(project(":feature:widget"))
-    implementation(project(":feature:settings"))
 
     implementation(libs.core.ktx)
     implementation(libs.activity.compose)

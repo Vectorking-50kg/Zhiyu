@@ -1,0 +1,23 @@
+CodexBar
+Repository: https://github.com/steipete/CodexBar
+Reference: OpenCode Zen billing retrieval, server-function fallback and signed-out
+recognition in core/network/.../api/UsageApiService.kt; quota-reset alert design
+in core/data/.../notification/UsageAlertManager.kt.
+Local implementation history includes commit 675235f and 4f7505b.
+License: MIT
+Copyright (c) 2026 Peter Steinberger
+License review snapshot: 170a4d41c6d69e2bb25daac4fb088a92de2f9bc4
+License source: https://github.com/steipete/CodexBar/blob/170a4d41c6d69e2bb25daac4fb088a92de2f9bc4/LICENSE
+The full text is reproduced without modification in codexbar.txt.
+The original upstream implementation revision was not recorded; the license
+review snapshot is not asserted to be that original reference revision.
+
+CodexMeter
+Repository: https://github.com/KyoMio/CodexMeter
+Reference: credential validation, session refresh and snapshot design documented
+in IMPLEMENTATION_NOTES.md and implemented in Zhiyu's network/data/auth layers.
+Recorded reference commit: e0c42ff651b7f50813109c4be6b9708cd18c395c
+License: MIT
+Copyright (c) 2026 KyoMio
+License source: https://github.com/KyoMio/CodexMeter/blob/e0c42ff651b7f50813109c4be6b9708cd18c395c/LICENSE
+The full text is reproduced without modification in codexmeter.txt.
