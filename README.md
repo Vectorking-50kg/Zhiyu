@@ -1,154 +1,124 @@
 <div align="center">
-
-# 知余 · Zhiyu
-
-**一站式 AI 平台用量与余额监控**
-
-![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)
-![Min SDK](https://img.shields.io/badge/minSdk-26%20(Android%208.0)-3DDC84)
-![Language](https://img.shields.io/badge/Kotlin-100%25-7F52FF?logo=kotlin&logoColor=white)
-![UI](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4)
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
-
+    <img src="assets/readme/logo.png" alt="App 图标" width="100" height="100" style="display: block; border: 1px solid #f5f5f5; border-radius: 9999px;" />
+    <h1>知余</h1>
+    <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&amp;logoColor=white">
+    <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.1.0-7F52FF?logo=kotlin&amp;logoColor=white">
+    <img alt="Compose" src="https://img.shields.io/badge/UI-Jetpack_Compose-4285F4?logo=jetpackcompose&amp;logoColor=white">
+    <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
+    <a href="https://github.com/Vectorking-50kg/Zhiyu/releases/latest"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/Vectorking-50kg/Zhiyu?label=Release&amp;logo=github"></a>
+</div>
+<div align="center">
+    <p>支持多平台 AI 用量和账户余额监控的 Android 应用，在应用、桌面小组件和常驻通知中随时查看你的 AI 额度</p>
+    简体中文&nbsp;&nbsp;|&nbsp;&nbsp;
+    <a target="_blank" href="README_en-US.md">English</a>
+</div>
+<div align="center">
+  <img src="assets/readme/screenshots/blank.png"
+       width="160" alt="空白页">
+  <img src="assets/readme/screenshots/home.png"
+       width="160" alt="应用首页">
+  <img src="assets/readme/screenshots/detail.png"
+       width="160" alt="详情页">
+  <img src="assets/readme/screenshots/account.png"
+       width="160" alt="账户页">
+  <img src="assets/readme/screenshots/account-setting.png"
+       width="160" alt="账户设置页">
 </div>
 
----
+## 声明
 
-## 功能简介
+知余是独立的第三方项目，与所支持的平台不存在任何官方的隶属或背书关系。
 
-- **多平台聚合面板** —— 卡片式概览聚合套餐额度与账户余额，支持分类筛选；同一条进度条用深色表示用量、浅色表示时间进度。
-- **独立账户管理** —— 首次打开引导添加第一个账户；在「账户」页搜索和连接供应商，修改名称、概览显示、监控、提醒与状态栏固定。
-- **双风格主题** —— Compose 界面可切换 Material / Miuix；「主题与外观」提供跟随系统、浅色、深色、纯黑背景和即时预览。
-- **莫奈与自选配色** —— Android 12 及以上可读取系统壁纸配色，也可自选主色并调整九种色彩风格。旧系统保留默认和自选配色。
-- **底栏与界面缩放** —— 支持标准、悬浮和液态玻璃底栏；玻璃在 Android 13 及以上呈现真实背景模糊与折射。界面可缩放至 80%–120%，松手应用并保留系统字体比例，外观设置在重启后保留。
-- **状态栏常驻通知** —— 将任意平台「固定」到状态栏，持续显示用量百分比或余额，并标注最近更新时间。展开后的额度条与首页采用相同的双色规则：深色为用量，浅色为同一窗口的时间进度，两层均为 10dp；无时间数据时仅展示用量。
-- **阈值与重置提醒** —— 用量升破 80% / 95% 时分级提醒（同级别只提醒一次，回落后自动解除）；限额接近用尽后，检测到额度重置时通知；网页平台登录过期时提醒重新登录。三类提醒均可在设置中独立开关。
-- **桌面小组件** —— 2×2 主屏小组件，每 30 分钟自动刷新，无需打开 App 即可查看。
-- **后台自动刷新** —— 可选择 15 / 30 / 60 分钟的 WorkManager 刷新间隔；暂停单个账户后保留缓存并停止新的查询。
-- **可靠的刷新与缓存** —— 同账号并发刷新合并，缓存按账号隔离；网络失败、权限问题、限流和登录失效分别提示。失败时保留上次有效数据及更新时间，并遵守平台的重试等待时间。
-- **本地加密存储** —— 登录凭据与 API 密钥使用 `EncryptedSharedPreferences`（AES‑256）加密，**所有数据仅保存在本机**，不上传任何服务器。
-- **网页登录、授权登录与 API Key** —— 默认在内置 WebView 中登录；Claude 可选 OAuth 授权，ChatGPT 可选浏览器设备码授权，手机无需安装 CLI。登录凭据通过额度校验后才保存；更换账号会提示确认。
-- **额度时间与扩展指标** —— 保存绝对重置时间，首页按当前时间重算倒计时与时间比例；支持 Claude 额外用量百分比、ChatGPT 附加限额及独立的额外额度。
-- **备份与恢复** —— 一键将账号与密钥导出为 JSON 文件，换机或重装后导入即可恢复。
+## 获取应用
 
----
+从 GitHub Releases 页面获取最新 APK：[Releases](https://github.com/Vectorking-50kg/Zhiyu/releases)
 
-## 支持的平台与订阅
+- **系统要求：** Android 8.0（API 26）及以上。
 
-知余通过两种方式接入平台：**网页登录**（在内置 WebView 中登录后复用会话 Cookie）与 **API Key**（在对应控制台创建后粘贴）。
+## 主要功能
 
-| 平台 | 接入方式 | 可识别订阅 / 档位 | 主要监控指标 |
-| :--- | :--- | :--- | :--- |
-| **ChatGPT** | 网页登录 / 可选设备码授权 | 按账户计划自动识别 | 5 小时限额、周限额、附加限额、Code Review、续订 / 到期时间、重置卡、额外额度 |
-| **Claude** | 网页登录 / 可选 OAuth | 网页登录识别 Free · Pro · Max 5× · Max 20× · Team · Enterprise | 5 小时限额、周限额（所有模型 / Opus / Sonnet / Claude Design）、额外用量百分比（平台返回时） |
-| **Cursor** | 网页登录 | 按账户计划自动识别 | 本周期用量、Auto 用量、API 用量 |
-| **OpenCode Zen** | 网页登录 | 按量计费（Pay-as-you-go） | 账户余额 |
-| **MiniMax** | API Key（Token Plan 专属） | Token Plan | 5 小时限额、周限额（支持「无限制」与额度提升 Boost） |
-| **AIHubMix** | API Key（令牌） | 按量计费账户 | 账户余额、已消费、累计请求次数 |
-| **DeepSeek** | API Key | 按量计费账户 | 账户余额、赠送余额、充值余额 |
+- **多平台、多账号概览**：统一查看套餐额度和账户余额，按类型筛选；用深浅两层进度条对照用量与周期时间。
+- **独立账户管理**：添加、搜索和重命名账户，分别控制概览显示、后台监控、提醒与状态栏固定；暂停监控后保留缓存。
+- **通知与桌面小组件**：无需打开 App 即可查看用量；额度达到 80% / 95%、检测到额度重置或网页登录失效时提供提醒。
+- **后台刷新与失败处理**：可选 15 / 30 / 60 分钟刷新间隔；区分网络失败、限流和登录失效，失败时保留上次有效数据及更新时间。
+- **两种界面风格**：切换 Material / Miuix，支持浅色、深色、跟随系统、纯黑背景、系统动态配色和自选颜色。
+- **本地凭据与备份**：加密保存应用使用的登录凭据和 API 密钥，通过 JSON 文件导出、导入账户连接与配置。
 
----
+## 支持的平台
 
-## 不同订阅的功能支持表
+| 平台 | 接入方式 | 当前可读取的信息 |
+| --- | --- | --- |
+| **ChatGPT** | 网页登录；可选设备码授权 | Codex 相关的 5 小时与周限额、附加窗口、Code Review、重置卡、续订信息、额外额度 |
+| **Claude** | 网页登录；可选 OAuth 授权 | 5 小时与周限额、模型分类窗口、Claude Design、额外用量百分比 |
+| **Cursor** | 网页登录 | 本周期用量、Auto 用量、API 用量与套餐信息 |
+| **OpenCode Zen** | 网页登录 | 账户余额 |
+| **MiniMax** | Token Plan 对应的 API Key | 5 小时与周限额、无限制标识、额度提升（Boost） |
+| **AIHubMix** | API Key（令牌） | 账户余额、累计消费、累计请求次数 |
+| **DeepSeek** | API Key | 可用余额、赠送余额、充值余额 |
 
-下表对照各平台 / 订阅在知余中可享受的功能。✅ 支持 · ➖ 该平台不适用。
+实际展示取决于账户权限、订阅类型及平台返回的字段。表中列出的是已实现的解析能力，不代表所有账户都会返回全部指标；
 
-| 功能 | ChatGPT | Claude | Cursor | OpenCode Zen | MiniMax | AIHubMix | DeepSeek |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 限额进度（百分比 + 进度条） | ✅ | ✅ | ✅ | ➖ | ✅ | ➖ | ➖ |
-| 账户余额展示 | ➖ | ➖ | ➖ | ✅ | ➖ | ✅ | ✅ |
-| 订阅 / 计划档位识别 | ✅ | ✅ | ✅ | ➖ | ✅ | ➖ | ➖ |
-| 重置 / 续订时间倒计时 | ✅ | ✅ | ✅ | ➖ | ✅ | ➖ | ➖ |
-| 重置卡（数量 / 到期） | ✅ | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ |
-| 「无限制」额度标识 | ➖ | ➖ | ➖ | ➖ | ✅ | ➖ | ➖ |
-| 额度提升（Boost）展示 | ➖ | ➖ | ➖ | ➖ | ✅ | ➖ | ➖ |
-| 多窗口指标（5 小时 / 周等） | ✅ | ✅ | ✅ | ➖ | ✅ | ➖ | ➖ |
-| 首页卡片 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 状态栏常驻通知 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 用量阈值提醒（80% / 95%） | ✅ | ✅ | ✅ | ➖ | ✅ | ➖ | ➖ |
-| 额度重置提醒 | ✅ | ✅ | ✅ | ➖ | ✅ | ➖ | ➖ |
-| 登录过期提醒 | ✅ | ✅ | ✅ | ✅ | ➖ | ➖ | ➖ |
-| 桌面小组件 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 后台自动刷新 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 备份 / 恢复 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+部分平台接入依赖网页登录后的内部接口或控制台页面，平台调整接口后可能需要更新应用。
 
-> 余额类平台（AIHubMix、DeepSeek、OpenCode Zen）在状态栏与小组件上以**账户余额**作为主指标；限额类平台则展示**最高用量百分比**。
->
-> **OpenCode Zen 余额说明：** Zen 目前没有官方余额接口，余额仅在网页控制台的 workspace 仪表盘可见。知余在内置 WebView 登录 `opencode.ai` 后复用其会话 Cookie 取数：优先解析仪表盘 SSR 页面，命中不到再回退到控制台内部的 SolidStart server function（`/_server`，参考 CodexBar 的实现）——无需任何后端，凭据仅留本机。其中 server function 的 id 为构建哈希，官方部署变更时可能需要同步更新；若官方上线 `GET /zen/v1/balance` 接口将迁移至更稳定的实现。
+## 开始使用
 
----
+1. 打开应用，点击「添加第一个账户」；也可以在「账户」页添加更多账户。
+2. 选择平台。ChatGPT、Claude、Cursor、OpenCode 使用网页登录；MiniMax、AIHubMix、DeepSeek 填写对应平台的密钥。
+3. 登录或密钥通过校验后，返回「概览」查看额度与余额，点击「查看详情」查看各个窗口与重置时间。
+4. 在「账户」中按需开启监控、提醒和状态栏固定；在「设置」中调整外观、刷新间隔和全局通知。
+5. 如需桌面展示，通过系统的小组件选择器添加知余小组件。
 
-## 快速开始
+## 数据与隐私
+
+- **网络请求**：登录、授权和额度查询会向对应平台及其认证服务发送必要信息。应用不会将账号凭据或用量数据上传到服务器。
+- **本地存储**：应用凭据存储使用 AndroidX Security Crypto 加密；偏好、用量缓存与 WebView 网站数据分别由对应的本地存储机制管理。
+- **备份文件**：导出的备份文件是包含登录凭据与密钥的**未加密 JSON 文件**。请妥善保存，仅从可信来源导入，不要附在 Issue、截图或公开仓库中。
+- **反馈问题**：提供系统版本、App 版本、平台名称和复现步骤即可；请移除 Cookie、Token、API Key、完整授权链接及可识别账户的信息。
+
+## 本地构建
+
+建议使用 Android Studio，配置 JDK 17 和 Android SDK Platform 35。仓库包含 Gradle Wrapper，无需另行安装 Gradle。
 
 ```bash
-# 克隆仓库
-git clone https://github.com/Vectorking-50kg/zhiyu.git
-cd zhiyu
+git clone https://github.com/Vectorking-50kg/Zhiyu.git
+cd Zhiyu
 
-# 构建 Debug APK
-./gradlew assembleDebug
+# 构建调试安装包
+./gradlew :app:assembleDebug
 
-# 直接安装到已连接的设备
-./gradlew installDebug
+# 安装到已连接并开启 USB 调试的设备
+./gradlew :app:installDebug
 ```
 
-构建产物位于 `app/build/outputs/apk/`。环境要求：JDK 17、Android SDK 35。
+开发验证可运行：
 
-**使用步骤：**
-1. 首次打开点击「添加第一个账户」，或进入「账户」页点击右上角的添加图标。
-2. 选择 ChatGPT / Claude / Cursor / OpenCode，通过官方网页登录连接；MiniMax / AIHubMix / DeepSeek 使用对应的 API 密钥验证并添加。
-3. 返回「概览」查看额度与余额，点击「查看详情」查看附加窗口、重置卡和续订等完整数据。
-4. 在「账户」中修改单个账户的显示、监控与提醒；在「设置」中调整颜色模式、全局通知、刷新间隔以及备份。
-
-**可选授权登录：** 在 Claude 登录页选择「授权登录」，或在 ChatGPT 登录页选择「设备码登录」，按页面指引完成授权。授权失败可返回网页登录，原有登录不会因未完成的新授权而被覆盖。旧版本尚未保存真实账号身份时，首次重新登录也会提示替换确认。OAuth 凭据加密保存，临期自动续期；这类接入依赖平台当前授权流程，真实账号授权仍应在设备上验证。
-
-小组件与首页共用缓存；小组件展示固定重置时刻，避免系统尚未更新组件时保留过时的相对倒计时。重置时刻到达不会自动把额度归零，需平台返回新数据后确认。
-
-开发与回归验证说明见 [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md)。
-
----
-
-## 技术架构
-
-采用多模块 + 单向数据流（Repository → UseCase → ViewModel → Compose）的清晰分层。
-
+```bash
+./gradlew testDebugUnitTest :app:lintDebug
 ```
-app/                       应用入口、导航、依赖注入、Compose 概览 / 账户 / 设置
+
+## 项目结构
+
+```text
+app/                  应用入口、导航、概览 / 账户 / 设置 / 外观页面
 core/
- ├─ domain/                领域模型（Platform、UsageInfo、UsageMetric…）与 UseCase
- ├─ network/               OkHttp + Gson，各平台用量 API 适配
- ├─ storage/               EncryptedSharedPreferences 加密存储、备份管理
- ├─ data/                  Repository、本地缓存、通知、刷新 Worker
- └─ ui/                    配色与排版、Compose 通用组件与 Material Symbols
+  domain/             领域模型与数据仓库接口
+  network/            平台接口、解析、OAuth 与网络错误处理
+  storage/            凭据、账户配置、外观偏好与备份
+  data/               数据仓库、缓存、后台刷新与通知
+  ui/                 当前主题、图标和通用 Compose 组件
 feature/
- ├─ auth/                  WebView 登录
- ├─ dashboard/             旧版面板组件（兼容保留）
- ├─ widget/                桌面小组件
- └─ settings/              旧版设置组件（兼容保留）
+  auth/               WebView 登录与授权界面
+  widget/             桌面小组件
 ```
 
-**技术栈：** Kotlin · Jetpack Compose · Material 3 · Hilt · WorkManager · OkHttp · Gson · AndroidX Security Crypto。
+## 反馈与贡献
 
----
+欢迎通过 [Issues](https://github.com/Vectorking-50kg/Zhiyu/issues) 反馈问题或提出需求。
 
-## 隐私说明
+## 许可与致谢
 
-- 所有账号会话与 API 密钥均通过 **AES‑256 加密**存储在设备本地。
-- 应用**不部署任何后端**，用量数据直接由设备向各平台官方接口请求获取。
-- 备份文件包含敏感凭据，请妥善保管、仅从可信来源导入。
+本项目采用 **[MIT License](LICENSE)**，允许使用、修改、商业使用和再分发，并需保留版权及许可声明。
 
----
+第三方代码与资源继续适用各自的原始许可证，详见 [许可说明](LICENSING.md) 和 [随包许可文本](app/src/main/assets/licenses)。
 
-<div align="center">
-
-知余 · 让 AI 额度尽在掌握 ✨
-
-</div>
-
-## 品牌图标
-
-ChatGPT 使用 [Lobe Icons](https://github.com/lobehub/lobe-icons) 的 **OpenAI** 标准图标，固定来源为 `@lobehub/icons-static-svg@1.95.0` 的 [`openai.svg`](https://unpkg.com/@lobehub/icons-static-svg@1.95.0/icons/openai.svg)。项目增加白色圆角底板以适配深浅色，并从同一 SVG 生成 Android 与 HTML 共用的 PNG。MIT 许可附于 `app/src/main/assets/licenses/lobe-icons.txt`。
-
-供应商之外的应用图标使用 Google **Material Symbols Outlined · Weight 300** 官方 Android 矢量资源，Apache 2.0 许可与来源记录位于 `app/src/main/assets/licenses/material-symbols*.txt`。
-
-主题采用 [Miuix](https://github.com/compose-miuix-ui/miuix) 0.3.4（Apache 2.0）和 [MaterialKolor](https://github.com/jordond/MaterialKolor) 2.0.0（MIT），与项目现有 Kotlin 2.1、Compose 1.7 和 Android 8.0 最低版本兼容。借鉴 SukiSU-Ultra 的主题分层、动态色和缩放方式，独立实现外观管理与玻璃背景采样，使用兼容的真实 Miuix 控件。依赖许可及固定来源随应用附于 `app/src/main/assets/licenses/`。
+感谢 [Miuix](https://github.com/miuix-kotlin-multiplatform/miuix)、[MaterialKolor](https://github.com/jordond/MaterialKolor)、[Lobe Icons](https://github.com/lobehub/lobe-icons)、[Material Symbols](https://github.com/google/material-design-icons)、[CodexMeter](https://github.com/KyoMio/CodexMeter) 项目。
