@@ -16,6 +16,7 @@ import funapp.ctrlcv.zhiyu.core.ui.components.*
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 import funapp.ctrlcv.zhiyu.core.ui.theme.LocalMonitorPalette
+import funapp.ctrlcv.zhiyu.core.ui.theme.LocalMonitorStyle
 
 @Composable
 fun AccountEditorScreen(state: MonitorState, vm: MonitorViewModel, requestNotifications: (() -> Unit) -> Unit) {
@@ -31,7 +32,7 @@ fun AccountEditorScreen(state: MonitorState, vm: MonitorViewModel, requestNotifi
             if (!adding) IconAction(AppIcons.More, "更多账户操作", { vm.showPanel(PanelKind.ACCOUNT_MENU, draft.platform, draft.accountId) })
         }
         Spacer(Modifier.height(14.dp))
-        Column(Modifier.padding(horizontal = 20.dp)) {
+        Column(Modifier.padding(horizontal = LocalMonitorStyle.current.pagePadding)) {
         ProviderHero(draft.platform, row)
         Spacer(Modifier.height(22.dp))
         FormInput("账户名称", draft.name, { value -> vm.updateDraft { it.copy(name = value.take(32)) } }, "给这个账户起个名字")
@@ -82,8 +83,9 @@ fun AccountEditorScreen(state: MonitorState, vm: MonitorViewModel, requestNotifi
 @Composable
 fun ProviderHero(platform: funapp.ctrlcv.zhiyu.core.domain.model.Platform, row: MonitoredAccount? = null) {
     val c = LocalMonitorPalette.current
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(c.surface)
-        .border(1.dp, c.line, RoundedCornerShape(20.dp)).padding(21.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    val shape = LocalMonitorStyle.current.cardShape
+    Column(Modifier.fillMaxWidth().clip(shape).background(c.surface)
+        .border(1.dp, c.line, shape).padding(21.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         ProviderLogo(platform, 46.dp); Spacer(Modifier.height(10.dp))
         UiText(platform.displayName, 22, 30, 600, tracking = -.5f); Spacer(Modifier.height(4.dp))
         UiText(platform.monitorDescription(), 12, 20, color = c.muted, align = TextAlign.Center); Spacer(Modifier.height(12.dp))

@@ -1,0 +1,38 @@
+MaterialKolor
+Artifact: com.materialkolor:material-kolor:2.0.0
+Android artifact: com.materialkolor:material-kolor-android:2.0.0
+License: MIT License
+Copyright (c) 2023 Jordon de Hoog
+Repository: https://github.com/jordond/MaterialKolor
+Tag: 2.0.0
+Commit: b15989d2eadf38d960e777605f64b84ef45a75d8
+License source: https://github.com/jordond/MaterialKolor/blob/b15989d2eadf38d960e777605f64b84ef45a75d8/LICENSE
+Published POM: https://repo.maven.apache.org/maven2/com/materialkolor/material-kolor-android/2.0.0/material-kolor-android-2.0.0.pom
+The complete MIT license is reproduced without modification in materialkolor.txt.
+
+Material Color Utilities, Kotlin port included by MaterialKolor
+Transitive artifact: com.materialkolor:material-color-utilities-android:2.0.0
+Port repository/tag/commit: same MaterialKolor release as above.
+Original project: https://github.com/material-foundation/material-color-utilities
+Original algorithm notices retained in the published sources:
+Copyright 2021 Google LLC
+Copyright 2022 Google LLC
+Copyright 2023 Google LLC
+License for the original algorithm sources: Apache License 2.0
+License source: https://github.com/jordond/MaterialKolor/blob/b15989d2eadf38d960e777605f64b84ef45a75d8/material-color-utilities/src/commonMain/kotlin/com/materialkolor/LICENSE
+Published sources: https://repo.maven.apache.org/maven2/com/materialkolor/material-color-utilities-android/2.0.0/material-color-utilities-android-2.0.0-sources.jar
+
+The material-color-utilities POM lists the MaterialKolor project's MIT license.
+The module's source distribution additionally retains the Google Apache 2.0
+license and copyright notices for its original algorithms. Both are included:
+materialkolor.txt contains the project MIT license, and
+materialkolor-color-utilities.txt contains the complete source-module Apache
+license, including its Copyright 2021 Google LLC notice, without modification.
+The source-module license matches the published 2.0.0 sources JAR byte for byte.
+No separate NOTICE file is present in the tagged MaterialKolor repository.
+
+Additional runtime dependencies introduced by this MaterialKolor version:
+- Colormath 3.6.0: see materialkolor-colormath.txt and
+  materialkolor-transitive-sources.txt.
+- Poko Annotations 0.17.1: see materialkolor-poko-annotations.txt and
+  materialkolor-transitive-sources.txt.

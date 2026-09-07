@@ -28,6 +28,7 @@ android {
 
 dependencies {
     implementation(project(":core:domain"))
+    api(project(":core:storage"))
 
     implementation(libs.core.ktx)
 
@@ -36,6 +37,8 @@ dependencies {
     api(libs.compose.ui.graphics)
     api(libs.compose.material3)
     api(libs.compose.animation)
+    api(libs.miuix)
+    implementation(libs.materialkolor)
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
 

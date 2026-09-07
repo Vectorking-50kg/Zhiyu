@@ -1,0 +1,40 @@
+Colormath
+Transitive artifact: com.github.ajalt.colormath:colormath-jvm:3.6.0
+Introduced by: com.materialkolor:material-kolor-android:2.0.0
+License: MIT License
+Copyright 2021 AJ Alt
+Repository: https://github.com/ajalt/colormath
+Tag: 3.6.0
+Commit: 6c38ac58261340ec32e6d4fafc4c850ecc4ddc30
+License source: https://github.com/ajalt/colormath/blob/6c38ac58261340ec32e6d4fafc4c850ecc4ddc30/LICENSE
+Published POM: https://repo.maven.apache.org/maven2/com/github/ajalt/colormath/colormath-jvm/3.6.0/colormath-jvm-3.6.0.pom
+The complete upstream license is reproduced without modification in
+materialkolor-colormath.txt. No separate NOTICE file is present in this tag.
+
+Poko Annotations
+Transitive artifact: dev.drewhamilton.poko:poko-annotations-jvm:0.17.1
+Introduced by: com.materialkolor:material-color-utilities-android:2.0.0
+License: Apache License 2.0
+Repository: https://github.com/drewhamilton/Poko
+Tag: 0.17.1
+Commit: b86734785f1e21345f2629a3074f712c73c4f942
+License source: https://github.com/drewhamilton/Poko/blob/b86734785f1e21345f2629a3074f712c73c4f942/LICENSE
+Copyright notice source: https://github.com/drewhamilton/Poko/blob/b86734785f1e21345f2629a3074f712c73c4f942/README.md#license
+Published POM: https://repo.maven.apache.org/maven2/dev/drewhamilton/poko/poko-annotations-jvm/0.17.1/poko-annotations-jvm-0.17.1.pom
+The complete upstream Apache license is reproduced without modification in
+materialkolor-poko-annotations.txt. No separate NOTICE file is present in this tag.
+The copyright notice from the tagged README is retained below:
+
+Copyright 2020 Drew Hamilton
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.

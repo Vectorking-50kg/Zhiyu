@@ -29,6 +29,7 @@ import funapp.ctrlcv.zhiyu.core.ui.components.*
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 import funapp.ctrlcv.zhiyu.core.ui.theme.LocalMonitorPalette
+import funapp.ctrlcv.zhiyu.core.ui.theme.LocalMonitorStyle
 import kotlin.math.ceil
 
 @Composable
@@ -43,7 +44,8 @@ fun OverviewScreen(state: MonitorState, vm: MonitorViewModel, scroll: ScrollStat
     val visible = state.accounts.filter { it.visible }
     val shown = visible.filter { state.homeFilter == 0 || (state.homeFilter == 2) == it.platform.isBalanceProvider() }
     val attention = state.accounts.filter { it.attention }
-    Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(start = 20.dp, end = 20.dp, top = 21.dp, bottom = bottomPadding)) {
+    val pagePadding = LocalMonitorStyle.current.pagePadding
+    Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(start = pagePadding, end = pagePadding, top = 21.dp, bottom = bottomPadding)) {
         PageTitle("知余", "${if (state.refreshing) "正在同步账户…" else updatedLabel(state.lastUpdated, state.now)} · 额度与余额，一目了然", statusDot = true) {
             IconAction(AppIcons.Refresh, "刷新所有账户", vm::refresh, enabled = !state.refreshing)
         }
@@ -121,9 +123,10 @@ fun QuotaCard(row: MonitoredAccount, now: Long, onDetail: () -> Unit, onConfigur
     val shown = if (row.platform == Platform.CHATGPT) items.filter { it.percent >= 0 }.take(2)
         else if (row.platform == Platform.CURSOR) items.filter { it.percent >= 0 }.take(1)
         else items
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(c.surface)
-        .border(1.dp, c.line, RoundedCornerShape(20.dp)).padding(19.dp)) {
-        Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+    val cardShape = LocalMonitorStyle.current.cardShape
+    Column(Modifier.fillMaxWidth().clip(cardShape).background(c.surface)
+        .border(1.dp, c.line, cardShape).padding(19.dp)) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
             ProviderLogo(row.platform)
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) {
@@ -247,10 +250,11 @@ fun AccountEmptyState(title: String, description: String, actionLabel: String? =
 @Composable
 fun WelcomeScreen(scroll: ScrollState, bottomPadding: Dp, onAdd: () -> Unit, onBrowse: () -> Unit) {
     val c = LocalMonitorPalette.current
+    val pagePadding = LocalMonitorStyle.current.pagePadding
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val pageHeight = maxHeight
         Column(Modifier.fillMaxWidth().heightIn(min = pageHeight).verticalScroll(scroll)
-            .padding(start = 20.dp, end = 20.dp, top = 21.dp, bottom = bottomPadding)) {
+            .padding(start = pagePadding, end = pagePadding, top = 21.dp, bottom = bottomPadding)) {
             PageTitle("知余", "你的 AI 额度与余额，一处掌握")
             Spacer(Modifier.height(22.dp))
             Column(Modifier.fillMaxWidth().heightIn(min = (pageHeight - 108.dp - bottomPadding).coerceAtLeast(521.dp))

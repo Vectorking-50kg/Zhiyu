@@ -16,8 +16,6 @@ import funapp.ctrlcv.zhiyu.core.domain.usecase.UsageRepository
 import funapp.ctrlcv.zhiyu.core.network.api.UsageApiService
 import funapp.ctrlcv.zhiyu.core.network.interceptor.SessionEventBus
 import funapp.ctrlcv.zhiyu.core.storage.*
-import funapp.ctrlcv.zhiyu.core.ui.theme.KEY_COLOR_MODE
-import funapp.ctrlcv.zhiyu.core.ui.theme.THEME_PREFS_NAME
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -25,7 +23,7 @@ import java.util.UUID
 import javax.inject.Inject
 
 enum class MonitorPage { OVERVIEW, ACCOUNTS, SETTINGS }
-enum class PanelKind { PROVIDERS, DETAIL, APPEARANCE, NOTIFICATIONS, REFRESH, PRIVACY, ABOUT, ACCOUNT_MENU, REMOVE, SUCCESS, IMPORT }
+enum class PanelKind { PROVIDERS, DETAIL, NOTIFICATIONS, REFRESH, PRIVACY, ABOUT, ACCOUNT_MENU, REMOVE, SUCCESS, IMPORT }
 data class MonitorPanel(val kind: PanelKind, val platform: Platform? = null, val accountId: String? = null)
 
 data class MonitoredAccount(val account: Account, val usage: UsageInfo?, val visible: Boolean, val pinned: Boolean) {
@@ -53,7 +51,7 @@ data class MonitorState(
     val editor: AccountDraft? = null, val panel: MonitorPanel? = null,
     val refreshing: Boolean = false, val saving: Boolean = false, val formError: String? = null,
     val lastUpdated: Long = 0, val now: Long = System.currentTimeMillis(),
-    val colorMode: ColorMode = ColorMode.SYSTEM, val notifications: Boolean = true,
+    val notifications: Boolean = true,
     val resetAlerts: Boolean = true, val sessionAlerts: Boolean = true,
     val refreshMinutes: Long = 15, val exportJson: String? = null,
 ) {
@@ -77,7 +75,6 @@ class MonitorViewModel @Inject constructor(
     private val api: UsageApiService,
     sessionEvents: SessionEventBus,
 ) : ViewModel() {
-    private val themePreferences = context.getSharedPreferences(THEME_PREFS_NAME, Context.MODE_PRIVATE)
     private val _state = MutableStateFlow(MonitorState(page = savedState.get<String>("monitor_page")
         ?.let { runCatching { MonitorPage.valueOf(it) }.getOrNull() } ?: MonitorPage.OVERVIEW))
     val state = _state.asStateFlow()
@@ -110,7 +107,6 @@ class MonitorViewModel @Inject constructor(
         }
         _state.update { it.copy(accounts = rows, now = now,
             lastUpdated = rows.mapNotNull { row -> row.usage?.takeIf { data -> data.items.isNotEmpty() }?.updatedAt }.maxOrNull() ?: 0,
-            colorMode = runCatching { ColorMode.valueOf(themePreferences.getString(KEY_COLOR_MODE, "SYSTEM")!!) }.getOrDefault(ColorMode.SYSTEM),
             notifications = notifications.notificationsEnabled, resetAlerts = notifications.resetReminderEnabled,
             sessionAlerts = notifications.sessionExpiredAlertEnabled, refreshMinutes = refreshPreferences.intervalMinutes) }
     }
@@ -118,7 +114,8 @@ class MonitorViewModel @Inject constructor(
     fun selectPage(page: MonitorPage) {
         savedState["monitor_page"] = page.name
         _state.update { it.copy(page = page, panel = null) }
-        reload()
+        // Page selection only changes presentation. Data already updates through lifecycle,
+        // refresh and account-change events; decrypting accounts here would block the next frame.
     }
     fun setHomeFilter(index: Int) = _state.update { it.copy(homeFilter = index) }
     fun setAccountTab(index: Int) = _state.update { it.copy(accountTab = index) }
@@ -292,7 +289,6 @@ class MonitorViewModel @Inject constructor(
         }
     }
 
-    fun setColorMode(mode: ColorMode) { themePreferences.edit().putString(KEY_COLOR_MODE, mode.name).apply(); reload(); dismissPanel() }
     fun setNotifications(enabled: Boolean) {
         notifications.notificationsEnabled = enabled
         if (!enabled) NotificationManagerCompat.from(context).cancelAll() else balanceNotifier.refresh()

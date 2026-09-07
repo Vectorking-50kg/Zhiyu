@@ -1,0 +1,14 @@
+Miuix
+Artifact: top.yukonga.miuix.kmp:miuix-android:0.3.4
+License: Apache License 2.0
+Developer identified by the published POM: YuKongA
+Repository: https://github.com/miuix-kotlin-multiplatform/miuix
+Tag: v0.3.4
+Commit: 677a9cf2930ca7df6e912fafc812cdc64ee5cd50
+License source: https://github.com/miuix-kotlin-multiplatform/miuix/blob/677a9cf2930ca7df6e912fafc812cdc64ee5cd50/LICENSE
+Published POM: https://repo.maven.apache.org/maven2/top/yukonga/miuix/kmp/miuix-android/0.3.4/miuix-android-0.3.4.pom
+
+The complete upstream license is reproduced without modification in miuix.txt.
+The upstream LICENSE contains the standard Apache appendix placeholders; no
+copyright holder or date has been substituted for those placeholders here.
+No separate NOTICE file is present in this tagged repository.

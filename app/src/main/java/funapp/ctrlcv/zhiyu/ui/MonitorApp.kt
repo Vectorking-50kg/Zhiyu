@@ -6,10 +6,8 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -23,15 +21,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -40,20 +34,23 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import funapp.ctrlcv.zhiyu.BuildConfig
-import funapp.ctrlcv.zhiyu.core.domain.model.ColorMode
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
+import funapp.ctrlcv.zhiyu.core.domain.model.BottomBarStyle
 import funapp.ctrlcv.zhiyu.core.ui.components.*
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 import funapp.ctrlcv.zhiyu.core.ui.theme.LocalMonitorPalette
+import funapp.ctrlcv.zhiyu.core.ui.theme.LocalAppearanceSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun MonitorApp(vm: MonitorViewModel, onAuthorize: (Platform, String?) -> Unit) {
+fun MonitorApp(vm: MonitorViewModel, onAppearance: () -> Unit, onAuthorize: (Platform, String?) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val c = LocalMonitorPalette.current
+    val appearance = LocalAppearanceSettings.current
+    val backdrop = rememberGlassBackdrop()
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -112,52 +109,33 @@ fun MonitorApp(vm: MonitorViewModel, onAuthorize: (Platform, String?) -> Unit) {
     }
     val statusInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding().coerceAtLeast(32.dp)
     val navigationInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomPadding = (navigationInset + 104.dp).coerceAtLeast(128.dp)
+    val floating = appearance.bottomBarStyle != BottomBarStyle.FIXED
+    val glass = appearance.bottomBarStyle == BottomBarStyle.GLASS && Build.VERSION.SDK_INT >= 31
+    val bottomPadding = navigationInset + if (floating) 104.dp else 96.dp
     Box(Modifier.fillMaxSize().background(c.background)) {
-        Box(Modifier.fillMaxSize().padding(top = statusInset)) {
+        Box(Modifier.fillMaxSize().then(if (glass) Modifier.glassBackdropSource(backdrop) else Modifier)
+            .background(c.background).padding(top = statusInset)) {
             if (state.editor != null) AccountEditorScreen(state, vm, requestNotifications)
             else when (state.page) {
                 MonitorPage.OVERVIEW -> OverviewScreen(state, vm, overviewScroll, bottomPadding)
                 MonitorPage.ACCOUNTS -> AccountsScreen(state, vm, accountScroll, bottomPadding)
-                MonitorPage.SETTINGS -> MonitorSettingsScreen(state, vm, settingsScroll, bottomPadding)
+                MonitorPage.SETTINGS -> MonitorSettingsScreen(state, vm, settingsScroll, bottomPadding, onAppearance)
             }
         }
         if (state.editor == null) {
-            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(bottomPadding)
+            if (floating && !glass) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(bottomPadding)
                 .background(Brush.verticalGradient(0f to Color.Transparent, .8f to c.background, 1f to c.background)))
-            FloatingNavigation(state.page, vm::selectPage, { scope.launch { scroll.animateScrollTo(0) } },
-                Modifier.align(Alignment.BottomCenter).padding(bottom = navigationInset + 16.dp))
+            MonitorNavigation(state.page, vm::selectPage, { scope.launch { scroll.animateScrollTo(0) } }, backdrop,
+                Modifier.align(Alignment.BottomCenter).padding(bottom = navigationInset + if (floating) 16.dp else 0.dp))
         }
-        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(navigationInset).background(c.background))
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(navigationInset)
+            .background(if (!floating && state.editor == null) c.toolbar else c.background))
         SnackbarHost(snackbars, Modifier.align(Alignment.BottomCenter).padding(start = 22.dp, end = 22.dp, bottom = navigationInset + 91.dp)) { data ->
             Snackbar(data, shape = RoundedCornerShape(12.dp), containerColor = c.primary, contentColor = c.onPrimary, actionColor = c.onPrimary)
         }
     }
     state.panel?.let { panel ->
         MonitorPanelHost(panel, state, vm, requestNotifications) { vm.dismissPanel(); import.launch(arrayOf("application/json")) }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun FloatingNavigation(page: MonitorPage, onSelect: (MonitorPage) -> Unit, onReselect: () -> Unit, modifier: Modifier = Modifier) {
-    val c = LocalMonitorPalette.current
-    Row(modifier.shadow(2.dp, RoundedCornerShape(28.dp), ambientColor = Color(0x3017262A), spotColor = Color(0x3017262A)).clip(RoundedCornerShape(28.dp)).background(c.toolbar)
-        .height(72.dp).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        listOf(Triple(MonitorPage.OVERVIEW, "概览", AppIcons.GridView), Triple(MonitorPage.ACCOUNTS, "账户", AppIcons.Group), Triple(MonitorPage.SETTINGS, "设置", AppIcons.Settings))
-            .forEach { (tab, label, icon) ->
-                val active = tab == page
-                Column(Modifier.size(64.dp, 58.dp).clip(RoundedCornerShape(12.dp))
-                    .combinedClickable(role = Role.Tab, onClick = { if (!active) onSelect(tab) }, onDoubleClick = { if (active) onReselect() })
-                    .semantics { contentDescription = label; selected = active }, horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center) {
-                    Box(Modifier.size(40.dp).background(if (active) c.indicator else Color.Transparent, CircleShape), contentAlignment = Alignment.Center) {
-                        AppIcon(icon, null, size = 24.dp, tint = if (active) c.text else c.muted)
-                    }
-                    UiText(label, 11, 16, if (active) 600 else 400, if (active) c.text else c.muted)
-                }
-            }
     }
 }
 
@@ -168,7 +146,7 @@ private fun MonitorPanelHost(panel: MonitorPanel, state: MonitorState, vm: Monit
     val row = state.accounts.firstOrNull { it.platform == panel.platform && (panel.accountId == null || it.account.id == panel.accountId) }
     val title = when (panel.kind) {
         PanelKind.PROVIDERS -> "添加监控"; PanelKind.DETAIL -> panel.platform?.displayName ?: "账户详情"
-        PanelKind.APPEARANCE -> "颜色模式"; PanelKind.NOTIFICATIONS -> "通知与提醒"
+        PanelKind.NOTIFICATIONS -> "通知与提醒"
         PanelKind.REFRESH -> "刷新策略"; PanelKind.PRIVACY -> "数据与隐私"; PanelKind.ABOUT -> "关于知余"
         PanelKind.ACCOUNT_MENU -> "账户操作"; PanelKind.REMOVE -> "移除监控？"
         PanelKind.SUCCESS -> "连接完成"; PanelKind.IMPORT -> "导入备份"
@@ -176,7 +154,6 @@ private fun MonitorPanelHost(panel: MonitorPanel, state: MonitorState, vm: Monit
     val subtitle = when (panel.kind) {
         PanelKind.PROVIDERS -> "选择一个供应商，连接你的 AI 账户。"
         PanelKind.DETAIL -> row?.let { "${planLabel(it)} · ${it.account.displayName}" }
-        PanelKind.APPEARANCE -> "概览、账户与设置将使用同一套外观。"
         PanelKind.NOTIFICATIONS -> "全局偏好，单个账户仍可独立设置。"
         PanelKind.REFRESH -> "选择后台刷新间隔，概览也可以随时手动刷新。"
         PanelKind.PRIVACY -> "管理账户配置与应用偏好。"
@@ -187,9 +164,6 @@ private fun MonitorPanelHost(panel: MonitorPanel, state: MonitorState, vm: Monit
         when (panel.kind) {
             PanelKind.PROVIDERS -> ProviderPicker(state, vm)
             PanelKind.DETAIL -> row?.let { AccountDetail(it, state.now) { vm.configure(it.platform, it.account.id) } }
-            PanelKind.APPEARANCE -> listOf(ColorMode.SYSTEM, ColorMode.LIGHT, ColorMode.DARK).forEach {
-                RadioOption(it.label(), state.colorMode == it) { vm.setColorMode(it) }
-            }
             PanelKind.REFRESH -> listOf(15L, 30L, 60L).forEach { RadioOption("$it 分钟", state.refreshMinutes == it) { vm.setRefreshMinutes(it) } }
             PanelKind.NOTIFICATIONS -> {
                 SettingGroup {

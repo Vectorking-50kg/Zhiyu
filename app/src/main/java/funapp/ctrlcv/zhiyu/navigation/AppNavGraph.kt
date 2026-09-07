@@ -13,6 +13,7 @@ import androidx.navigation.navArgument
 import funapp.ctrlcv.zhiyu.feature.auth.AuthWebViewScreen
 import funapp.ctrlcv.zhiyu.ui.MonitorApp
 import funapp.ctrlcv.zhiyu.ui.MonitorViewModel
+import funapp.ctrlcv.zhiyu.ui.AppearanceScreen
 
 @Composable
 fun AppNavGraph() {
@@ -20,9 +21,12 @@ fun AppNavGraph() {
     val viewModel: MonitorViewModel = hiltViewModel()
     NavHost(navigation, startDestination = "monitor", modifier = Modifier.fillMaxSize()) {
         composable("monitor") {
-            MonitorApp(viewModel) { platform, accountId ->
+            MonitorApp(viewModel, onAppearance = { navigation.navigate("appearance") }) { platform, accountId ->
                 navigation.navigate("auth/${platform.key}" + (accountId?.let { "?accountId=${Uri.encode(it)}" } ?: ""))
             }
+        }
+        composable("appearance") {
+            AppearanceScreen(onBack = { navigation.popBackStack() })
         }
         composable("auth/{platform}?accountId={accountId}", arguments = listOf(
             navArgument("accountId") { type = NavType.StringType; nullable = true; defaultValue = null },

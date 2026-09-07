@@ -19,6 +19,7 @@ import funapp.ctrlcv.zhiyu.core.ui.components.*
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 import funapp.ctrlcv.zhiyu.core.ui.theme.LocalMonitorPalette
+import funapp.ctrlcv.zhiyu.core.ui.theme.LocalMonitorStyle
 
 @Composable
 fun AccountsScreen(state: MonitorState, vm: MonitorViewModel, scroll: ScrollState, bottomPadding: Dp) {
@@ -26,11 +27,12 @@ fun AccountsScreen(state: MonitorState, vm: MonitorViewModel, scroll: ScrollStat
     val all = state.accounts
     val listed = all.filter { matchesProvider(it.platform, state.search) || it.account.displayName.contains(state.search, true) }
     val supported = Platform.displayOrder.filter { matchesProvider(it, state.search) }
-    Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(start = 20.dp, end = 20.dp, top = 21.dp, bottom = bottomPadding)) {
+    val style = LocalMonitorStyle.current
+    Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(start = style.pagePadding, end = style.pagePadding, top = 21.dp, bottom = bottomPadding)) {
         PageTitle("账户", "统一管理你的 AI 连接与监控") { IconAction(AppIcons.Add, "添加监控", vm::showProviders) }
         Spacer(Modifier.height(22.dp))
-        Row(Modifier.fillMaxWidth().height(80.dp).clip(RoundedCornerShape(16.dp)).background(c.surface)
-            .border(1.dp, c.line, RoundedCornerShape(16.dp)).padding(horizontal = 1.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).clip(style.groupShape).background(c.surface)
+            .border(1.dp, c.line, style.groupShape).padding(horizontal = 1.dp), verticalAlignment = Alignment.CenterVertically) {
             listOf(all.size to "已添加", all.count { !it.attention && !it.paused } to "连接正常", all.count { it.attention } to "待处理")
                 .forEachIndexed { index, (number, label) ->
                     if (index > 0) Box(Modifier.width(1.dp).height(24.dp).background(c.line))
@@ -80,8 +82,8 @@ fun matchesProvider(platform: Platform, query: String): Boolean {
 @Composable
 fun AccountRow(platform: Platform, row: MonitoredAccount?, onClick: () -> Unit, compact: Boolean = false) {
     val c = LocalMonitorPalette.current
-    val shape = RoundedCornerShape(if (compact) 12.dp else 16.dp)
-    Row(Modifier.fillMaxWidth().height(if (compact) 70.dp else 84.dp).clip(shape).background(c.surface)
+    val shape = if (compact) RoundedCornerShape(12.dp) else LocalMonitorStyle.current.groupShape
+    Row(Modifier.fillMaxWidth().heightIn(min = if (compact) 70.dp else 84.dp).clip(shape).background(c.surface)
         .border(1.dp, c.line, shape).clickable(role = Role.Button, onClick = onClick)
         .padding(if (compact) 13.dp else 16.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp)) {

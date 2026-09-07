@@ -18,6 +18,10 @@ hilt-work = "1.2.0"
 activity-compose = "1.9.3"
 core-ktx = "1.15.0"
 webkit = "1.12.1"
+miuix = "0.3.4"
+materialkolor = "2.0.0"
+android-test-junit = "1.2.1"
+android-test-runner = "1.6.2"
 
 [libraries]
 # Compose BOM
@@ -28,6 +32,12 @@ compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-animation = { group = "androidx.compose.animation", name = "animation" }
+compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+android-test-junit = { module = "androidx.test.ext:junit", version.ref = "android-test-junit" }
+android-test-runner = { module = "androidx.test:runner", version.ref = "android-test-runner" }
+miuix = { module = "top.yukonga.miuix.kmp:miuix-android", version.ref = "miuix" }
+materialkolor = { module = "com.materialkolor:material-kolor", version.ref = "materialkolor" }
 
 # Lifecycle
 lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }

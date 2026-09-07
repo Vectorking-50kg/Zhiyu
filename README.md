@@ -18,7 +18,9 @@
 
 - **多平台聚合面板** —— 卡片式概览聚合套餐额度与账户余额，支持分类筛选；同一条进度条用深色表示用量、浅色表示时间进度。
 - **独立账户管理** —— 首次打开引导添加第一个账户；在「账户」页搜索和连接供应商，修改名称、概览显示、监控、提醒与状态栏固定。
-- **Compose 界面** —— 概览、账户、设置使用带文字的底部悬浮导航，支持浅色、深色和跟随系统。
+- **双风格主题** —— Compose 界面可切换 Material / Miuix；「主题与外观」提供跟随系统、浅色、深色、纯黑背景和即时预览。
+- **莫奈与自选配色** —— Android 12 及以上可读取系统壁纸配色，也可自选主色并调整九种色彩风格。旧系统保留默认和自选配色。
+- **底栏与界面缩放** —— 支持标准、悬浮和液态玻璃底栏；玻璃在 Android 13 及以上呈现真实背景模糊与折射。界面可缩放至 80%–120%，松手应用并保留系统字体比例，外观设置在重启后保留。
 - **状态栏常驻通知** —— 将任意平台「固定」到状态栏，持续显示用量百分比或余额，并标注最近更新时间。
 - **阈值与重置提醒** —— 用量升破 80% / 95% 时分级提醒（同级别只提醒一次，回落后自动解除）；限额接近用尽后，检测到额度重置时通知；网页平台登录过期时提醒重新登录。三类提醒均可在设置中独立开关。
 - **桌面小组件** —— 2×2 主屏小组件，每 30 分钟自动刷新，无需打开 App 即可查看。
@@ -148,3 +150,5 @@ feature/
 ChatGPT 使用 [Lobe Icons](https://github.com/lobehub/lobe-icons) 的 **OpenAI** 标准图标，固定来源为 `@lobehub/icons-static-svg@1.95.0` 的 [`openai.svg`](https://unpkg.com/@lobehub/icons-static-svg@1.95.0/icons/openai.svg)。项目增加白色圆角底板以适配深浅色，并从同一 SVG 生成 Android 与 HTML 共用的 PNG。MIT 许可附于 `app/src/main/assets/licenses/lobe-icons.txt`。
 
 供应商之外的应用图标使用 Google **Material Symbols Outlined · Weight 300** 官方 Android 矢量资源，Apache 2.0 许可与来源记录位于 `app/src/main/assets/licenses/material-symbols*.txt`。
+
+主题采用 [Miuix](https://github.com/compose-miuix-ui/miuix) 0.3.4（Apache 2.0）和 [MaterialKolor](https://github.com/jordond/MaterialKolor) 2.0.0（MIT），与项目现有 Kotlin 2.1、Compose 1.7 和 Android 8.0 最低版本兼容。借鉴 SukiSU-Ultra 的主题分层、动态色和缩放方式，独立实现外观管理与玻璃背景采样，使用兼容的真实 Miuix 控件。依赖许可及固定来源随应用附于 `app/src/main/assets/licenses/`。

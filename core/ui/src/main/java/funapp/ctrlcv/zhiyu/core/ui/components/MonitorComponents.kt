@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -34,11 +36,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
+import funapp.ctrlcv.zhiyu.core.domain.model.UiStyle
 import funapp.ctrlcv.zhiyu.core.ui.R
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 import funapp.ctrlcv.zhiyu.core.ui.theme.LocalMonitorPalette
+import funapp.ctrlcv.zhiyu.core.ui.theme.LocalMonitorStyle
+import funapp.ctrlcv.zhiyu.core.ui.theme.LocalAppearanceSettings
+import funapp.ctrlcv.zhiyu.core.ui.theme.LocalBaseDensity
 import funapp.ctrlcv.zhiyu.core.ui.theme.monitorTextStyle
+import top.yukonga.miuix.kmp.basic.Button as MiuixButton
+import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
+import top.yukonga.miuix.kmp.basic.Switch as MiuixSwitch
+import top.yukonga.miuix.kmp.basic.Text as MiuixText
 
 @Composable
 fun UiText(
@@ -46,8 +56,14 @@ fun UiText(
     color: Color = LocalMonitorPalette.current.text, modifier: Modifier = Modifier,
     tracking: Float = 0f, align: TextAlign = TextAlign.Start, maxLines: Int = Int.MAX_VALUE,
     decoration: TextDecoration? = null,
-) = Text(text, modifier, color, style = monitorTextStyle(size, line, weight, tracking),
-    textAlign = align, maxLines = maxLines, overflow = TextOverflow.Ellipsis, textDecoration = decoration)
+) {
+    val style = monitorTextStyle(size, line, weight, tracking).copy(fontFamily = LocalMonitorStyle.current.fontFamily)
+    if (LocalAppearanceSettings.current.uiStyle == UiStyle.MIUIX) {
+        MiuixText(text, modifier, color, style = style, textAlign = align,
+            maxLines = maxLines, overflow = TextOverflow.Ellipsis, textDecoration = decoration)
+    } else Text(text, modifier, color, style = style,
+        textAlign = align, maxLines = maxLines, overflow = TextOverflow.Ellipsis, textDecoration = decoration)
+}
 
 @DrawableRes
 fun platformIcon(platform: Platform): Int = when (platform) {
@@ -92,16 +108,18 @@ fun IconAction(@DrawableRes icon: Int, label: String, onClick: () -> Unit,
 }
 
 @Composable
-fun PageTitle(title: String, subtitle: String, statusDot: Boolean = false, action: (@Composable () -> Unit)? = null) {
+fun PageTitle(title: String, subtitle: String = "", statusDot: Boolean = false, action: (@Composable () -> Unit)? = null) {
     val c = LocalMonitorPalette.current
-    Row(Modifier.fillMaxWidth().height(if (action == null) 40.dp else 44.dp), verticalAlignment = Alignment.CenterVertically) {
-        UiText(title, 30, 40, 600, tracking = -1f, modifier = Modifier.weight(1f))
+    Row(Modifier.fillMaxWidth().heightIn(min = if (action == null) 40.dp else 44.dp), verticalAlignment = Alignment.CenterVertically) {
+        UiText(title, LocalMonitorStyle.current.titleSize, 40, 600, tracking = -1f, modifier = Modifier.weight(1f))
         action?.invoke()
     }
-    Spacer(Modifier.height(5.dp))
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        if (statusDot) { Box(Modifier.size(5.dp).background(c.green, CircleShape)); Spacer(Modifier.width(6.dp)) }
-        UiText(subtitle, 12, 20, color = c.muted)
+    if (subtitle.isNotBlank()) {
+        Spacer(Modifier.height(5.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (statusDot) { Box(Modifier.size(5.dp).background(c.green, CircleShape)); Spacer(Modifier.width(6.dp)) }
+            UiText(subtitle, 12, 20, color = c.muted)
+        }
     }
 }
 
@@ -111,14 +129,23 @@ fun UiButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier,
     val c = LocalMonitorPalette.current
     val shape = RoundedCornerShape(12.dp)
     val foreground = if (secondary) c.text else c.onPrimary
-    Row(modifier.fillMaxWidth().heightIn(min = if (secondary) 46.dp else 48.dp)
-        .clip(shape).background(if (secondary) c.surface else c.primary.copy(alpha = if (enabled) 1f else .45f))
-        .then(if (secondary) Modifier.border(1.dp, c.line, shape) else Modifier)
-        .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 18.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+    val content: @Composable RowScope.() -> Unit = {
         icon?.let { AppIcon(it, null, size = 18.dp, tint = foreground); Spacer(Modifier.width(8.dp)) }
         UiText(label, if (secondary) 12 else 13, 20, 500, foreground)
     }
+    val bounds = modifier.fillMaxWidth().heightIn(min = if (secondary) 46.dp else 48.dp)
+    if (LocalAppearanceSettings.current.uiStyle == UiStyle.MIUIX) {
+        MiuixButton(onClick, bounds, enabled, cornerRadius = 18.dp, minHeight = 48.dp,
+            colors = if (secondary) MiuixButtonDefaults.buttonColors() else MiuixButtonDefaults.buttonColorsPrimary(),
+            insideMargin = PaddingValues(horizontal = 18.dp, vertical = 12.dp), content = content)
+    } else if (secondary) {
+        OutlinedButton(onClick, bounds, enabled, shape = shape,
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = c.surface, contentColor = foreground),
+            border = androidx.compose.foundation.BorderStroke(1.dp, c.line),
+            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp), content = content)
+    } else Button(onClick, bounds, enabled, shape = shape,
+        colors = ButtonDefaults.buttonColors(containerColor = c.primary, contentColor = foreground),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp), content = content)
 }
 
 @Composable
@@ -136,7 +163,7 @@ fun FilterTabs(items: List<String>, selected: Int, onSelect: (Int) -> Unit, modi
     Row(modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(c.soft).padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         items.forEachIndexed { index, label ->
-            Box(Modifier.weight(1f).height(34.dp).clip(RoundedCornerShape(8.dp))
+            Box(Modifier.weight(1f).heightIn(min = 34.dp).clip(RoundedCornerShape(8.dp))
                 .background(if (index == selected) c.surface else Color.Transparent)
                 .selectable(index == selected, role = Role.Tab) { onSelect(index) }, contentAlignment = Alignment.Center) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -158,7 +185,7 @@ fun SearchInput(value: String, onValue: (String) -> Unit, placeholder: String, m
         AppIcon(AppIcons.Search, null, size = 17.dp, tint = c.subtle)
         Spacer(Modifier.width(8.dp))
         BasicTextField(value, onValue, Modifier.weight(1f).semantics { contentDescription = placeholder },
-            textStyle = monitorTextStyle(12, 22).copy(color = c.text), singleLine = true,
+            textStyle = monitorTextStyle(12, 22).copy(color = c.text, fontFamily = LocalMonitorStyle.current.fontFamily), singleLine = true,
             cursorBrush = SolidColor(c.primary), decorationBox = { field ->
                 Box { if (value.isEmpty()) UiText(placeholder, 12, 22, color = c.subtle); field() }
             })
@@ -177,7 +204,7 @@ fun FormInput(label: String, value: String, onValue: (String) -> Unit, placehold
             .background(c.surface).border(1.dp, c.line, RoundedCornerShape(11.dp)).padding(start = 14.dp, end = if (password) 4.dp else 14.dp),
             verticalAlignment = Alignment.CenterVertically) {
             BasicTextField(value, onValue, Modifier.weight(1f).semantics { contentDescription = label },
-                textStyle = monitorTextStyle(13, 20).copy(color = c.text), singleLine = true,
+                textStyle = monitorTextStyle(13, 20).copy(color = c.text, fontFamily = LocalMonitorStyle.current.fontFamily), singleLine = true,
                 keyboardOptions = if (password) KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password) else KeyboardOptions.Default,
                 visualTransformation = if (password && !reveal) PasswordVisualTransformation() else VisualTransformation.None,
                 cursorBrush = SolidColor(c.primary), decorationBox = { field ->
@@ -193,8 +220,9 @@ fun FormInput(label: String, value: String, onValue: (String) -> Unit, placehold
 @Composable
 fun SettingGroup(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val c = LocalMonitorPalette.current
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.surface)
-        .border(1.dp, c.line, RoundedCornerShape(16.dp)).padding(1.dp), content = content)
+    val shape = LocalMonitorStyle.current.groupShape
+    Column(modifier.fillMaxWidth().clip(shape).background(c.surface)
+        .border(1.dp, c.line, shape).padding(1.dp), content = content)
 }
 
 @Composable
@@ -220,20 +248,18 @@ fun SettingRow(title: String, description: String? = null, @DrawableRes icon: In
 @Composable
 fun UiSwitch(label: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
     val c = LocalMonitorPalette.current
-    Box(Modifier.size(44.dp, 27.dp).clip(RoundedCornerShape(17.dp))
-        .background(if (checked) c.primary else c.soft)
-        .border(1.5.dp, if (checked) c.primary else c.muted, RoundedCornerShape(17.dp))
-        .toggleable(checked, role = Role.Switch, onValueChange = onChecked)
-        .semantics { contentDescription = label }.padding(horizontal = 4.5.dp),
-        contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart) {
-        Box(Modifier.size(if (checked) 19.dp else 17.dp).background(if (checked) c.onPrimary else c.muted, CircleShape))
-    }
+    val semantics = Modifier.semantics { contentDescription = label }
+    if (LocalAppearanceSettings.current.uiStyle == UiStyle.MIUIX) MiuixSwitch(checked, onChecked, semantics)
+    else Switch(checked, onChecked, semantics, colors = SwitchDefaults.colors(
+        checkedTrackColor = c.primary, checkedThumbColor = c.onPrimary,
+        uncheckedTrackColor = c.soft, uncheckedThumbColor = c.muted, uncheckedBorderColor = c.muted,
+    ))
 }
 
 @Composable
 fun SectionCaption(title: String, count: String? = null, modifier: Modifier = Modifier) {
     val c = LocalMonitorPalette.current
-    Row(modifier.fillMaxWidth().height(if (count == null) 15.dp else 16.5.dp).padding(horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth().heightIn(min = if (count == null) 15.dp else 16.5.dp).padding(horizontal = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         UiText(title, if (count == null) 10 else 11, if (count == null) 15 else 17, color = c.muted, modifier = Modifier.weight(1f))
         count?.let { UiText(it, 10, 16, color = c.muted) }
     }
@@ -257,22 +283,53 @@ fun MonitorSheet(title: String, subtitle: String? = null, onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit) {
     val c = LocalMonitorPalette.current
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val height = LocalConfiguration.current.screenHeightDp.dp - 54.dp
+    val appDensity = LocalDensity.current
+    val corner = CornerSize(with(appDensity) { 28.dp.toPx() })
+    // Configuration dp remains at the system density; convert before applying the app's scale.
+    val height = (LocalConfiguration.current.screenHeightDp * LocalBaseDensity.current.density / LocalDensity.current.density).dp - 54.dp
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, containerColor = c.sheet, tonalElevation = 0.dp,
         scrimColor = Color(0x6009131B), dragHandle = null,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        shape = RoundedCornerShape(corner, corner, CornerSize(0.dp), CornerSize(0.dp)),
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }) {
-        Column(Modifier.fillMaxWidth().heightIn(max = height)) {
-            Box(Modifier.padding(top = 10.dp, bottom = 8.dp).align(Alignment.CenterHorizontally)
-                .size(36.dp, 4.dp).background(c.line, RoundedCornerShape(6.dp)))
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(46.dp), verticalAlignment = Alignment.CenterVertically) {
-                UiText(title, 23, 32, 600, tracking = -.5f, modifier = Modifier.weight(1f))
-                IconAction(AppIcons.Close, "关闭面板", onDismiss)
+        // Dialog creates another Android Compose root, which supplies the device density again.
+        CompositionLocalProvider(LocalDensity provides appDensity) {
+            Column(Modifier.fillMaxWidth().heightIn(max = height)) {
+                Box(Modifier.padding(top = 10.dp, bottom = 8.dp).align(Alignment.CenterHorizontally)
+                    .size(36.dp, 4.dp).background(c.line, RoundedCornerShape(6.dp)))
+                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 46.dp), verticalAlignment = Alignment.CenterVertically) {
+                    UiText(title, 23, 32, 600, tracking = -.5f, modifier = Modifier.weight(1f))
+                    IconAction(AppIcons.Close, "关闭面板", onDismiss)
+                }
+                subtitle?.let { UiText(it, 11, 19, color = c.muted, modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 5.dp)) }
+                Spacer(Modifier.height(12.dp))
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp).navigationBarsPadding().imePadding().padding(bottom = 12.dp), content = content)
             }
-            subtitle?.let { UiText(it, 11, 19, color = c.muted, modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 5.dp)) }
-            Spacer(Modifier.height(12.dp))
-            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp).navigationBarsPadding().imePadding().padding(bottom = 12.dp), content = content)
         }
     }
+}
+
+/** Keep text and controls at the app's scale inside Android's separate alert-dialog root. */
+@Composable
+fun ScaledAlertDialog(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    dismissButton: (@Composable () -> Unit)? = null,
+    icon: (@Composable () -> Unit)? = null,
+    title: (@Composable () -> Unit)? = null,
+    text: (@Composable () -> Unit)? = null,
+    containerColor: Color = LocalMonitorPalette.current.sheet,
+) {
+    val density = LocalDensity.current
+    val corner = CornerSize(with(density) { 28.dp.toPx() })
+    AlertDialog(
+        onDismissRequest, modifier = modifier, containerColor = containerColor,
+        shape = RoundedCornerShape(corner, corner, corner, corner),
+        confirmButton = { CompositionLocalProvider(LocalDensity provides density, content = confirmButton) },
+        dismissButton = dismissButton?.let { slot -> { CompositionLocalProvider(LocalDensity provides density, content = slot) } },
+        icon = icon?.let { slot -> { CompositionLocalProvider(LocalDensity provides density, content = slot) } },
+        title = title?.let { slot -> { CompositionLocalProvider(LocalDensity provides density, content = slot) } },
+        text = text?.let { slot -> { CompositionLocalProvider(LocalDensity provides density, content = slot) } },
+    )
 }

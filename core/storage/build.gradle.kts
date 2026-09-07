@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":core:domain"))
 
     implementation(libs.core.ktx)
+    implementation(libs.coroutines.core)
     implementation(libs.security.crypto)
     implementation(libs.gson)
     implementation(libs.hilt.android)
