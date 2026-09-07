@@ -29,7 +29,6 @@ fun AccountEditorScreen(state: MonitorState, vm: MonitorViewModel, requestNotifi
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(51.dp), verticalAlignment = Alignment.CenterVertically) {
             IconAction(AppIcons.ArrowBack, "返回", vm::closeEditor)
             Spacer(Modifier.width(5.dp)); UiText(if (adding) "添加监控" else "账户设置", 16, 24, 500, modifier = Modifier.weight(1f))
-            if (!adding) IconAction(AppIcons.More, "更多账户操作", { vm.showPanel(PanelKind.ACCOUNT_MENU, draft.platform, draft.accountId) })
         }
         Spacer(Modifier.height(14.dp))
         Column(Modifier.padding(horizontal = LocalMonitorStyle.current.pagePadding)) {

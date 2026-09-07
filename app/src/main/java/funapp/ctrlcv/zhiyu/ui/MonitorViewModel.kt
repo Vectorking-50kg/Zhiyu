@@ -23,7 +23,7 @@ import java.util.UUID
 import javax.inject.Inject
 
 enum class MonitorPage { OVERVIEW, ACCOUNTS, SETTINGS }
-enum class PanelKind { PROVIDERS, DETAIL, NOTIFICATIONS, REFRESH, PRIVACY, ABOUT, ACCOUNT_MENU, REMOVE, SUCCESS, IMPORT }
+enum class PanelKind { PROVIDERS, DETAIL, NOTIFICATIONS, REFRESH, PRIVACY, ABOUT, REMOVE, SUCCESS, IMPORT }
 data class MonitorPanel(val kind: PanelKind, val platform: Platform? = null, val accountId: String? = null)
 
 data class MonitoredAccount(val account: Account, val usage: UsageInfo?, val visible: Boolean, val pinned: Boolean) {

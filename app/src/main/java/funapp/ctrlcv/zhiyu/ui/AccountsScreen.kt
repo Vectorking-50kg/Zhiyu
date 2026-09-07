@@ -29,7 +29,7 @@ fun AccountsScreen(state: MonitorState, vm: MonitorViewModel, scroll: ScrollStat
     val supported = Platform.displayOrder.filter { matchesProvider(it, state.search) }
     val style = LocalMonitorStyle.current
     Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(start = style.pagePadding, end = style.pagePadding, top = 21.dp, bottom = bottomPadding)) {
-        PageTitle("账户", "统一管理你的 AI 连接与监控") { IconAction(AppIcons.Add, "添加监控", vm::showProviders) }
+        PageTitle("账户") { IconAction(AppIcons.Add, "添加监控", vm::showProviders) }
         Spacer(Modifier.height(22.dp))
         Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).clip(style.groupShape).background(c.surface)
             .border(1.dp, c.line, style.groupShape).padding(horizontal = 1.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -69,7 +69,7 @@ fun AccountsScreen(state: MonitorState, vm: MonitorViewModel, scroll: ScrollStat
         Spacer(Modifier.height(19.dp))
         Row(Modifier.padding(horizontal = 5.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             AppIcon(AppIcons.Shield, null, size = 15.dp, tint = c.muted, modifier = Modifier.padding(top = 2.dp))
-            UiText("在账户详情中配置连接方式、概览显示与提醒。\n登录信息由你掌控。", 10, 19, color = c.muted)
+            UiText("在账户详情中配置连接方式、概览显示与提醒。", 10, 19, color = c.muted)
         }
     }
 }

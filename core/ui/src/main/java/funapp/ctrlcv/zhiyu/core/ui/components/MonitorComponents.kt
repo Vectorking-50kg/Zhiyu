@@ -88,13 +88,13 @@ fun ProviderLogo(platform: Platform, size: Dp = 34.dp, modifier: Modifier = Modi
 
 fun Platform.isBalanceProvider() = this in setOf(Platform.ZEN, Platform.AIHUBMIX, Platform.DEEPSEEK)
 fun Platform.monitorDescription() = when (this) {
-    Platform.CHATGPT -> "5 小时、每周额度与重置卡"
-    Platform.CLAUDE -> "5 小时、每周及模型额度"
-    Platform.CURSOR -> "订阅用量、Auto 与 API 额度"
+    Platform.CHATGPT -> "5 小时、每周用量与重置卡"
+    Platform.CLAUDE -> "5 小时、每周及模型用量"
+    Platform.CURSOR -> "套餐用量、Auto 与 API 用量"
     Platform.ZEN -> "账户余额"
-    Platform.MINIMAX -> "Token Plan 限额与 Boost 状态"
-    Platform.AIHUBMIX -> "余额、消费金额与请求次数"
-    Platform.DEEPSEEK -> "账户余额与充值、赠送明细"
+    Platform.MINIMAX -> "Token Plan 限额"
+    Platform.AIHUBMIX -> "账户余额、请求次数"
+    Platform.DEEPSEEK -> "账户余额"
 }
 
 @Composable

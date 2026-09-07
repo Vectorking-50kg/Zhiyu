@@ -147,8 +147,8 @@ private fun MonitorPanelHost(panel: MonitorPanel, state: MonitorState, vm: Monit
     val title = when (panel.kind) {
         PanelKind.PROVIDERS -> "添加监控"; PanelKind.DETAIL -> panel.platform?.displayName ?: "账户详情"
         PanelKind.NOTIFICATIONS -> "通知与提醒"
-        PanelKind.REFRESH -> "刷新策略"; PanelKind.PRIVACY -> "数据与隐私"; PanelKind.ABOUT -> "关于知余"
-        PanelKind.ACCOUNT_MENU -> "账户操作"; PanelKind.REMOVE -> "移除监控？"
+        PanelKind.REFRESH -> "刷新策略"; PanelKind.PRIVACY -> "数据与隐私"; PanelKind.ABOUT -> "关于"
+        PanelKind.REMOVE -> "移除监控？"
         PanelKind.SUCCESS -> "连接完成"; PanelKind.IMPORT -> "导入备份"
     }
     val subtitle = when (panel.kind) {
@@ -157,7 +157,7 @@ private fun MonitorPanelHost(panel: MonitorPanel, state: MonitorState, vm: Monit
         PanelKind.NOTIFICATIONS -> "全局偏好，单个账户仍可独立设置。"
         PanelKind.REFRESH -> "选择后台刷新间隔，概览也可以随时手动刷新。"
         PanelKind.PRIVACY -> "管理账户配置与应用偏好。"
-        PanelKind.ABOUT -> "AI 额度与余额监控 · v${BuildConfig.VERSION_NAME}"
+        PanelKind.ABOUT -> "v${BuildConfig.VERSION_NAME}"
         else -> null
     }
     MonitorSheet(title, subtitle, vm::dismissPanel) {
@@ -188,16 +188,8 @@ private fun MonitorPanelHost(panel: MonitorPanel, state: MonitorState, vm: Monit
             }
             PanelKind.ABOUT -> {
                 Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.size(54.dp).background(c.primary, RoundedCornerShape(17.dp)), contentAlignment = Alignment.Center) { UiText("知", 30, 45, color = c.onPrimary) }
+                    ApplicationIcon()
                     Spacer(Modifier.height(16.dp)); UiText("知余", 22, 30, 600); Spacer(Modifier.height(8.dp))
-                    UiText("查看额度，管理账户。\n把关注留给真正重要的工作。", 12, 23, color = c.muted, align = TextAlign.Center)
-                }
-            }
-            PanelKind.ACCOUNT_MENU -> {
-                SettingGroup {
-                    SettingRow(if (state.editor?.monitoring == true) "暂停这个账户的监控" else "恢复这个账户的监控", icon = AppIcons.Pause,
-                        onClick = { vm.updateDraft { it.copy(monitoring = !it.monitoring) }; vm.dismissPanel(); vm.saveEditor() }); SettingDivider()
-                    SettingRow("移除这个账户", first = false, icon = AppIcons.Person, onClick = { vm.showPanel(PanelKind.REMOVE, panel.platform, panel.accountId) })
                 }
             }
             PanelKind.REMOVE -> {
