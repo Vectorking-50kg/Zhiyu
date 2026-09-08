@@ -1,16 +1,16 @@
 <div align="center">
-    <img src="assets/readme/logo.png" alt="App 图标" width="100" height="100" style="display: block; border: 1px solid #f5f5f5; border-radius: 9999px;" />
-    <h1>知余</h1>
-    简体中文&nbsp;&nbsp;|&nbsp;&nbsp;
-    <a target="_blank" href="README_en-US.md">English</a>
-    <p>支持多平台 AI 用量和账户余额监控的 Android 应用，在应用、桌面小组件和常驻通知中随时查看你的 AI 额度</p>
+  <img src="assets/readme/logo.png" alt="App 图标" width="100" />
+  <h1>知余</h1>
 </div>
+
 <div align="center">
-    <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&amp;logoColor=white">
-    <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.1.0-7F52FF?logo=kotlin&amp;logoColor=white">
-    <img alt="Compose" src="https://img.shields.io/badge/UI-Jetpack_Compose-4285F4?logo=jetpackcompose&amp;logoColor=white">
-    <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
-    <a href="https://github.com/Vectorking-50kg/Zhiyu/releases/latest"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/Vectorking-50kg/Zhiyu?label=Release&amp;logo=github"></a>
+
+简体中文 | [English](README_en-US.md)
+
+支持多平台 AI 用量和账户余额监控的 Android 应用，在应用、桌面小组件和常驻通知中随时查看你的 AI 额度
+
+[![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)](https://developer.android.com) [![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org) [![Compose](https://img.shields.io/badge/UI-Jetpack_Compose-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![GitHub Release](https://img.shields.io/github/v/release/Vectorking-50kg/Zhiyu?label=Release&logo=github)](https://github.com/Vectorking-50kg/Zhiyu/releases/latest)
+
 </div>
 
 <div align="center">

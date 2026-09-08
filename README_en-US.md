@@ -1,17 +1,18 @@
 <div align="center">
-    <img src="assets/readme/logo.png" alt="Zhiyu app icon" width="100" height="100" style="display: block; border: 1px solid #f5f5f5; border-radius: 9999px;" />
-    <h1>Zhiyu</h1>
-    <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&amp;logoColor=white">
-    <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.1.0-7F52FF?logo=kotlin&amp;logoColor=white">
-    <img alt="Compose" src="https://img.shields.io/badge/UI-Jetpack_Compose-4285F4?logo=jetpackcompose&amp;logoColor=white">
-    <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
-    <a href="https://github.com/Vectorking-50kg/Zhiyu/releases/latest"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/Vectorking-50kg/Zhiyu?label=Release&amp;logo=github"></a>
+  <img src="assets/readme/logo.png" alt="Zhiyu app icon" width="100" />
+  <h1>Zhiyu</h1>
 </div>
+
 <div align="center">
-    <p>An Android app for monitoring AI usage and account balances across multiple platforms. Track your quotas in the app, home screen widgets, and persistent notifications.</p>
-    <a target="_blank" href="README.md">简体中文</a>&nbsp;&nbsp;|&nbsp;&nbsp;
-    English
+
+[简体中文](README.md) | English
+
+An Android app for monitoring AI usage and account balances across multiple platforms. Track your quotas in the app, home screen widgets, and persistent notifications.
+
+[![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)](https://developer.android.com) [![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org) [![Compose](https://img.shields.io/badge/UI-Jetpack_Compose-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![GitHub Release](https://img.shields.io/github/v/release/Vectorking-50kg/Zhiyu?label=Release&logo=github)](https://github.com/Vectorking-50kg/Zhiyu/releases/latest)
+
 </div>
+
 <div align="center">
   <img src="assets/readme/screenshots/blank.png"
        width="160" alt="Getting started with no accounts">
