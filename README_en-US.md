@@ -87,15 +87,35 @@ cd Zhiyu
 # Build the debug APK
 ./gradlew :app:assembleDebug
 
+# Build the release APK (configure release signing before distribution)
+./gradlew :app:assembleRelease
+
 # Install on a connected device with USB debugging enabled
 ./gradlew :app:installDebug
 ```
+
+Debug and Release use different application IDs, so both can be installed side by side with separate accounts and settings. For the current version:
+
+| Build type | App name | Application ID | Version name |
+| --- | --- | --- | --- |
+| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.2` |
+| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.2-debug` |
+
+Maintain the base version in `defaultConfig` in `app/build.gradle.kts`. Debug automatically appends `-debug`; Release has no suffix. The in-app About page displays the corresponding version name.
 
 Run the development checks with:
 
 ```bash
 ./gradlew testDebugUnitTest :app:lintDebug
 ```
+
+With an emulator or test device connected, verify notification state persistence under release minification:
+
+```bash
+./gradlew -I gradle/release-check.init.gradle :app:connectedReleaseCheckAndroidTest
+```
+
+This verification build uses a separate `.releasecheck` application ID and debug signing. Notification state and codec implementations remain subject to minification.
 
 ## Project Structure
 

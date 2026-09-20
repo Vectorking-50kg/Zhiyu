@@ -40,7 +40,11 @@ class UsageRepositoryImplTest {
         val completed: MutableList<Pair<Platform, Boolean>>,
     )
 
-    private fun TestScope.harness(shouldRefresh: (Platform, String) -> Boolean = { _, _ -> true }, fetch: suspend (Platform, String) -> UsageInfo): Harness {
+    private fun TestScope.harness(
+        shouldRefresh: (Platform, String) -> Boolean = { _, _ -> true },
+        onFreshUsage: (UsageInfo) -> Unit = {},
+        fetch: suspend (Platform, String) -> UsageInfo,
+    ): Harness {
         val cache = UsageCache(MemoryPreferences(), Gson(), { accounts }, { time })
         val authEvents = mutableListOf<Platform>()
         val freshEvents = mutableListOf<UsageInfo>()
@@ -50,13 +54,44 @@ class UsageRepositoryImplTest {
             accounts = { accounts },
             cache = cache,
             onSessionExpired = { authEvents.add(it) },
-            onFreshUsage = { freshEvents.add(it) },
+            onFreshUsage = { freshEvents.add(it); onFreshUsage(it) },
             onRefreshCompleted = { p, success -> completed.add(p to success) },
             now = { time },
             flights = UsageRefreshFlights(backgroundScope),
             shouldRefresh = shouldRefresh,
         )
         return Harness(repository, cache, authEvents, freshEvents, completed)
+    }
+
+    @Test fun alertFailureDoesNotFailRefreshOrCancelOtherAccounts() = runTest {
+        val h = harness(onFreshUsage = { throw ClassCastException("alert state") }) { _, id ->
+            usage(if (id == "a") 25f else 65f)
+        }
+        val result = h.repository.getAllUsage().associateBy { it.accountId }
+        assertEquals(25f, result["a"]!!.items.single().percent)
+        assertEquals(65f, result["b"]!!.items.single().percent)
+        assertEquals(2, h.completed.count { it.second })
+        assertTrue(h.repository.getCachedUsage().all { !it.stale && it.refreshFailure == null })
+    }
+
+    @Test fun alertFailureDoesNotFailAnAlreadyCommittedAccountUpdate() = runTest {
+        val h = harness(onFreshUsage = { throw IllegalStateException("alert unavailable") }) { _, _ -> usage(50f) }
+        var committed = false
+        h.repository.updateAccount(platform, "a", usage(35f)) { committed = true }
+        assertTrue(committed)
+        assertEquals(35f, h.cache.get(platform, "a")!!.items.single().percent)
+        assertNull(h.cache.get(platform, "a")!!.refreshFailure)
+        assertEquals(listOf(platform to true), h.completed)
+    }
+
+    @Test fun alertCancellationIsStillPropagated() = runTest {
+        val h = harness(onFreshUsage = { throw CancellationException("cancelled") }) { _, _ -> usage(50f) }
+        try {
+            h.repository.getUsage(platform, "a")
+            fail("Cancellation must not be swallowed")
+        } catch (_: CancellationException) {
+            assertTrue(h.completed.isEmpty())
+        }
     }
 
     @Test fun pausedAccountReturnsCacheWithoutFetchingOrReportingFreshness() = runTest {

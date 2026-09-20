@@ -1,0 +1,21 @@
+// Opt-in device regression tests with the production R8 configuration, isolated package and
+// debug signing key. Does not change the normal release artifact or require release credentials.
+// ./gradlew -I gradle/release-check.init.gradle :app:connectedReleaseCheckAndroidTest
+// UI instrumentation stays on debug; this harness exercises minified notification persistence.
+allprojects { project ->
+    project.plugins.withId('com.android.application') {
+        project.extensions.getByName('androidComponents').finalizeDsl { android ->
+            def check = android.buildTypes.create('releaseCheck')
+            check.initWith(android.buildTypes.getByName('release'))
+            check.applicationIdSuffix = '.releasecheck'
+            check.versionNameSuffix = '-releasecheck'
+            check.signingConfig = android.signingConfigs.getByName('debug')
+            check.matchingFallbacks = ['release']
+            check.proguardFile(project.rootProject.file('gradle/release-check.pro'))
+            android.sourceSets.getByName('releaseCheck').java.srcDir('src/release/java')
+            android.testBuildType = 'releaseCheck'
+            android.defaultConfig.testInstrumentationRunnerArguments['class'] =
+                'funapp.ctrlcv.zhiyu.notification.UsageAlertStateTest'
+        }
+    }
+}

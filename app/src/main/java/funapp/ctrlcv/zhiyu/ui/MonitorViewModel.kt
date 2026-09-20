@@ -151,7 +151,14 @@ class MonitorViewModel @Inject constructor(
                 }
                 reload()
             } catch (cancelled: CancellationException) { throw cancelled }
-            catch (_: Exception) { message("暂时无法同步，已保留上次数据") }
+            catch (_: Exception) {
+                // Some accounts may already have persisted a fresh snapshot or a failure.
+                // Keep those per-account states visible even if another refresh step failed.
+                try { reload() }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { /* Keep the last displayed data if storage cannot be read. */ }
+                message("暂时无法同步，已保留上次数据")
+            }
             finally { _state.update { it.copy(refreshing = false) } }
         }
     }

@@ -88,15 +88,35 @@ cd Zhiyu
 # 构建调试安装包
 ./gradlew :app:assembleDebug
 
+# 构建正式安装包（发布前需配置 Release 签名）
+./gradlew :app:assembleRelease
+
 # 安装到已连接并开启 USB 调试的设备
 ./gradlew :app:installDebug
 ```
+
+Debug 和 Release 使用不同包名，可以同时安装，账号与设置各自独立。以当前版本为例：
+
+| 构建类型 | 应用名称 | 包名 | 版本名称 |
+| --- | --- | --- | --- |
+| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.2` |
+| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.2-debug` |
+
+基础版本统一在 `app/build.gradle.kts` 的 `defaultConfig` 中维护；Debug 自动追加 `-debug`，Release 不追加后缀。应用内“关于”页也会显示对应版本名称。
 
 开发验证可运行：
 
 ```bash
 ./gradlew testDebugUnitTest :app:lintDebug
 ```
+
+连接模拟器或测试设备后，可验证开启 Release 混淆的通知状态读写：
+
+```bash
+./gradlew -I gradle/release-check.init.gradle :app:connectedReleaseCheckAndroidTest
+```
+
+该验证构建使用独立的 `.releasecheck` 包名和 Debug 签名；通知状态与编解码实现仍参与混淆。
 
 ## 项目结构
 

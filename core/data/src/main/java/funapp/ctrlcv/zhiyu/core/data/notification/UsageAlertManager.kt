@@ -7,7 +7,6 @@ import android.content.SharedPreferences
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.edit
-import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import funapp.ctrlcv.zhiyu.core.data.R
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
@@ -42,7 +41,6 @@ import javax.inject.Singleton
 class UsageAlertManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val prefs: NotificationPreferences,
-    private val gson: Gson,
     sessionEventBus: SessionEventBus,
     private val accountStore: AccountStore,
 ) {
@@ -224,26 +222,21 @@ class UsageAlertManager @Inject constructor(
     }
 
     private fun loadState(platform: Platform): PlatformAlertState? {
-        val json = state.getString(stateKey(platform), null) ?: return null
-        return try {
-            gson.fromJson(json, PlatformAlertState::class.java)
-        } catch (e: Exception) {
-            null
+        val key = stateKey(platform)
+        val json = state.getString(key, null) ?: return null
+        return PlatformAlertStateCodec.decode(json).also { decoded ->
+            // Previous minified releases wrote obfuscated field names and lost map value types.
+            // Notification deduplication can restart without discarding any usage snapshots.
+            if (decoded == null) state.edit { remove(key) }
         }
     }
 
     private fun saveState(platform: Platform, value: PlatformAlertState) {
-        state.edit { putString(stateKey(platform), gson.toJson(value)) }
+        state.edit { putString(stateKey(platform), PlatformAlertStateCodec.encode(value)) }
     }
 
     private fun stateKey(platform: Platform) = "alert_${platform.key}"
     private fun expiredKey(platform: Platform) = "expired_${platform.key}"
-
-    /** 单平台的去重状态：各限额窗口最近一次观测的百分比 + 已提醒过的告警级别。 */
-    private data class PlatformAlertState(
-        val percents: Map<String, Float> = emptyMap(),
-        val notifiedLevel: Int = LEVEL_NONE,
-    )
 
     companion object {
         // 渠道在 ZhiyuApp 启动时统一注册，ID 以此处为准

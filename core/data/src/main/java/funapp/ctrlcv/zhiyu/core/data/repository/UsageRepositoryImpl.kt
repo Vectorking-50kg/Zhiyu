@@ -24,6 +24,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.logging.Logger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -106,7 +107,7 @@ class UsageRepositoryImpl internal constructor(
             currentCoroutineContext().ensureActive()
             val fresh = usage.copy(accountId = accountId, stale = false, refreshFailure = null)
             cache.save(platform, accountId, fresh)
-            onFreshUsage(fresh)
+            notifyFreshUsage(fresh)
             onRefreshCompleted(platform, true)
             Result.success(fresh.atTime(now()))
         }
@@ -131,7 +132,7 @@ class UsageRepositoryImpl internal constructor(
             validatedUsage?.let { usage ->
                 val fresh = usage.copy(accountId = accountId, stale = false, refreshFailure = null)
                 cache.save(platform, accountId, fresh)
-                onFreshUsage(fresh)
+                notifyFreshUsage(fresh)
             }
         }
         onRefreshCompleted(platform, validatedUsage != null)
@@ -144,6 +145,19 @@ class UsageRepositoryImpl internal constructor(
             keys.forEach { (platform, accountId) -> cache.clear(platform, accountId) }
         }
         keys.map { it.first }.distinct().forEach { onRefreshCompleted(it, false) }
+    }
+
+    private fun notifyFreshUsage(usage: UsageInfo) {
+        try {
+            onFreshUsage(usage)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            // Notifications are a side effect of an already committed successful refresh.
+            // Do not turn an alert failure into a sync failure or cancel other accounts.
+            Logger.getLogger(UsageRepositoryImpl::class.java.name)
+                .warning("Usage alert update failed: ${error.javaClass.simpleName}")
+        }
     }
 
     private fun commitAccountChanges(keys: List<Pair<Platform, String>>, commit: () -> Unit) {

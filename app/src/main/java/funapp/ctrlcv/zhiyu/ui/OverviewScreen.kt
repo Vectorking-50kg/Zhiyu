@@ -119,6 +119,8 @@ fun QuotaCard(row: MonitoredAccount, now: Long, onDetail: () -> Unit, onConfigur
     val c = LocalMonitorPalette.current
     val usage = row.usage
     val items = usage?.items.orEmpty()
+    val hasData = items.isNotEmpty()
+    val showingCache = hasData && (usage?.stale == true || row.attention || row.paused)
     val maximum = items.filter { it.percent >= 0 && !it.unlimited }.maxOfOrNull { it.percent }
     val shown = if (row.platform == Platform.CHATGPT) items.filter { it.percent >= 0 }.take(2)
         else if (row.platform == Platform.CURSOR) items.filter { it.percent >= 0 }.take(1)
@@ -142,7 +144,12 @@ fun QuotaCard(row: MonitoredAccount, now: Long, onDetail: () -> Unit, onConfigur
             }
         }
         Spacer(Modifier.height(19.dp))
-        if (items.isEmpty()) UiText(if (row.attention) "等待重新连接后同步" else "正在等待首次同步", 12, 20, color = c.muted)
+        if (items.isEmpty()) UiText(when {
+            row.needsLogin -> "等待重新连接后同步"
+            row.paused -> "尚无同步数据"
+            row.attention -> "等待重试同步"
+            else -> "正在等待首次同步"
+        }, 12, 20, color = c.muted)
         else if (row.platform.isBalanceProvider()) {
             val lines = if (row.platform == Platform.DEEPSEEK) items.filter { it.label != "账户余额" } else items
             InfoLines(lines.map { it.label to (it.valueText ?: "--") })
@@ -165,14 +172,25 @@ fun QuotaCard(row: MonitoredAccount, now: Long, onDetail: () -> Unit, onConfigur
                 Spacer(Modifier.width(5.dp)); AppIcon(AppIcons.ChevronRight, null, size = 13.dp, tint = c.text)
             }
         }
-        if (row.attention || row.paused) {
+        if (usage != null && hasData) {
+            Spacer(Modifier.height(8.dp))
+            UiText("${if (showingCache) "缓存数据" else "最新数据"} · ${updatedLabel(usage.updatedAt, now)}",
+                10, 17, color = if (showingCache) c.amber else c.muted)
+        }
+        if (row.attention || row.paused || showingCache) {
             Spacer(Modifier.height(13.dp))
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(c.amberSoft).padding(horizontal = 10.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 AppIcon(AppIcons.Warning, null, size = 14.dp, tint = c.amber)
-                val text = when { row.needsLogin -> if (row.platform.requiresApiKey) "密钥需要更新，正在显示缓存" else "登录已过期，正在显示缓存"; row.paused -> "监控已暂停，显示上次同步数据"; else -> "暂时无法同步，正在显示缓存" }
+                val reason = when {
+                    row.needsLogin -> if (row.platform.requiresApiKey) "密钥需要更新" else "登录已过期"
+                    row.paused -> "监控已暂停"
+                    row.attention -> "暂时无法同步"
+                    else -> "数据尚未更新"
+                }
+                val text = "$reason，${if (hasData) "正在显示缓存" else "尚无同步数据"}"
                 UiText(text, 10, 17, color = c.amber, modifier = Modifier.weight(1f))
-                if (row.attention) Box(Modifier.height(24.dp).clickable(role = Role.Button, onClick = onConfigure), contentAlignment = Alignment.Center) {
+                if (row.needsLogin) Box(Modifier.height(24.dp).clickable(role = Role.Button, onClick = onConfigure), contentAlignment = Alignment.Center) {
                     UiText(if (row.platform.requiresApiKey) "更新密钥" else "重新连接", 10, 17, 500, c.amber)
                 }
             }
