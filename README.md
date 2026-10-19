@@ -117,8 +117,8 @@ Debug 和 Release 使用不同包名，可以同时安装，账号与设置各�
 
 | 构建类型 | 应用名称 | 包名 | 版本名称 |
 | --- | --- | --- | --- |
-| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.2` |
-| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.2-debug` |
+| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.3` |
+| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.3-debug` |
 
 基础版本统一在 `app/build.gradle.kts` 的 `defaultConfig` 中维护；Debug 自动追加 `-debug`，Release 不追加后缀。应用内“关于”页也会显示对应版本名称。
 

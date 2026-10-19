@@ -116,8 +116,8 @@ Debug and Release use different application IDs, so both can be installed side b
 
 | Build type | App name | Application ID | Version name |
 | --- | --- | --- | --- |
-| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.2` |
-| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.2-debug` |
+| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.3` |
+| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.3-debug` |
 
 Maintain the base version in `defaultConfig` in `app/build.gradle.kts`. Debug automatically appends `-debug`; Release has no suffix. The in-app About page displays the corresponding version name.
 
