@@ -16,6 +16,7 @@ import funapp.ctrlcv.zhiyu.core.domain.usecase.UsageRepository
 import funapp.ctrlcv.zhiyu.core.network.api.UsageApiService
 import funapp.ctrlcv.zhiyu.core.network.interceptor.SessionEventBus
 import funapp.ctrlcv.zhiyu.core.storage.*
+import funapp.ctrlcv.zhiyu.feature.widget.UsageWidgetReceiver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -118,6 +119,24 @@ class MonitorViewModel @Inject constructor(
         // refresh and account-change events; decrypting accounts here would block the next frame.
     }
     fun setHomeFilter(index: Int) = _state.update { it.copy(homeFilter = index) }
+    fun openWidgetOverview() {
+        editorJob?.cancel()
+        savedState["monitor_page"] = MonitorPage.OVERVIEW.name
+        _state.update { it.copy(page = MonitorPage.OVERVIEW, homeFilter = 0, editor = null, panel = null, saving = false) }
+    }
+    fun openWidgetAccount(platform: Platform, accountId: String) {
+        editorJob?.cancel()
+        reload()
+        if (_state.value.accounts.any { it.platform == platform && it.account.id == accountId }) {
+            savedState["monitor_page"] = MonitorPage.OVERVIEW.name
+            _state.update { it.copy(page = MonitorPage.OVERVIEW, editor = null, saving = false,
+                panel = MonitorPanel(PanelKind.DETAIL, platform, accountId)) }
+        } else {
+            savedState["monitor_page"] = MonitorPage.ACCOUNTS.name
+            _state.update { it.copy(page = MonitorPage.ACCOUNTS, editor = null, panel = null, saving = false) }
+            message("账户已移除，请重新配置小组件")
+        }
+    }
     fun setAccountTab(index: Int) = _state.update { it.copy(accountTab = index) }
     fun setSearch(value: String) = _state.update { it.copy(search = value) }
     fun setProviderSearch(value: String) = _state.update { it.copy(providerSearch = value) }
@@ -188,7 +207,7 @@ class MonitorViewModel @Inject constructor(
                     } else accountStore.saveAccount(account, durable = true)
                     if (draft.pinned) notifications.persistentEnabled = true
                 }
-                reload(); balanceNotifier.refresh()
+                reload(); refreshSurfaces()
                 _state.update { it.copy(editor = null, saving = false, page = MonitorPage.ACCOUNTS,
                     panel = if (adding) MonitorPanel(PanelKind.SUCCESS, draft.platform, id) else null) }
                 if (!adding) message("账户设置已保存")
@@ -243,7 +262,7 @@ class MonitorViewModel @Inject constructor(
                         .also { accountStore.saveAccount(it, durable = true) }
                 }
                 if (draft.pinned) notifications.persistentEnabled = true
-                reload(); balanceNotifier.refresh(); _state.update { it.copy(editor = null, saving = false, page = MonitorPage.ACCOUNTS,
+                reload(); refreshSurfaces(); _state.update { it.copy(editor = null, saving = false, page = MonitorPage.ACCOUNTS,
                     panel = MonitorPanel(PanelKind.SUCCESS, account.platform, account.id)) }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { _state.update { it.copy(saving = false) }; reload(); message("已连接账户，部分显示设置未保存，请重试") }
@@ -270,7 +289,7 @@ class MonitorViewModel @Inject constructor(
                         }
                     }
                 }
-                reload(); balanceNotifier.refresh(); _state.update { it.copy(editor = null, panel = null, page = MonitorPage.ACCOUNTS) }
+                reload(); refreshSurfaces(); _state.update { it.copy(editor = null, panel = null, page = MonitorPage.ACCOUNTS) }
                 message("已移除账户监控", undo = true)
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { reload(); message("账户移除失败，请重试") }
@@ -291,7 +310,7 @@ class MonitorViewModel @Inject constructor(
                         usage.refreshFailure?.let { cache.saveFailure(usage.platform, snapshot.account.id, it) }
                     }
                 }
-                reload(); balanceNotifier.refresh(); message("账户监控已恢复")
+                reload(); refreshSurfaces(); message("账户监控已恢复")
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { reload(); message("恢复失败，请重新添加账户") }
         }
@@ -314,9 +333,14 @@ class MonitorViewModel @Inject constructor(
     fun importBackup(json: String) = viewModelScope.launch {
         try {
             withContext(Dispatchers.IO) { val prepared = backup.prepareImport(json); repository.updateAccounts(prepared.affectedAccounts) { backup.import(prepared) } }
-            reload(); selectPage(MonitorPage.ACCOUNTS); balanceNotifier.refresh(); refresh(); message("备份已成功导入")
+            reload(); selectPage(MonitorPage.ACCOUNTS); refreshSurfaces(); refresh(); message("备份已成功导入")
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { reload(); message("导入失败，请检查备份文件后重试") }
     }
     fun message(text: String, undo: Boolean = false) { eventChannel.trySend(MonitorEvent.Message(text, undo)) }
+
+    private fun refreshSurfaces() {
+        balanceNotifier.refresh()
+        UsageWidgetReceiver.updateAll(context)
+    }
 }

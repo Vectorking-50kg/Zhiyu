@@ -72,6 +72,21 @@ Some integrations depend on internal interfaces or console pages available after
 
 OpenCode Go and Zen share an OpenCode group on the Accounts page. Go uses an API key belonging to an account with an active subscription and queries the official `GET https://opencode.ai/zen/go/v1/usage` endpoint. Zen displays the account balance separately. See the [official OpenCode Go documentation](https://opencode.ai/docs/go/) for subscription and API key setup, and the [official endpoint source](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/go/v1/usage.ts) for response fields.
 
+## Home Screen Widgets
+
+Preview and add widgets from **设置 → 桌面小组件** (Settings → Home screen widgets), or use your launcher's widget picker.
+
+| Layout | Suggested size | Purpose |
+| --- | --- | --- |
+| Subscription overview | 4×4 | Scrollable multi-account quotas and balances; show all accounts, follow notification pins, or choose accounts |
+| Subscription details | 4×2 | One account's usage windows, reset times, or balance details |
+| Subscription card | 2×2 | One account's primary metric, cache status, and reset time |
+| Compact monitoring strip | 4×1 | A row of 2–3 accounts, with a shortcut to additional accounts |
+
+Each widget has its own account selection. Tap a metric to open that account's details, or long-press the widget on your home screen to reconfigure. The overview, detail, and card layouts include a background refresh button. Widgets share the application's account-scoped cache and update after background refreshes. Failed requests and paused accounts retain their last successful data with a status label. Colors follow the system light/dark setting; exact cell dimensions depend on your launcher.
+
+Design and configuration references: [Breezy Weather widgets](https://github.com/breezy-weather/breezy-weather/tree/main/app/src/main/kotlin/org/breezyweather/remoteviews), [Glance Widget Demo](https://github.com/Seo-4d696b75/glance-widget-demo), and the [AndroidX Glance documentation](https://developer.android.com/develop/ui/compose/glance).
+
 ## Data and Privacy
 
 - **Network requests:** Login, authorization, and usage queries send the necessary information to the relevant platforms and their authentication services. Zhiyu does not upload your credentials or usage data to a separate Zhiyu-operated server.

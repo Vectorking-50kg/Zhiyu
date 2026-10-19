@@ -31,6 +31,8 @@ android {
 dependencies {
     implementation(project(":core:domain"))
     implementation(project(":core:data"))
+    implementation(project(":core:storage"))
+    implementation(project(":core:ui"))
 
     implementation(libs.core.ktx)
     implementation(libs.glance.appwidget)

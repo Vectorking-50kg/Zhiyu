@@ -1,0 +1,10 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical"
+    android:background="@drawable/widget_background" android:padding="16dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="ChatGPT" android:textSize="13sp" android:textStyle="bold" android:textColor="@color/widget_text" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="个人账户" android:textSize="10sp" android:textColor="@color/widget_muted" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="44%" android:textSize="34sp" android:textStyle="bold" android:textColor="@color/widget_green" android:layout_marginTop="12dp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="5 小时限额" android:textSize="10sp" android:textColor="@color/widget_muted" />
+    <ProgressBar style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="4dp" android:max="100" android:progress="44" android:progressTint="@color/widget_green" android:progressBackgroundTint="@color/widget_track" android:layout_marginTop="7dp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="14:30 重置 · 10:30 更新" android:textSize="9sp" android:textColor="@color/widget_muted" android:layout_marginTop="12dp" />
+</LinearLayout>

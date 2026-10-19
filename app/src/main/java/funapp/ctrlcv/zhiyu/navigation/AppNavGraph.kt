@@ -3,6 +3,8 @@ package funapp.ctrlcv.zhiyu.navigation
 import android.net.Uri
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import funapp.ctrlcv.zhiyu.feature.widget.WidgetDestination
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
@@ -16,9 +18,18 @@ import funapp.ctrlcv.zhiyu.ui.MonitorViewModel
 import funapp.ctrlcv.zhiyu.ui.AppearanceScreen
 
 @Composable
-fun AppNavGraph() {
+fun AppNavGraph(widgetDestination: WidgetDestination? = null, widgetRequestId: Int = 0) {
     val navigation = rememberNavController()
     val viewModel: MonitorViewModel = hiltViewModel()
+    LaunchedEffect(widgetRequestId) {
+        if (widgetDestination != null) {
+            navigation.navigate("monitor") { popUpTo("monitor"); launchSingleTop = true }
+            when (widgetDestination) {
+                WidgetDestination.Overview -> viewModel.openWidgetOverview()
+                is WidgetDestination.Account -> viewModel.openWidgetAccount(widgetDestination.reference.platform, widgetDestination.reference.accountId)
+            }
+        }
+    }
     NavHost(navigation, startDestination = "monitor", modifier = Modifier.fillMaxSize()) {
         composable("monitor") {
             MonitorApp(viewModel, onAppearance = { navigation.navigate("appearance") }) { platform, accountId ->

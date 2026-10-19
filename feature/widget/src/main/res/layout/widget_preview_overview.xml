@@ -1,0 +1,26 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical"
+    android:background="@drawable/widget_background" android:padding="16dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="知余 · 订阅总览" android:textSize="16sp" android:textStyle="bold" android:textColor="@color/widget_text" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="4 个账户" android:textSize="10sp" android:textColor="@color/widget_muted" android:layout_marginBottom="12dp" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="ChatGPT · 个人账户" android:textSize="12sp" android:textColor="@color/widget_text" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="44%" android:textSize="16sp" android:textStyle="bold" android:textColor="@color/widget_green" />
+    </LinearLayout>
+    <ProgressBar style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="4dp" android:max="100" android:progress="44" android:progressTint="@color/widget_green" android:progressBackgroundTint="@color/widget_track" android:layout_marginTop="5dp" android:layout_marginBottom="12dp" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Claude · 工作账户" android:textSize="12sp" android:textColor="@color/widget_text" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="82%" android:textSize="16sp" android:textStyle="bold" android:textColor="@color/widget_amber" />
+    </LinearLayout>
+    <ProgressBar style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="4dp" android:max="100" android:progress="82" android:progressTint="@color/widget_amber" android:progressBackgroundTint="@color/widget_track" android:layout_marginTop="5dp" android:layout_marginBottom="12dp" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="OpenCode Go" android:textSize="12sp" android:textColor="@color/widget_text" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="28%" android:textSize="16sp" android:textStyle="bold" android:textColor="@color/widget_green" />
+    </LinearLayout>
+    <ProgressBar style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="4dp" android:max="100" android:progress="28" android:progressTint="@color/widget_green" android:progressBackgroundTint="@color/widget_track" android:layout_marginTop="5dp" android:layout_marginBottom="12dp" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="DeepSeek · API" android:textSize="12sp" android:textColor="@color/widget_text" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="¥86.32" android:textSize="16sp" android:textStyle="bold" android:textColor="@color/widget_text" />
+    </LinearLayout>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="10:30 更新 · 点击账户查看详情" android:textSize="9sp" android:textColor="@color/widget_muted" android:layout_marginTop="14dp" />
+</LinearLayout>

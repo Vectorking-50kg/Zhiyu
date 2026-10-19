@@ -27,6 +27,17 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".WidgetConfigurationActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Zhiyu">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".WidgetGalleryActivity" android:exported="false" android:theme="@style/Theme.Zhiyu" />
+
         <receiver
             android:name="funapp.ctrlcv.zhiyu.core.data.notification.NotificationRefreshReceiver"
             android:exported="false">
@@ -37,6 +48,7 @@
 
         <receiver
             android:name="funapp.ctrlcv.zhiyu.feature.widget.UsageWidgetReceiver"
+            android:label="@string/widget_overview_name"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -44,6 +56,19 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/usage_widget_info" />
+        </receiver>
+
+        <receiver android:name="funapp.ctrlcv.zhiyu.feature.widget.DetailWidgetReceiver" android:label="@string/widget_detail_name" android:exported="true">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/detail_widget_info" />
+        </receiver>
+        <receiver android:name="funapp.ctrlcv.zhiyu.feature.widget.CompactWidgetReceiver" android:label="@string/widget_compact_name" android:exported="true">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/compact_widget_info" />
+        </receiver>
+        <receiver android:name="funapp.ctrlcv.zhiyu.feature.widget.StripWidgetReceiver" android:label="@string/widget_strip_name" android:exported="true">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/strip_widget_info" />
         </receiver>
 
         <provider

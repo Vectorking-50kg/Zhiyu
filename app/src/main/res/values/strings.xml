@@ -3,4 +3,12 @@
     <string name="app_name">知余</string>
     <string name="widget_name">用量监控</string>
     <string name="widget_description">实时展示 AI 平台用量</string>
+    <string name="widget_overview_name">知余 · 订阅总览 4×4</string>
+    <string name="widget_detail_name">知余 · 订阅详情 4×2</string>
+    <string name="widget_compact_name">知余 · 订阅卡片 2×2</string>
+    <string name="widget_strip_name">知余 · 紧凑监控栏 4×1</string>
+    <string name="widget_overview_description">集中查看多个账户的额度与余额，支持滚动、刷新与自选账户。</string>
+    <string name="widget_detail_description">一个账户的额度窗口、重置时间与余额明细。</string>
+    <string name="widget_compact_description">一个账户的关键额度或余额，适合紧凑桌面。</string>
+    <string name="widget_strip_description">一行查看常用订阅，可跟随状态栏固定账户。</string>
 </resources>

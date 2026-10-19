@@ -73,6 +73,21 @@
 
 OpenCode Go 与 Zen 在账户页归入同一个 OpenCode 分组。Go 使用控制台中已开通订阅的账户的 API Key，通过官方 `GET https://opencode.ai/zen/go/v1/usage` 查询订阅额度；Zen 单独展示账户余额。密钥获取与订阅说明见 [OpenCode Go 官方文档](https://opencode.ai/docs/go/)，响应字段以 [官方接口源码](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/go/v1/usage.ts) 为准。
 
+## 桌面小组件
+
+在「设置 → 桌面小组件」预览并添加，也可以长按桌面空白处，从系统小组件列表选择知余。
+
+| 布局 | 建议尺寸 | 用途 |
+| --- | --- | --- |
+| 订阅总览 | 4×4 | 多账户额度与余额列表，可滚动、刷新；支持全部账户、跟随状态栏固定或自选账户 |
+| 订阅详情 | 4×2 | 一个账户的额度窗口、重置时间或余额明细 |
+| 订阅卡片 | 2×2 | 一个账户的主指标、缓存状态与重置时间 |
+| 紧凑监控栏 | 4×1 | 一行显示 2–3 个常用账户，更多账户可点击「+」查看 |
+
+每个组件独立选择账户，点击数值打开对应账户详情，长按桌面上的组件可重新配置。总览、详情和卡片提供后台刷新按钮。组件读取与应用相同的账户缓存，后台刷新完成后同步更新；网络失败、暂停监控或凭据失效时保留最后成功数据并标记状态。颜色跟随系统深浅色，实际占格取决于桌面网格。
+
+布局与配置流程参考了 [Breezy Weather 的多尺寸组件](https://github.com/breezy-weather/breezy-weather/tree/main/app/src/main/kotlin/org/breezyweather/remoteviews) 和 [Glance Widget Demo](https://github.com/Seo-4d696b75/glance-widget-demo)，实现采用 [AndroidX Glance](https://developer.android.com/develop/ui/compose/glance)。
+
 ## 数据与隐私
 
 - **网络请求**：登录、授权和额度查询会向对应平台及其认证服务发送必要信息。应用不会将账号凭据或用量数据上传到服务器。

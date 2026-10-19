@@ -1,0 +1,10 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_compact_description"
+    android:configure="funapp.ctrlcv.zhiyu.WidgetConfigurationActivity"
+    android:initialLayout="@layout/widget_loading"
+    android:previewLayout="@layout/widget_preview_compact"
+    android:minWidth="110dp" android:minHeight="140dp"
+    android:minResizeWidth="110dp" android:minResizeHeight="140dp"
+    android:targetCellWidth="2" android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical" android:widgetFeatures="reconfigurable"
+    android:updatePeriodMillis="1800000" android:widgetCategory="home_screen" />

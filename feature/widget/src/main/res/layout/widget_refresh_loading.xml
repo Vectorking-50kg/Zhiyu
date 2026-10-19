@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ProgressBar xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_refresh_spinner"
+    style="@android:style/Widget.ProgressBar.Small"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:minWidth="20dp"
+    android:minHeight="20dp"
+    android:maxWidth="20dp"
+    android:maxHeight="20dp"
+    android:indeterminate="true"
+    android:indeterminateOnly="true"
+    android:indeterminateBehavior="repeat"
+    android:indeterminateDuration="800"
+    android:indeterminateDrawable="@drawable/widget_refresh_rotating"
+    android:indeterminateTint="@color/widget_muted"
+    android:interpolator="@android:interpolator/linear"
+    android:contentDescription="@string/widget_refreshing" />

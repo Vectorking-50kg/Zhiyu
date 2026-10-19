@@ -7,6 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import funapp.ctrlcv.zhiyu.WidgetGalleryActivity
 import funapp.ctrlcv.zhiyu.BuildConfig
 import funapp.ctrlcv.zhiyu.core.domain.model.ColorMode
 import funapp.ctrlcv.zhiyu.core.ui.components.*
@@ -20,6 +23,7 @@ fun ColorMode.label() = when (this) { ColorMode.SYSTEM -> "跟随系统"; ColorM
 @Composable
 fun MonitorSettingsScreen(state: MonitorState, vm: MonitorViewModel, scroll: ScrollState, bottomPadding: Dp, onAppearance: () -> Unit) {
     val pagePadding = LocalMonitorStyle.current.pagePadding
+    val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(start = pagePadding, end = pagePadding, top = 21.dp, bottom = bottomPadding)) {
         PageTitle("设置")
         Spacer(Modifier.height(22.dp)); SectionCaption("应用偏好"); Spacer(Modifier.height(11.dp))
@@ -28,6 +32,10 @@ fun MonitorSettingsScreen(state: MonitorState, vm: MonitorViewModel, scroll: Scr
                 value = if (LocalAppearanceSettings.current.uiStyle == UiStyle.MIUIX) "Miuix" else "Material", onClick = onAppearance); SettingDivider()
             SettingRow("通知与提醒", first = false, icon = AppIcons.Notifications, value = if (state.notifications) "已开启" else "已关闭", onClick = { vm.showPanel(PanelKind.NOTIFICATIONS) }); SettingDivider()
             SettingRow("刷新策略", first = false, icon = AppIcons.Schedule, value = "${state.refreshMinutes} 分钟", onClick = { vm.showPanel(PanelKind.REFRESH) })
+            SettingDivider()
+            SettingRow("桌面小组件", first = false, icon = AppIcons.GridView, value = "4 种布局", onClick = {
+                context.startActivity(Intent(context, WidgetGalleryActivity::class.java))
+            })
         }
         Spacer(Modifier.height(22.dp)); SectionCaption("数据与应用"); Spacer(Modifier.height(11.dp))
         SettingGroup {
