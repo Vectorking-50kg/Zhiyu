@@ -200,6 +200,7 @@ class MonitorViewModel @Inject constructor(
     }
 
     private suspend fun validateApi(platform: Platform, key: String): UsageInfo = when (platform) {
+        Platform.OPENCODE_GO -> api.getOpenCodeGoUsage(key)
         Platform.MINIMAX -> api.getMiniMaxUsage(key)
         Platform.AIHUBMIX -> api.getAiHubMixUsage(key)
         Platform.DEEPSEEK -> api.getDeepSeekUsage(key)

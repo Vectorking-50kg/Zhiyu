@@ -35,6 +35,14 @@ class UsageFailureTest {
         val failure = UsageFailure(UsageFailureKind.AUTH_REQUIRED)
         assertEquals("API 密钥无效，请检查后重试", failure.messageFor(Platform.DEEPSEEK))
         assertEquals("登录已失效，请重新登录", failure.messageFor(Platform.CLAUDE))
+        assertEquals("API 密钥无效，请检查后重试", failure.messageFor(Platform.OPENCODE_GO))
+    }
+
+    @Test fun `missing Go subscription guides to account entitlement instead of login`() {
+        val failure = UsageFailure(UsageFailureKind.SUBSCRIPTION_REQUIRED, 403)
+        assertEquals("未开通 OpenCode Go 订阅，请检查密钥对应的账户", failure.messageFor(Platform.OPENCODE_GO))
+        assertFalse(failure.requiresLogin)
+        assertFalse(failure.retryable)
     }
 
     @Test(expected = CancellationException::class)

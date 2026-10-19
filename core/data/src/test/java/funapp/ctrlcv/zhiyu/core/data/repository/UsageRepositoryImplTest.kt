@@ -63,6 +63,39 @@ class UsageRepositoryImplTest {
         return Harness(repository, cache, authEvents, freshEvents, completed)
     }
 
+    @Test fun goSubscriptionFailureKeepsItsQuotaAndDoesNotAffectZenBalance() = runTest {
+        val go = Platform.OPENCODE_GO
+        val registered = listOf(Account("a", go, "Go"), Account("a", Platform.ZEN, "Zen"))
+        val cache = UsageCache(MemoryPreferences(), Gson(), { registered }, { time })
+        val authEvents = mutableListOf<Platform>()
+        var subscribed = true
+        val repository = UsageRepositoryImpl(
+            fetchUsage = { provider, _ ->
+                if (provider == go) {
+                    if (!subscribed) throw UsageRequestException(go, UsageFailure(UsageFailureKind.SUBSCRIPTION_REQUIRED, 403))
+                    UsageInfo(go, listOf(UsageItem("月限额", 65f)), updatedAt = time)
+                } else UsageInfo(Platform.ZEN, listOf(UsageItem("账户余额", -1f, valueText = "$18.42")), updatedAt = time)
+            },
+            accounts = { registered }, cache = cache,
+            onSessionExpired = { authEvents.add(it) }, onFreshUsage = {}, now = { time },
+            flights = UsageRefreshFlights(backgroundScope),
+        )
+        repository.getAllUsage()
+        val fetchedAt = time
+        time += 10_000
+        subscribed = false
+        val failed = repository.getOpenCodeGoUsage("a").getOrThrow()
+        assertEquals(65f, failed.items.single().percent)
+        assertEquals(fetchedAt, failed.updatedAt)
+        assertTrue(failed.stale)
+        assertEquals(UsageFailureKind.SUBSCRIPTION_REQUIRED, failed.refreshFailure?.kind)
+        val zen = cache.get(Platform.ZEN, "a")!!
+        assertEquals("$18.42", zen.items.single().valueText)
+        assertNull(zen.refreshFailure)
+        assertTrue(authEvents.isEmpty())
+        assertEquals(2, repository.getCachedUsage().size)
+    }
+
     @Test fun alertFailureDoesNotFailRefreshOrCancelOtherAccounts() = runTest {
         val h = harness(onFreshUsage = { throw ClassCastException("alert state") }) { _, id ->
             usage(if (id == "a") 25f else 65f)

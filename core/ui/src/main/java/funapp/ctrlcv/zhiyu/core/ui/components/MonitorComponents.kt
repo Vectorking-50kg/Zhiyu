@@ -70,7 +70,7 @@ fun platformIcon(platform: Platform): Int = when (platform) {
     Platform.CHATGPT -> R.drawable.ic_brand_chatgpt
     Platform.CLAUDE -> R.drawable.ic_brand_anthropic
     Platform.CURSOR -> R.drawable.ic_brand_cursor
-    Platform.ZEN -> R.drawable.ic_brand_opencode
+    Platform.ZEN, Platform.OPENCODE_GO -> R.drawable.ic_brand_opencode
     Platform.MINIMAX -> R.drawable.ic_brand_minimax
     Platform.AIHUBMIX -> R.drawable.ic_brand_aihubmix
     Platform.DEEPSEEK -> R.drawable.ic_brand_deepseek
@@ -79,7 +79,7 @@ fun platformIcon(platform: Platform): Int = when (platform) {
 @Composable
 fun ProviderLogo(platform: Platform, size: Dp = 34.dp, modifier: Modifier = Modifier, framed: Boolean = true) {
     Image(painterResource(platformIcon(platform)), null, modifier.size(size).then(
-        if (platform == Platform.CURSOR || platform == Platform.ZEN)
+        if (platform == Platform.CURSOR || platform.isOpenCodeProvider())
             if (framed) Modifier.clip(RoundedCornerShape(8.dp)).background(Color.White).padding(3.dp).clip(RoundedCornerShape(5.dp))
             else Modifier.clip(RoundedCornerShape(4.dp)).background(Color.White)
         else Modifier
@@ -87,11 +87,13 @@ fun ProviderLogo(platform: Platform, size: Dp = 34.dp, modifier: Modifier = Modi
 }
 
 fun Platform.isBalanceProvider() = this in setOf(Platform.ZEN, Platform.AIHUBMIX, Platform.DEEPSEEK)
+fun Platform.isOpenCodeProvider() = this == Platform.ZEN || this == Platform.OPENCODE_GO
 fun Platform.monitorDescription() = when (this) {
     Platform.CHATGPT -> "5 小时、每周用量与重置卡"
     Platform.CLAUDE -> "5 小时、每周及模型用量"
     Platform.CURSOR -> "套餐用量、Auto 与 API 用量"
     Platform.ZEN -> "账户余额"
+    Platform.OPENCODE_GO -> "5 小时、每周与每月订阅额度"
     Platform.MINIMAX -> "Token Plan 限额"
     Platform.AIHUBMIX -> "账户余额、请求次数"
     Platform.DEEPSEEK -> "账户余额"

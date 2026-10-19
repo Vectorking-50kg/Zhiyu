@@ -7,6 +7,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class BackupPlanTest {
+    @Test fun goAndZenCredentialsRemainSeparateInBackups() {
+        val data = parseBackup("""{
+            "version":1,
+            "tokens":{"opencode_go_account_a_cookie":"go-fixture", "zen_account_a_cookie":"zen-fixture"},
+            "accountStrings":{"opencode_go_account_a_name":"Go", "zen_account_a_name":"Zen"},
+            "accountSets":{"accounts_opencode_go":["account_a"], "accounts_zen":["account_a"]}
+        }""")
+        assertEquals(setOf(Platform.OPENCODE_GO to "account_a", Platform.ZEN to "account_a"), backupAccountKeys(data))
+        assertEquals("go-fixture", data.tokens["opencode_go_account_a_cookie"])
+        assertEquals("zen-fixture", data.tokens["zen_account_a_cookie"])
+    }
+
     @Test fun includesRegisteredMetadataAndTokenOnlyAccountsBeforeAnyWrite() {
         val data = parseBackup("""{
             "version":1,

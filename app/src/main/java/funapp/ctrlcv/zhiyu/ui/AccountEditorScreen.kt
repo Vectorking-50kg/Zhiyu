@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.ui.components.*
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
@@ -39,7 +40,11 @@ fun AccountEditorScreen(state: MonitorState, vm: MonitorViewModel, requestNotifi
         if (draft.platform.requiresApiKey) {
             FormInput(if (draft.platform == funapp.ctrlcv.zhiyu.core.domain.model.Platform.MINIMAX) "Token Plan API Key" else "API Key",
                 draft.apiKey, { value -> vm.updateDraft { it.copy(apiKey = value) } }, if (adding) "请输入 API Key" else "保留当前密钥，或输入新密钥", password = true,
-                hint = if (draft.platform == funapp.ctrlcv.zhiyu.core.domain.model.Platform.MINIMAX) "使用 Token Plan 专属密钥，与普通按量 API Key 不同。" else "密钥仅用于连接当前供应商。")
+                hint = when (draft.platform) {
+                    Platform.MINIMAX -> "使用 Token Plan 专属密钥，与普通按量 API Key 不同。"
+                    Platform.OPENCODE_GO -> "在 OpenCode 控制台开通 Go 后，复制对应账户的 API Key。Go 订阅额度与 Zen 账户余额可分别添加。"
+                    else -> "密钥仅用于连接当前供应商。"
+                })
         } else {
             UiText("连接方式", 11, 17, 500, c.muted); Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clip(RoundedCornerShape(13.dp)).background(c.surface)

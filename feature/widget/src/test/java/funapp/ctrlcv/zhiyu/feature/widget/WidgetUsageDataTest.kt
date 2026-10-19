@@ -5,6 +5,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class WidgetUsageDataTest {
+    @Test fun `Go shows its highest quota next to a separate Zen balance`() {
+        val data = listOf(
+            UsageInfo(Platform.ZEN, listOf(UsageItem("账户余额", -1f, valueText = "$18.42")), updatedAt = 1000),
+            UsageInfo(Platform.OPENCODE_GO, listOf(
+                UsageItem("5 小时限额", 20f), UsageItem("周限额", 40f), UsageItem("月限额", 65f, resetAt = 5000),
+            ), updatedAt = 1000, refreshFailure = UsageFailure(UsageFailureKind.SUBSCRIPTION_REQUIRED)),
+        ).toWidgetUsageData(6000)
+        assertEquals(listOf("OpenCode Zen", "OpenCode Go"), data.items.map { it.name })
+        assertEquals("$18.42", data.items[0].mainText)
+        assertEquals("65%", data.items[1].mainText)
+        assertEquals("等待额度更新", data.items[1].resetInfo)
+        assertEquals("未开通 OpenCode Go 订阅，请检查密钥对应的账户", data.items[1].status)
+    }
+
     @Test fun `balance stays money and is not turned into a quota percentage`() {
         val data = listOf(UsageInfo(Platform.DEEPSEEK,
             listOf(UsageItem("账户余额", -1f, valueText = "¥86.32")), updatedAt = 1000)).toWidgetUsageData(1000)

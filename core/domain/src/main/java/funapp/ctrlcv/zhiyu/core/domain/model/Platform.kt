@@ -30,7 +30,7 @@ enum class Platform(
     ),
     ZEN(
         key = "zen",
-        displayName = "OpenCode",
+        displayName = "OpenCode Zen",
         // OpenCode Zen 没有官方余额接口；余额只在网页控制台的 workspace 仪表盘可见。
         // 在内置 WebView 登录 opencode.ai 后复用其 Hapi/Iron 会话 Cookie（auth），
         // 直接抓取 SSR 渲染的 workspace 页面解析「Current balance / 現在の残高」。
@@ -57,12 +57,19 @@ enum class Platform(
         loginUrl = "",
         baseUrl = "https://api.deepseek.com",
         requiresApiKey = true
+    ),
+    OPENCODE_GO(
+        key = "opencode_go",
+        displayName = "OpenCode Go",
+        loginUrl = "",
+        baseUrl = "https://opencode.ai/zen/go/v1",
+        requiresApiKey = true
     );
 
     companion object {
         // Keep enum ordinals stable: existing notifications use them as persistent IDs.
         val displayOrder: List<Platform> = listOf(
-            CHATGPT, CLAUDE, CURSOR, ZEN, MINIMAX, AIHUBMIX, DEEPSEEK,
+            CHATGPT, CLAUDE, CURSOR, ZEN, OPENCODE_GO, MINIMAX, AIHUBMIX, DEEPSEEK,
         )
     }
 
@@ -77,7 +84,7 @@ enum class Platform(
         // Zen 的 auth Cookie 在 OAuth 握手阶段就被写入，无法用 Cookie 判定登录；
         // 只有真正登录后才会进入 workspace 仪表盘，用该 URL 作为唯一可靠的成功信号。
         ZEN -> url.contains("opencode.ai") && url.contains("/workspace")
-        MINIMAX, AIHUBMIX, DEEPSEEK -> false
+        MINIMAX, AIHUBMIX, DEEPSEEK, OPENCODE_GO -> false
     }
 
     fun getCookieName(): String = when (this) {
@@ -87,7 +94,7 @@ enum class Platform(
         // opencode.ai 用 Hapi/Iron 会话 Cookie，名字可能是 auth 或 __Host-auth，
         // 二者都包含 "auth"，用作 WebView 中的存在性匹配子串。
         ZEN -> "auth"
-        MINIMAX, AIHUBMIX, DEEPSEEK -> "api_key"
+        MINIMAX, AIHUBMIX, DEEPSEEK, OPENCODE_GO -> "api_key"
     }
 
     fun getCookieDomains(): List<String> = when (this) {
@@ -95,7 +102,7 @@ enum class Platform(
         CHATGPT -> listOf("https://chatgpt.com", "https://chat.openai.com")
         CURSOR -> listOf("https://cursor.sh", "https://authenticator.cursor.sh", "https://api2.cursor.sh", "https://www.cursor.com", "https://cursor.com")
         ZEN -> listOf("https://opencode.ai")
-        MINIMAX, AIHUBMIX, DEEPSEEK -> emptyList()
+        MINIMAX, AIHUBMIX, DEEPSEEK, OPENCODE_GO -> emptyList()
     }
 
     /**

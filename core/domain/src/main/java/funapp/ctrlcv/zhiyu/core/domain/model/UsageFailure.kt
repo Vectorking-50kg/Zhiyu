@@ -4,7 +4,8 @@ import java.io.IOException
 import kotlinx.coroutines.CancellationException
 
 enum class UsageFailureKind {
-    AUTH_REQUIRED, PERMISSION_DENIED, RATE_LIMITED, NETWORK, SERVER, INVALID_RESPONSE, UNKNOWN
+    AUTH_REQUIRED, PERMISSION_DENIED, RATE_LIMITED, NETWORK, SERVER, INVALID_RESPONSE, UNKNOWN,
+    SUBSCRIPTION_REQUIRED
 }
 
 /** Safe operational metadata only: no exception text, tokens, URLs or response bodies. */
@@ -23,6 +24,7 @@ data class UsageFailure(
             UsageFailureKind.SERVER -> "平台服务暂时异常，请稍后重试"
             UsageFailureKind.INVALID_RESPONSE -> "暂时无法识别平台返回的数据"
             UsageFailureKind.UNKNOWN -> "更新失败，请稍后重试"
+            UsageFailureKind.SUBSCRIPTION_REQUIRED -> "未找到有效订阅，请检查订阅状态"
         }
 
     val requiresLogin: Boolean get() = kind == UsageFailureKind.AUTH_REQUIRED
@@ -31,8 +33,12 @@ data class UsageFailure(
     )
 }
 
-fun UsageFailure.messageFor(platform: Platform): String =
-    if (requiresLogin && platform.requiresApiKey) "API 密钥无效，请检查后重试" else message
+fun UsageFailure.messageFor(platform: Platform): String = when {
+    requiresLogin && platform.requiresApiKey -> "API 密钥无效，请检查后重试"
+    kind == UsageFailureKind.SUBSCRIPTION_REQUIRED && platform == Platform.OPENCODE_GO ->
+        "未开通 OpenCode Go 订阅，请检查密钥对应的账户"
+    else -> message
+}
 
 fun Throwable.toUsageFailure(now: Long = System.currentTimeMillis()): UsageFailure = when (this) {
     is CancellationException -> throw this

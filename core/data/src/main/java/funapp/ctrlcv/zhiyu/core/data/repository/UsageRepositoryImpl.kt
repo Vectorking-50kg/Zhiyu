@@ -72,6 +72,7 @@ class UsageRepositoryImpl internal constructor(
     override suspend fun getChatGptUsage(accountId: String) = getUsage(Platform.CHATGPT, accountId)
     override suspend fun getCursorUsage(accountId: String) = getUsage(Platform.CURSOR, accountId)
     override suspend fun getZenUsage(accountId: String) = getUsage(Platform.ZEN, accountId)
+    override suspend fun getOpenCodeGoUsage(accountId: String) = getUsage(Platform.OPENCODE_GO, accountId)
     override suspend fun getMiniMaxUsage(accountId: String) = getUsage(Platform.MINIMAX, accountId)
     override suspend fun getAiHubMixUsage(accountId: String) = getUsage(Platform.AIHUBMIX, accountId)
     override suspend fun getDeepSeekUsage(accountId: String) = getUsage(Platform.DEEPSEEK, accountId)
@@ -196,5 +197,6 @@ private suspend fun fetchLegacyUsage(
         Platform.MINIMAX -> api.getMiniMaxUsage(credential)
         Platform.AIHUBMIX -> api.getAiHubMixUsage(credential)
         Platform.DEEPSEEK -> api.getDeepSeekUsage(credential)
+        Platform.OPENCODE_GO -> api.getOpenCodeGoUsage(credential)
     }
 }

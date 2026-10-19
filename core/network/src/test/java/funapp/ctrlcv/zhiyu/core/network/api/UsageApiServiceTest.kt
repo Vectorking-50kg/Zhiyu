@@ -3,8 +3,12 @@ package funapp.ctrlcv.zhiyu.core.network.api
 import com.google.gson.Gson
 import funapp.ctrlcv.zhiyu.core.domain.model.ApiStructureChangedException
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
+import funapp.ctrlcv.zhiyu.core.domain.model.PermissionDeniedException
+import funapp.ctrlcv.zhiyu.core.domain.model.RateLimitException
+import funapp.ctrlcv.zhiyu.core.domain.model.SessionExpiredException
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageFailureKind
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageRequestException
+import funapp.ctrlcv.zhiyu.core.domain.model.messageFor
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.Dispatcher
@@ -38,6 +42,60 @@ class UsageApiServiceTest {
     }
 
     @After fun tearDown() { server.shutdown() }
+
+    @Test fun `Go validates a subscription using one read only Bearer request`() = runBlocking {
+        responses["/zen/go/v1/usage"] = 200 to """{"usage":{
+            "rolling":{"status":"ok","percent":20},
+            "weekly":{"status":"ok","percent":35},
+            "monthly":{"status":"ok","percent":50}
+        }}"""
+        val session = service.validateCookie(Platform.OPENCODE_GO, "fake-api-key")
+        assertEquals(Platform.OPENCODE_GO, session.usage.platform)
+        assertEquals("Go", session.usage.planLabel)
+        assertEquals(3, session.usage.items.size)
+        assertEquals(1, server.requestCount)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/zen/go/v1/usage", request.path)
+        assertEquals("Bearer fake-api-key", request.getHeader("Authorization"))
+        assertEquals("application/json", request.getHeader("Accept"))
+        assertNull(request.getHeader("Cookie"))
+    }
+
+    @Test fun `Go empty quota cannot validate an API key`() {
+        responses["/zen/go/v1/usage"] = 200 to "{}"
+        assertThrows(ApiStructureChangedException::class.java) { runBlocking { service.getOpenCodeGoUsage("fake-key") } }
+    }
+
+    @Test fun `Go invalid API key is an authentication failure`() {
+        responses["/zen/go/v1/usage"] = 401 to """{"type":"error","error":{"type":"AuthError","message":"Unauthorized"}}"""
+        val error = assertThrows(SessionExpiredException::class.java) { runBlocking { service.getOpenCodeGoUsage("fake-key") } }
+        assertEquals(Platform.OPENCODE_GO, error.platform)
+    }
+
+    @Test fun `Go missing subscription is distinct from a revoked API key`() {
+        responses["/zen/go/v1/usage"] = 403 to """{"type":"error","error":{"type":"EntitlementError","message":"secret-body"}}"""
+        val error = assertThrows(UsageRequestException::class.java) { runBlocking { service.getOpenCodeGoUsage("fake-key") } }
+        assertEquals(UsageFailureKind.SUBSCRIPTION_REQUIRED, error.failure.kind)
+        assertEquals(403, error.failure.httpStatus)
+        assertFalse(error.failure.requiresLogin)
+        assertFalse(error.failure.retryable)
+        assertTrue(error.failure.messageFor(Platform.OPENCODE_GO).contains("Go 订阅"))
+        assertFalse(error.message.orEmpty().contains("secret-body"))
+    }
+
+    @Test fun `Go generic forbidden and server errors do not claim a missing subscription`() {
+        responses["/zen/go/v1/usage"] = 403 to "<html>Access denied</html>"
+        assertThrows(PermissionDeniedException::class.java) { runBlocking { service.getOpenCodeGoUsage("fake-key") } }
+        responses["/zen/go/v1/usage"] = 503 to """{"error":{"type":"EntitlementError"}}"""
+        val error = assertThrows(UsageRequestException::class.java) { runBlocking { service.getOpenCodeGoUsage("fake-key") } }
+        assertEquals(UsageFailureKind.SERVER, error.failure.kind)
+    }
+
+    @Test fun `Go request throttling is distinct from quota exhaustion`() {
+        responses["/zen/go/v1/usage"] = 429 to "{}"
+        assertThrows(RateLimitException::class.java) { runBlocking { service.getOpenCodeGoUsage("fake-key") } }
+    }
 
     @Test fun `session endpoint 500 never asks for a new login`() {
         responses["/api/auth/session"] = 500 to "{\"accessToken\":\"sensitive-body\"}"

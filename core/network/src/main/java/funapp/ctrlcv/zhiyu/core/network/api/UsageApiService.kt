@@ -222,6 +222,7 @@ class UsageApiService @Inject constructor(
                 val usage = when (platform) {
                     Platform.CURSOR -> getCursorUsage(cookie)
                     Platform.ZEN -> getZenUsage(cookie, workspaceId)
+                    Platform.OPENCODE_GO -> getOpenCodeGoUsage(cookie)
                     Platform.MINIMAX -> getMiniMaxUsage(cookie)
                     Platform.AIHUBMIX -> getAiHubMixUsage(cookie)
                     Platform.DEEPSEEK -> getDeepSeekUsage(cookie)
@@ -357,6 +358,22 @@ class UsageApiService @Inject constructor(
             usage.get("apiPercentUsed")?.takeUnless { it.isJsonNull }?.asFloat?.let {
                 items.add(UsageItem(label = "API 用量", percent = it.coerceIn(0f, 100f)))
             }
+        }
+    }
+
+    // ── OpenCode Go ──────────────────────────────────────────────────────────
+    // Official read-only subscription endpoint; the key comes from the Zen console.
+    // https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/go/v1/usage.ts
+    suspend fun getOpenCodeGoUsage(apiKey: String): UsageInfo = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("https://opencode.ai/zen/go/v1/usage")
+            .header("Authorization", "Bearer $apiKey")
+            .header("Accept", "application/json")
+            .header("User-Agent", USER_AGENT)
+            .tag(Platform::class.java, Platform.OPENCODE_GO)
+            .build()
+        client.newCall(request).execute().use { response ->
+            OpenCodeGoUsageParser.parse(readOrThrow(response, Platform.OPENCODE_GO), System.currentTimeMillis())
         }
     }
 

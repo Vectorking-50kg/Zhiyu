@@ -22,7 +22,8 @@ class RefreshWorkerPolicyTest {
     @Test fun authenticationAndRateLimitDoNotCauseWorkerRetryLoops() {
         assertFalse(shouldRetryRefresh(listOf(outcome(null))))
         for (kind in listOf(UsageFailureKind.AUTH_REQUIRED, UsageFailureKind.PERMISSION_DENIED,
-            UsageFailureKind.RATE_LIMITED, UsageFailureKind.INVALID_RESPONSE, UsageFailureKind.UNKNOWN)) {
+            UsageFailureKind.RATE_LIMITED, UsageFailureKind.INVALID_RESPONSE, UsageFailureKind.UNKNOWN,
+            UsageFailureKind.SUBSCRIPTION_REQUIRED)) {
             assertFalse(kind.name, shouldRetryRefresh(listOf(outcome(kind))))
         }
     }

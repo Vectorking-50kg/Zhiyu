@@ -138,6 +138,30 @@ internal object CodexUsageParser {
     }
 }
 
+/** Go reports used percentages, not a cash balance or token counts. */
+internal object OpenCodeGoUsageParser {
+    fun parse(body: String, nowMillis: Long): UsageInfo {
+        val root = parseUsageObject(body, Platform.OPENCODE_GO)
+        val usage = root.objectOrNull("usage")
+        val items = listOf(
+            Triple("rolling", "5 小时限额", FIVE_HOUR_SECONDS),
+            Triple("weekly", "周限额", WEEKLY_SECONDS),
+            // Monthly resets follow the subscription date; no fixed 30-day duration.
+            Triple("monthly", "月限额", null),
+        ).mapNotNull { (key, label, duration) ->
+            val window = usage?.objectOrNull(key) ?: return@mapNotNull null
+            val percent = window.finiteNumber("percent")?.takeIf { it >= 0 } ?: return@mapNotNull null
+            usageWindow(
+                id = "opencode_go.$key", label = label, percent = percent,
+                resetAt = window.get("resetsAt").instantMillisOrNull(),
+                duration = duration, nowMillis = nowMillis,
+            )
+        }
+        if (items.isEmpty()) throw ApiStructureChangedException(Platform.OPENCODE_GO, "OpenCode Go response has no valid usage windows")
+        return UsageInfo(platform = Platform.OPENCODE_GO, items = items, planLabel = "Go", updatedAt = nowMillis)
+    }
+}
+
 internal fun formatCodexPlan(plan: String): String = when (plan.lowercase()) {
     "free", "chatgptfreeplan" -> "Free"
     "plus", "chatgptplusplan" -> "Plus"

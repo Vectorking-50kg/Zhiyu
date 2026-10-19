@@ -56,8 +56,11 @@ fun AccountsScreen(state: MonitorState, vm: MonitorViewModel, scroll: ScrollStat
             AccountEmptyState("没有找到相关账户", "试试供应商名称，或查看全部支持的 AI。",
                 if (state.search.isBlank()) "添加第一个监控" else null, vm::showProviders)
         } else {
-            listOf(false to "网页登录", true to "API 密钥").forEach { (api, title) ->
-                val group = listed.filter { it.platform.requiresApiKey == api }
+            listOf(
+                "网页登录" to listed.filter { !it.platform.requiresApiKey && !it.platform.isOpenCodeProvider() },
+                "OpenCode" to listed.filter { it.platform.isOpenCodeProvider() },
+                "API 密钥" to listed.filter { it.platform.requiresApiKey && !it.platform.isOpenCodeProvider() },
+            ).forEach { (title, group) ->
                 if (group.isNotEmpty()) {
                     Spacer(Modifier.height(22.dp)); SectionCaption(title, "${group.size} 个账户"); Spacer(Modifier.height(11.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -123,5 +126,5 @@ fun ProviderPicker(state: MonitorState, vm: MonitorViewModel) {
             }
         }
     }
-    if (listed.isEmpty()) AccountEmptyState("没有找到这个供应商", "目前支持列表中的 7 个供应商，试试其他名称。")
+    if (listed.isEmpty()) AccountEmptyState("没有找到这个供应商", "目前支持列表中的 ${Platform.displayOrder.size} 个供应商，试试其他名称。")
 }

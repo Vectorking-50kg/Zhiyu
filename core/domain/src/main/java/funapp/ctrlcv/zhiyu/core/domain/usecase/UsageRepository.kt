@@ -8,6 +8,7 @@ interface UsageRepository {
     suspend fun getChatGptUsage(accountId: String): Result<UsageInfo>
     suspend fun getCursorUsage(accountId: String): Result<UsageInfo>
     suspend fun getZenUsage(accountId: String): Result<UsageInfo>
+    suspend fun getOpenCodeGoUsage(accountId: String): Result<UsageInfo>
     suspend fun getMiniMaxUsage(accountId: String): Result<UsageInfo>
     suspend fun getAiHubMixUsage(accountId: String): Result<UsageInfo>
     suspend fun getDeepSeekUsage(accountId: String): Result<UsageInfo>

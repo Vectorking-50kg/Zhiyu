@@ -53,6 +53,7 @@ internal object DemoUsageSeeder {
                         Platform.CLAUDE -> "Max 5×"
                         Platform.CHATGPT -> "Plus"
                         Platform.CURSOR -> "Pro"
+                        Platform.OPENCODE_GO -> "Go"
                         else -> if (platform.requiresApiKey) "API" else ""
                     },
                 )
@@ -121,6 +122,19 @@ internal object DemoUsageSeeder {
             platform = Platform.ZEN,
             items = listOf(
                 UsageItem("账户余额", -1f, valueText = "$18.42"),
+            ),
+            updatedAt = now - 3 * 60_000,
+        ),
+        UsageInfo(
+            platform = Platform.OPENCODE_GO,
+            planLabel = "Go",
+            items = listOf(
+                UsageItem("5 小时限额", 36f, resetAt = now + 2L * 60 * 60 * 1_000,
+                    windowDurationSeconds = 18_000, windowId = "opencode_go.rolling"),
+                UsageItem("周限额", 58f, resetAt = now + 3L * DAY_MS,
+                    windowDurationSeconds = 604_800, windowId = "opencode_go.weekly"),
+                UsageItem("月限额", 42f, resetAt = now + 17L * DAY_MS,
+                    windowId = "opencode_go.monthly"),
             ),
             updatedAt = now - 3 * 60_000,
         ),

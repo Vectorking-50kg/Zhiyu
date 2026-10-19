@@ -290,7 +290,7 @@ fun WelcomeScreen(scroll: ScrollState, bottomPadding: Dp, onAdd: () -> Unit, onB
                             }
                         }
                     }
-                    Spacer(Modifier.width(10.dp)); UiText("支持 7 个 AI 供应商", 11, 17, color = c.muted)
+                    Spacer(Modifier.width(10.dp)); UiText("支持 ${Platform.displayOrder.size} 个 AI 供应商", 11, 17, color = c.muted)
                 }
                 Spacer(Modifier.height(29.dp))
                 Column(Modifier.widthIn(max = 310.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {

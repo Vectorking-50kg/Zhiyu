@@ -19,6 +19,8 @@ internal object UsageHttpResponse {
         val body = response.body?.string().orEmpty()
         when {
             response.code == 401 -> throw SessionExpiredException(platform)
+            response.code == 403 && platform == Platform.OPENCODE_GO && explicitlyRequiresGoSubscription(body) ->
+                throw UsageRequestException(platform, UsageFailure(UsageFailureKind.SUBSCRIPTION_REQUIRED, 403, occurredAt = nowMillis))
             response.code == 403 && explicitlyRequiresAuthentication(body) -> throw SessionExpiredException(platform)
             response.code == 403 -> throw PermissionDeniedException(platform)
             response.code == 429 -> throw RateLimitException(platform, retryAfter(response.header("Retry-After"), nowMillis))
@@ -35,6 +37,11 @@ internal object UsageHttpResponse {
         val code = error?.stringOrNull("code") ?: error?.stringOrNull("type") ?: root.stringOrNull("error")
             ?: root.stringOrNull("error_code")
         code?.lowercase() in setOf("authentication_error", "invalid_api_key", "invalid_token", "token_expired", "session_expired", "invalid_session", "unauthorized")
+    }.getOrDefault(false)
+
+    private fun explicitlyRequiresGoSubscription(body: String): Boolean = runCatching {
+        val root = JsonParser.parseString(body.take(8192)).takeIf { it.isJsonObject }?.asJsonObject
+        root?.objectOrNull("error")?.stringOrNull("type") == "EntitlementError"
     }.getOrDefault(false)
 
     private fun retryAfter(value: String?, nowMillis: Long): Long? {

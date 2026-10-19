@@ -53,6 +53,7 @@ Get the latest APK from [GitHub Releases](https://github.com/Vectorking-50kg/Zhi
 | **Claude** | Web login; optional OAuth authorization | Five-hour and weekly limits, model-specific windows, Claude Design, and extra usage percentages |
 | **Cursor** | Web login | Current billing-period usage, Auto usage, API usage, and plan information |
 | **OpenCode Zen** | Web login | Account balance |
+| **OpenCode Go** | API key from the OpenCode console | Five-hour, weekly, and monthly subscription usage and reset times |
 | **MiniMax** | API key for the corresponding Token Plan | Five-hour and weekly limits, unlimited-quota indicators, and quota boosts |
 | **AIHubMix** | API key (token) | Account balance, cumulative spending, and total request count |
 | **DeepSeek** | API key | Available balance, promotional balance, and topped-up balance |
@@ -64,10 +65,12 @@ Some integrations depend on internal interfaces or console pages available after
 ## Getting Started
 
 1. Open the app and tap **添加第一个账户** (Add your first account). You can also add more accounts from **账户** (Accounts).
-2. Choose a platform. Use web login for ChatGPT, Claude, Cursor, and OpenCode, or enter the appropriate API key for MiniMax, AIHubMix, and DeepSeek.
+2. Choose a platform. Use web login for ChatGPT, Claude, Cursor, and OpenCode Zen, or enter the appropriate API key for OpenCode Go, MiniMax, AIHubMix, and DeepSeek.
 3. Once the login or API key is validated, return to **概览** (Overview) to view quotas and balances. Tap **查看详情** (View details) to inspect individual usage windows and reset times.
 4. In **账户** (Accounts), enable monitoring, alerts, and persistent notifications as needed. Use **设置** (Settings) to adjust appearance, refresh intervals, and global notification preferences.
 5. To display usage on your home screen, add the Zhiyu widget through your launcher's widget picker.
+
+OpenCode Go and Zen share an OpenCode group on the Accounts page. Go uses an API key belonging to an account with an active subscription and queries the official `GET https://opencode.ai/zen/go/v1/usage` endpoint. Zen displays the account balance separately. See the [official OpenCode Go documentation](https://opencode.ai/docs/go/) for subscription and API key setup, and the [official endpoint source](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/go/v1/usage.ts) for response fields.
 
 ## Data and Privacy
 

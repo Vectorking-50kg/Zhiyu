@@ -54,6 +54,7 @@
 | **Claude** | 网页登录；可选 OAuth 授权 | 5 小时与周限额、模型分类窗口、Claude Design、额外用量百分比 |
 | **Cursor** | 网页登录 | 本周期用量、Auto 用量、API 用量与套餐信息 |
 | **OpenCode Zen** | 网页登录 | 账户余额 |
+| **OpenCode Go** | OpenCode 控制台的 API Key | 5 小时、周与月订阅额度及重置时间 |
 | **MiniMax** | Token Plan 对应的 API Key | 5 小时与周限额、无限制标识、额度提升（Boost） |
 | **AIHubMix** | API Key（令牌） | 账户余额、累计消费、累计请求次数 |
 | **DeepSeek** | API Key | 可用余额、赠送余额、充值余额 |
@@ -65,10 +66,12 @@
 ## 开始使用
 
 1. 打开应用，点击「添加第一个账户」；也可以在「账户」页添加更多账户。
-2. 选择平台。ChatGPT、Claude、Cursor、OpenCode 使用网页登录；MiniMax、AIHubMix、DeepSeek 填写对应平台的密钥。
+2. 选择平台。ChatGPT、Claude、Cursor、OpenCode Zen 使用网页登录；OpenCode Go、MiniMax、AIHubMix、DeepSeek 填写对应平台的密钥。
 3. 登录或密钥通过校验后，返回「概览」查看额度与余额，点击「查看详情」查看各个窗口与重置时间。
 4. 在「账户」中按需开启监控、提醒和状态栏固定；在「设置」中调整外观、刷新间隔和全局通知。
 5. 如需桌面展示，通过系统的小组件选择器添加知余小组件。
+
+OpenCode Go 与 Zen 在账户页归入同一个 OpenCode 分组。Go 使用控制台中已开通订阅的账户的 API Key，通过官方 `GET https://opencode.ai/zen/go/v1/usage` 查询订阅额度；Zen 单独展示账户余额。密钥获取与订阅说明见 [OpenCode Go 官方文档](https://opencode.ai/docs/go/)，响应字段以 [官方接口源码](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/go/v1/usage.ts) 为准。
 
 ## 数据与隐私
 
