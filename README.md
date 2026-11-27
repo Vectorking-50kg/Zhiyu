@@ -54,7 +54,7 @@
 | **Claude** | 网页登录；可选 OAuth 授权 | 5 小时与周限额、模型分类窗口、Claude Design、额外用量百分比 |
 | **Cursor** | 网页登录 | 本周期用量、Auto 用量、API 用量与套餐信息 |
 | **Devin** | 内置浏览器登录（Google 或邮箱） | 日额度、周额度、重置时间与额外用量余额 |
-| **GitHub Copilot** | GitHub 设备码授权 | AI 积分或高级请求的额度与重置时间，以及套餐提供的聊天和补全额度 |
+| **GitHub Copilot** | GitHub 设备码授权 | AI 积分或高级请求额度及重置时间、聊天和补全额度，以及接口提供的额外用量金额和预算 |
 | **OpenCode Zen** | 网页登录 | 账户余额 |
 | **OpenCode Go** | OpenCode 控制台的 API Key | 5 小时、周与月订阅额度及重置时间 |
 | **MiniMax** | Token Plan 对应的 API Key | 5 小时与周限额、无限制标识、额度提升（Boost） |
@@ -128,8 +128,8 @@ Debug 和 Release 使用不同包名，可以同时安装，账号与设置各�
 
 | 构建类型 | 应用名称 | 包名 | 版本名称 |
 | --- | --- | --- | --- |
-| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.4` |
-| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.4-debug` |
+| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.5` |
+| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.5-debug` |
 
 基础版本统一在 `app/build.gradle.kts` 的 `defaultConfig` 中维护；Debug 自动追加 `-debug`，Release 不追加后缀。应用内“关于”页也会显示对应版本名称。
 

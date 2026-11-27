@@ -9,6 +9,8 @@ import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageItem
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageRequestException
 import funapp.ctrlcv.zhiyu.core.domain.model.atTime
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -117,6 +119,7 @@ internal object CopilotUsageParser {
                 } ?: legacyWindow(root, key, label, legacyResetAt, nowMillis)
                 if (window != null) add(window)
             }
+            if (usesCredits && premium != null) additionalUsage(premium)?.let(::add)
         }
         val availableItems = when {
             items.isNotEmpty() -> items
@@ -134,6 +137,20 @@ internal object CopilotUsageParser {
             providerAccountId = root.stringOrNull("login"),
         )
     }
+
+    private fun additionalUsage(snapshot: JsonObject): UsageItem? {
+        val spent = snapshot.nonnegative("overage_count") ?: return null
+        val budget = snapshot.nonnegative("overage_entitlement")?.takeIf { it > 0 }
+        if (spent == 0.0 && budget == null && snapshot.booleanOrNull("overage_permitted") != true) return null
+
+        val spentText = "\$${creditsToUsd(spent)}"
+        val valueText = if (budget != null) "$spentText / \$${creditsToUsd(budget).removeSuffix(".00")}" else spentText
+        return UsageItem("额外用量", -1f, valueText = valueText, windowId = "github_copilot.additional_usage")
+    }
+
+    // Each AI credit is one US cent.
+    private fun creditsToUsd(credits: Double): String =
+        BigDecimal.valueOf(credits).movePointLeft(2).setScale(2, RoundingMode.HALF_UP).toPlainString()
 
     private fun hasSeatPlaceholder(snapshots: JsonObject?): Boolean =
         listOf(PREMIUM, "chat", "completions").any { key ->

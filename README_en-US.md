@@ -53,7 +53,7 @@ Get the latest APK from [GitHub Releases](https://github.com/Vectorking-50kg/Zhi
 | **Claude** | Web login; optional OAuth authorization | Five-hour and weekly limits, model-specific windows, Claude Design, and extra usage percentages |
 | **Cursor** | Web login | Current billing-period usage, Auto usage, API usage, and plan information |
 | **Devin** | In-app browser sign-in (Google or email) | Daily and weekly quotas, reset times, and extra-usage balance |
-| **GitHub Copilot** | GitHub device-code authorization | AI credit or premium request allowances and reset times, plus chat and completion quotas when available |
+| **GitHub Copilot** | GitHub device-code authorization | AI credit or premium request allowances and reset times, chat and completion quotas, and additional spending and budget when available |
 | **OpenCode Zen** | Web login | Account balance |
 | **OpenCode Go** | API key from the OpenCode console | Five-hour, weekly, and monthly subscription usage and reset times |
 | **MiniMax** | API key for the corresponding Token Plan | Five-hour and weekly limits, unlimited-quota indicators, and quota boosts |
@@ -127,8 +127,8 @@ Debug and Release use different application IDs, so both can be installed side b
 
 | Build type | App name | Application ID | Version name |
 | --- | --- | --- | --- |
-| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.4` |
-| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.4-debug` |
+| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.5` |
+| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.5-debug` |
 
 Maintain the base version in `defaultConfig` in `app/build.gradle.kts`. Debug automatically appends `-debug`; Release has no suffix. The in-app About page displays the corresponding version name.
 

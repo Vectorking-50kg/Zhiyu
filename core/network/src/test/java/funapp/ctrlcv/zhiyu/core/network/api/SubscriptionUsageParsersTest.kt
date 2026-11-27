@@ -81,6 +81,55 @@ class SubscriptionUsageParsersTest {
         assertNull(credits.windowDurationSeconds)
     }
 
+    @Test fun `Copilot shows the confirmed additional spend and budget separately from included credits`() {
+        val usage = CopilotUsageParser.parse(
+            """{"copilot_plan":"individual_pro","token_based_billing":true,"quota_snapshots":{
+                "premium_interactions":{"entitlement":7000,"credits_used":8732,"quota_remaining":-1732.1,
+                    "percent_remaining":0,"overage_count":1724,"overage_entitlement":2000,"overage_permitted":true},
+                "chat":{"entitlement":0,"overage_count":0,"overage_entitlement":0}
+            }}""", now,
+        )
+
+        val additional = usage.items.single { it.label == "额外用量" }
+        assertEquals("$17.24 / $20", additional.valueText)
+        assertEquals(-1f, additional.percent, 0f)
+        assertEquals("100%", usage.primaryMetric().text)
+    }
+
+    @Test fun `Copilot shows additional spend without a budget, including past spend after disabling overage`() {
+        val usage = CopilotUsageParser.parse(
+            """{"copilot_plan":"individual_pro","token_based_billing":true,"quota_snapshots":{
+                "premium_interactions":{"entitlement":7000,"percent_remaining":0,
+                    "overage_count":"1724.5","overage_permitted":false}
+            }}""", now,
+        )
+
+        assertEquals("$17.25", usage.items.single { it.label == "额外用量" }.valueText)
+    }
+
+    @Test fun `Copilot displays an unused additional budget and skips a disabled zero placeholder`() {
+        val source = """{"copilot_plan":"individual","token_based_billing":true,"quota_snapshots":{
+            "premium_interactions":{"entitlement":1000,"percent_remaining":50,"overage_count":0,
+                "overage_entitlement":0,"overage_permitted":false}
+        }}"""
+        val disabled = CopilotUsageParser.parse(source, now)
+        val budgeted = CopilotUsageParser.parse(source.replace("\"overage_entitlement\":0", "\"overage_entitlement\":2000"), now)
+
+        assertEquals(listOf("AI 积分"), disabled.items.map { it.label })
+        assertEquals("$0.00 / $20", budgeted.items.single { it.label == "额外用量" }.valueText)
+    }
+
+    @Test fun `Copilot does not invent spend when only the budget is returned`() {
+        val usage = CopilotUsageParser.parse(
+            """{"copilot_plan":"individual","token_based_billing":true,"quota_snapshots":{
+                "premium_interactions":{"entitlement":1000,"percent_remaining":50,
+                    "overage_entitlement":2000,"overage_permitted":true}
+            }}""", now,
+        )
+
+        assertEquals(listOf("AI 积分"), usage.items.map { it.label })
+    }
+
     @Test fun `Copilot keeps legacy chat and completion quotas distinct`() {
         val usage = CopilotUsageParser.parse(
             """{
@@ -102,7 +151,8 @@ class SubscriptionUsageParsersTest {
     @Test fun `Copilot displays legacy premium requests with a UTC date fallback`() {
         val usage = CopilotUsageParser.parse(
             """{"copilot_plan":"individual","quota_reset_date_utc":"invalid","quota_reset_date":"2026-12-01",
-                "quota_snapshots":{"premium_interactions":{"entitlement":300,"remaining":150,"percent_remaining":50}}
+                "quota_snapshots":{"premium_interactions":{"entitlement":300,"remaining":150,"percent_remaining":50,
+                    "overage_count":8,"overage_entitlement":50,"overage_permitted":true}}
             }""", now
         )
 
