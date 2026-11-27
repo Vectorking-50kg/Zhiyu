@@ -55,7 +55,10 @@ jobs:
           cache: gradle
       - name: Install Android SDK tools
         if: steps.plan.outputs.ready == 'true'
-        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+        run: |
+          sdk_bin="$ANDROID_HOME/cmdline-tools/latest/bin"
+          "$sdk_bin/sdkmanager" --install "platforms;android-35" "build-tools;35.0.0"
+          printf '%s\n' "$sdk_bin" "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
       - name: Test and build the release APKs
         if: steps.plan.outputs.ready == 'true'
         run: python3 .github/scripts/android_release.py build
