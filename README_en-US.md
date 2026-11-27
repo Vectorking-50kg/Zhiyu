@@ -146,6 +146,27 @@ With an emulator or test device connected, verify notification state persistence
 
 This verification build uses a separate `.releasecheck` application ID and debug signing. Notification state and codec implementations remain subject to minification.
 
+## Automatic Releases
+
+Increase `versionName` and `versionCode` in `app/build.gradle.kts` and push to `main`. The **Android Release** workflow publishes the outstanding versions since the last stable release in order. It builds each version from the commit that introduced it, runs tests and checks the APK by upgrading a previous release on an emulator. Each `vX.Y.Z` release includes `Zhiyu-X.Y.Z.apk` and notes generated from commit titles.
+
+In **Settings → Secrets and variables → Actions**, add these repository secrets using the same keystore that signed the published APKs. [GitHub Actions secrets documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets#storing-base64-binary-blobs-as-secrets)
+
+| Secret | Value |
+| --- | --- |
+| `ANDROID_RELEASE_KEYSTORE_BASE64` | The `.jks` or `.keystore` file encoded as Base64 |
+| `ANDROID_RELEASE_STORE_PASSWORD` | Keystore password |
+| `ANDROID_RELEASE_KEY_ALIAS` | Signing key alias |
+| `ANDROID_RELEASE_KEY_PASSWORD` | Signing key password |
+
+On macOS, replace the path and run this command to copy the Base64 value to your clipboard.
+
+```bash
+base64 -i '/path/to/zhiyu-release.jks' | pbcopy
+```
+
+To backfill, go to **Actions → Android Release → Run workflow**, select `main`, and set `from_version` and `to_version`. Use `0.1.2` through `0.1.5` to publish those four releases, or enter the same version in both fields to publish one. The workflow skips versions that are already published. Use **Re-run jobs** to retry a failed release.
+
 ## Project Structure
 
 ```text

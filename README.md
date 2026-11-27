@@ -147,6 +147,27 @@ Debug 和 Release 使用不同包名，可以同时安装，账号与设置各�
 
 该验证构建使用独立的 `.releasecheck` 包名和 Debug 签名；通知状态与编解码实现仍参与混淆。
 
+## 自动发布
+
+把 `app/build.gradle.kts` 中提高后的 `versionName` 和 `versionCode` 推到 `main`，**Android Release** 工作流会依次发布上一个正式版之后尚未发布的版本。每个版本都从版本号生效的提交构建，测试和覆盖安装通过后发布 `vX.Y.Z`，附带 `Zhiyu-X.Y.Z.apk` 和从提交标题生成的更新日志。
+
+在仓库的 **Settings → Secrets and variables → Actions** 一次性添加以下仓库 Secrets。使用之前给正式版 APK 签名的同一份 `.jks` 或 `.keystore`。[GitHub Actions Secrets 文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets#storing-base64-binary-blobs-as-secrets)
+
+| Secret | 填写内容 |
+| --- | --- |
+| `ANDROID_RELEASE_KEYSTORE_BASE64` | 签名文件的 Base64 文本 |
+| `ANDROID_RELEASE_STORE_PASSWORD` | 签名文件密码 |
+| `ANDROID_RELEASE_KEY_ALIAS` | 密钥别名 |
+| `ANDROID_RELEASE_KEY_PASSWORD` | 密钥密码 |
+
+在 macOS 上可将签名文件转换为 Base64 并直接复制到剪贴板。将路径替换为你的文件。
+
+```bash
+base64 -i '/完整路径/zhiyu-release.jks' | pbcopy
+```
+
+补发时，在 **Actions → Android Release → Run workflow** 选择 `main`，填写 `from_version` 和 `to_version`。例如用 `0.1.2` 到 `0.1.5` 补齐这四版，两个输入填写相同的值可单独补发一版。已发布的版本会跳过，旧版补发后仍可从 Releases 列表下载。失败的运行可通过 **Re-run jobs** 重试。
+
 ## 项目结构
 
 ```text
