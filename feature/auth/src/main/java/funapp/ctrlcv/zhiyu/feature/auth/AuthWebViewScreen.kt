@@ -42,6 +42,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +53,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
+import funapp.ctrlcv.zhiyu.core.network.api.DevinWebSession
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 
@@ -58,14 +66,14 @@ import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
 @Composable
 fun AuthWebViewScreen(
     onBack: () -> Unit = {},
-    onSuccess: () -> Unit = {},
+    onSuccess: (String) -> Unit = {},
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
     val leave = { viewModel.cancel(); onBack() }
     BackHandler(onBack = leave)
     DisposableEffect(viewModel) { onDispose { viewModel.cancel() } }
-    LaunchedEffect(state.isSuccess) { if (state.isSuccess) onSuccess() }
+    LaunchedEffect(state.connectedAccountId) { state.connectedAccountId?.let(onSuccess) }
     if (state.isSuccess) return
 
     Column(Modifier.fillMaxSize()) {
@@ -88,8 +96,8 @@ fun AuthWebViewScreen(
             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
             if (state.mode == AuthMode.COOKIE) TextButton(onClick = viewModel::useWebLogin) { Text("重新加载登录页") }
         }
-        if (state.mode == AuthMode.OAUTH && state.platform == Platform.CHATGPT) {
-            ChatGptDeviceLogin(state, viewModel)
+        if (state.mode == AuthMode.OAUTH && state.platform in setOf(Platform.CHATGPT, Platform.GITHUB_COPILOT)) {
+            DeviceLogin(state, viewModel)
         } else {
             key(state.pageGeneration) {
                 LoginBrowser(state, viewModel, Modifier.weight(1f))
@@ -97,8 +105,9 @@ fun AuthWebViewScreen(
         }
     }
     if (state.switchNeedsConfirmation) {
+        val dismiss = if (state.platform == Platform.GITHUB_COPILOT) leave else viewModel::useWebLogin
         AlertDialog(
-            onDismissRequest = viewModel::useWebLogin,
+            onDismissRequest = dismiss,
             title = { Text("替换当前登录？") },
             text = { Text(buildString {
                 append("刚刚验证的登录")
@@ -106,13 +115,13 @@ fun AuthWebViewScreen(
                 append("与原账号不同，或原账号尚未记录身份信息。确认后将替换当前登录并清除旧额度缓存。")
             }) },
             confirmButton = { TextButton(onClick = viewModel::confirmAccountSwitch) { Text("确认替换") } },
-            dismissButton = { TextButton(onClick = viewModel::useWebLogin) { Text("取消") } }
+            dismissButton = { TextButton(onClick = dismiss) { Text("取消") } }
         )
     }
 }
 
 @Composable
-private fun ChatGptDeviceLogin(state: AuthUiState, viewModel: AuthViewModel) {
+private fun DeviceLogin(state: AuthUiState, viewModel: AuthViewModel) {
     val context = LocalContext.current
     var browserError by remember { mutableStateOf<String?>(null) }
     Column(
@@ -127,7 +136,7 @@ private fun ChatGptDeviceLogin(state: AuthUiState, viewModel: AuthViewModel) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton(onClick = {
                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-                        .setPrimaryClip(ClipData.newPlainText("ChatGPT 设备码", challenge.userCode))
+                        .setPrimaryClip(ClipData.newPlainText("${state.platform.displayName} 设备码", challenge.userCode))
                 }) { Text("复制设备码") }
                 Button(onClick = {
                     try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(challenge.verificationUrl))) }
@@ -142,7 +151,9 @@ private fun ChatGptDeviceLogin(state: AuthUiState, viewModel: AuthViewModel) {
         }
         browserError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (state.error != null) Button(onClick = viewModel::startOAuth) { Text("重新获取设备码") }
-        TextButton(onClick = viewModel::useWebLogin) { Text("取消并返回网页登录") }
+        if (state.platform == Platform.CHATGPT) {
+            TextButton(onClick = viewModel::useWebLogin) { Text("取消并返回网页登录") }
+        }
     }
 }
 
@@ -152,8 +163,25 @@ private fun LoginBrowser(state: AuthUiState, viewModel: AuthViewModel, modifier:
     var currentUrl by remember { mutableStateOf("") }
     var mainWebView by remember { mutableStateOf<WebView?>(null) }
     var popupWebView by remember { mutableStateOf<WebView?>(null) }
+    var devinReminderDismissed by rememberSaveable { mutableStateOf(false) }
     val isOAuth = state.mode == AuthMode.OAUTH
+    val isDevin = state.platform == Platform.DEVIN
     val initialUrl = if (isOAuth) state.authorizationUrl else state.platform.loginUrl
+    val scope = rememberCoroutineScope()
+    val canReadDevinSession = isDevin && !pageLoading && popupWebView == null &&
+        !state.isLoading && !state.switchNeedsConfirmation
+    val canConfirmDevinSession = canReadDevinSession && DevinWebSession.isDevinPage(currentUrl) &&
+        Uri.parse(currentUrl).pathSegments.firstOrNull() !in setOf("login", "signup", "auth")
+
+    LaunchedEffect(mainWebView, canReadDevinSession, state.pageGeneration) {
+        val browser = mainWebView ?: return@LaunchedEffect
+        if (!canReadDevinSession) return@LaunchedEffect
+        // Devin's single-page app may write the session and organization after page-finished fires.
+        while (true) {
+            browser.readDevinSession()?.let { viewModel.onDevinSession(it, state.pageGeneration) }
+            delay(1000)
+        }
+    }
 
     DisposableEffect(Unit) { onDispose {
         mainWebView?.stopLoading()
@@ -205,6 +233,9 @@ private fun LoginBrowser(state: AuthUiState, viewModel: AuthViewModel, modifier:
                             }
                         }
                         webViewClient = object : WebViewClient() {
+                            override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+                                if (isDevin && url != null) currentUrl = url
+                            }
                             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                 val url = request?.url?.toString() ?: return false
                                 return (isOAuth && request.isForMainFrame && viewModel.onOAuthNavigation(url)) ||
@@ -224,6 +255,10 @@ private fun LoginBrowser(state: AuthUiState, viewModel: AuthViewModel, modifier:
                                     view?.loadUrl(state.platform.loginUrl)
                                     return
                                 }
+                                if (isDevin) {
+                                    if (DevinWebSession.isDevinPage(url)) view?.evaluateJavascript(DEVIN_VIEWPORT_FALLBACK, null)
+                                    return
+                                }
                                 val cookie = readLoginCookie(state.platform, url)
                                 if (cookie != null && (state.platform.isLoggedIn(url) || state.platform.hasSessionCookie(cookie))) {
                                     viewModel.onLoginSuccess(cookie, url)
@@ -238,9 +273,13 @@ private fun LoginBrowser(state: AuthUiState, viewModel: AuthViewModel, modifier:
                             }
                         }
                         val target = this
-                        // Load only after cookie cleanup completes; otherwise the cleanup can erase the new session.
-                        CookieManager.getInstance().removeAllCookies {
-                            if (mainWebView === target) target.loadUrl(initialUrl)
+                        if (isDevin) {
+                            target.loadUrl(initialUrl)
+                        } else {
+                            // Load only after cookie cleanup completes.
+                            CookieManager.getInstance().removeAllCookies {
+                                if (mainWebView === target) target.loadUrl(initialUrl)
+                            }
                         }
                     }
                 },
@@ -250,10 +289,18 @@ private fun LoginBrowser(state: AuthUiState, viewModel: AuthViewModel, modifier:
                 DisposableEffect(popup) { onDispose { popup.stopLoading(); popup.destroy() } }
                 AndroidView(factory = { popup }, modifier = Modifier.fillMaxSize())
             }
-            if (!isOAuth && !state.isLoading) ExtendedFloatingActionButton(
+            if (!isOAuth && !state.isLoading && (!isDevin || canConfirmDevinSession)) ExtendedFloatingActionButton(
                 onClick = {
-                    readLoginCookie(state.platform, currentUrl)?.let { viewModel.onLoginSuccess(it, currentUrl, manual = true) }
-                        ?: viewModel.onLoginError("未检测到登录 Cookie，请确认已完成登录")
+                    if (isDevin) {
+                        scope.launch {
+                            val session = mainWebView?.readDevinSession()
+                            if (session == null) viewModel.onLoginError("请先在 Devin 打开或新建一个对话，再验证额度")
+                            else viewModel.onDevinSession(session, state.pageGeneration, manual = true)
+                        }
+                    } else {
+                        readLoginCookie(state.platform, currentUrl)?.let { viewModel.onLoginSuccess(it, currentUrl, manual = true) }
+                            ?: viewModel.onLoginError("未检测到登录 Cookie，请确认已完成登录")
+                    }
                 },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
                 icon = { AppIcon(AppIcons.CheckCircle, contentDescription = null) },
@@ -270,6 +317,67 @@ private fun LoginBrowser(state: AuthUiState, viewModel: AuthViewModel, modifier:
             }
         }
     }
+    if (canConfirmDevinSession && !devinReminderDismissed) {
+        DevinConversationReminder(currentUrl) { devinReminderDismissed = true }
+    }
+}
+
+@Composable
+private fun DevinConversationReminder(pageUrl: String, onDismiss: () -> Unit) {
+    var visible by remember(pageUrl) { mutableStateOf(false) }
+    LaunchedEffect(pageUrl) {
+        // Let the automatic quota check finish before asking for a manual step.
+        delay(2500)
+        visible = true
+    }
+    if (visible) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("请打开一个 Devin 对话") },
+            text = {
+                Text("请打开任意已有对话。如果还没有对话，请新建一个并发送一条消息。知余会自动尝试读取额度。")
+            },
+            confirmButton = { TextButton(onClick = onDismiss) { Text("知道了") } }
+        )
+    }
+}
+
+// Some Android WebViews report a usable innerHeight while viewport CSS units resolve to zero.
+private val DEVIN_VIEWPORT_FALLBACK = """
+    (() => {
+        if (window.top !== window || location.origin !== "${Platform.DEVIN.baseUrl}" ||
+            !document.body || !window.innerHeight || document.getElementById("zhiyu-devin-viewport")) return;
+        const probe = document.createElement("div");
+        probe.style.cssText = "position:fixed; visibility:hidden; height:100dvh";
+        document.body.append(probe);
+        const height = probe.getBoundingClientRect().height;
+        probe.remove();
+        if (height > 0) return;
+        const style = document.createElement("style");
+        style.id = "zhiyu-devin-viewport";
+        style.textContent = ".h-dvh{height:var(--zhiyu-viewport-height)!important}" +
+            ".min-h-dvh{min-height:var(--zhiyu-viewport-height)!important}";
+        const resize = () => document.documentElement.style.setProperty(
+            "--zhiyu-viewport-height", (window.visualViewport?.height || window.innerHeight) + "px");
+        resize();
+        document.head.append(style);
+        window.addEventListener("resize", resize);
+        window.visualViewport?.addEventListener("resize", resize);
+    })()
+""".trimIndent()
+
+private suspend fun WebView.readDevinSession(): DevinWebSession? {
+    val page = url
+    if (!DevinWebSession.isDevinPage(page)) return null
+    val result = withTimeoutOrNull(2000) {
+        suspendCancellableCoroutine<String?> { continuation ->
+            evaluateJavascript(DevinWebSession.readScript) { value ->
+                if (continuation.isActive) continuation.resume(value)
+            }
+        }
+    } ?: return null
+    if (url != page) return null
+    return DevinWebSession.fromWebViewResult(result)
 }
 
 private fun WebView.configureForLogin() {

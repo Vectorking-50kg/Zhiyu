@@ -23,3 +23,14 @@ core/ui/src/main/res/drawable/ic_brand_minimax.png  9e596627348deb4030938a948243
 core/ui/src/main/res/drawable/ic_brand_aihubmix.png  f6f91d8949259753237bf244c19e461c2d3840ab26a56e0fe6e1f6460ec1fab4
 core/ui/src/main/res/drawable/ic_brand_deepseek.png  f98596fd7802ca0c5290c498fec578fa823988646332ee36c43b7920dc4936eb
 core/ui/src/main/res/drawable/ic_brand_opencode.png  3180ae52ecc8dd1ebb1e6b21a8cff6d29657e1ebf6e06c62ecaecdd78cfc247d
+
+Devin and GitHub Copilot
+Package: @lobehub/icons-static-png@1.95.0
+License: MIT, Copyright (c) 2023 LobeHub; see lobe-icons.txt.
+Adaptation: resized to 256 x 256 PNG.
+Sources:
+https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/devin.png
+https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/githubcopilot.png
+Files and SHA-256:
+core/ui/src/main/res/drawable/ic_brand_devin.png  de278d697a3beae9aafd641a3acfffaeee793f17eba5145a951aaeb06c2f65a9
+core/ui/src/main/res/drawable/ic_brand_githubcopilot.png  723c8dbe56065fc6b6dd901ae2f39746f7ab8fc0b6ffe73e784f5dd4afefe52a

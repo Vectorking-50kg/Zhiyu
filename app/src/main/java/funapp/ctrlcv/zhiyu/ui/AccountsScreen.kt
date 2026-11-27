@@ -57,7 +57,7 @@ fun AccountsScreen(state: MonitorState, vm: MonitorViewModel, scroll: ScrollStat
                 if (state.search.isBlank()) "添加第一个监控" else null, vm::showProviders)
         } else {
             listOf(
-                "网页登录" to listed.filter { !it.platform.requiresApiKey && !it.platform.isOpenCodeProvider() },
+                "登录授权" to listed.filter { !it.platform.requiresApiKey && !it.platform.isOpenCodeProvider() },
                 "OpenCode" to listed.filter { it.platform.isOpenCodeProvider() },
                 "API 密钥" to listed.filter { it.platform.requiresApiKey && !it.platform.isOpenCodeProvider() },
             ).forEach { (title, group) ->
@@ -82,6 +82,12 @@ fun matchesProvider(platform: Platform, query: String): Boolean {
     return text.contains(query.trim(), ignoreCase = true)
 }
 
+internal fun Platform.connectionMethod(): String = when {
+    this == Platform.GITHUB_COPILOT -> "设备码授权"
+    requiresApiKey -> "API 密钥"
+    else -> "网页登录"
+}
+
 @Composable
 fun AccountRow(platform: Platform, row: MonitoredAccount?, onClick: () -> Unit, compact: Boolean = false) {
     val c = LocalMonitorPalette.current
@@ -95,7 +101,7 @@ fun AccountRow(platform: Platform, row: MonitoredAccount?, onClick: () -> Unit, 
             UiText(platform.displayName, if (compact) 13 else 14, 23, 600, tracking = -.35f)
             Spacer(Modifier.height(2.dp))
             UiText(row?.let { it.account.displayName + if (it.visible) "" else " · 概览隐藏" }
-                ?: "${if (platform.requiresApiKey) "API 密钥" else "网页登录"} · ${platform.monitorDescription()}",
+                ?: "${platform.connectionMethod()} · ${platform.monitorDescription()}",
                 if (compact) 10 else 11, 16, color = c.muted, maxLines = 1)
         }
         if (row != null) StatusBadge(row.status, row.attention, row.paused)
@@ -114,7 +120,7 @@ fun ProviderPicker(state: MonitorState, vm: MonitorViewModel) {
     val listed = Platform.displayOrder.filter { matchesProvider(it, state.providerSearch) &&
         (state.providerFilter == 0 || (state.providerFilter == 2) == it.requiresApiKey) }
     Spacer(Modifier.height(3.dp)); SearchInput(state.providerSearch, vm::setProviderSearch, "搜索供应商")
-    Spacer(Modifier.height(15.dp)); FilterTabs(listOf("全部", "网页登录", "API 密钥"), state.providerFilter, vm::setProviderFilter)
+    Spacer(Modifier.height(15.dp)); FilterTabs(listOf("全部", "登录授权", "API 密钥"), state.providerFilter, vm::setProviderFilter)
     val connected = state.accounts.map { it.platform }.toSet()
     val groups = if (Platform.CHATGPT in listed && Platform.CHATGPT in connected) listOf(true, false) else listOf(false, true)
     groups.forEach { isConnected ->

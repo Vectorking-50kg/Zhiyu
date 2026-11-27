@@ -174,7 +174,7 @@ internal fun formatCodexPlan(plan: String): String = when (plan.lowercase()) {
     else -> plan.replaceFirstChar { it.uppercase() }
 }
 
-private fun usageWindow(id: String, label: String, percent: Double, resetAt: Long?, duration: Long?, nowMillis: Long): UsageItem {
+internal fun usageWindow(id: String, label: String, percent: Double, resetAt: Long?, duration: Long?, nowMillis: Long): UsageItem {
     val remaining = resetAt?.let { (it.toDouble() - nowMillis.toDouble()) / 1000.0 }
     return UsageItem(
         windowId = id, label = label, percent = percent.toFloat().coerceIn(0f, 100f),

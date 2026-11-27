@@ -63,7 +63,10 @@ fun List<UsageInfo>.toWidgetUsageData(now: Long = System.currentTimeMillis()): W
                 details = info.items,
                 updatedAt = info.updatedAt,
                 statusLabel = when (info.refreshFailure?.kind) {
-                    UsageFailureKind.AUTH_REQUIRED -> if (info.platform.requiresApiKey) "更新密钥" else "重新登录"
+                    UsageFailureKind.AUTH_REQUIRED -> when {
+                        info.platform.requiresApiKey -> "更新密钥"
+                        else -> "重新登录"
+                    }
                     UsageFailureKind.SUBSCRIPTION_REQUIRED -> "检查订阅"
                     UsageFailureKind.PERMISSION_DENIED -> "权限异常"
                     UsageFailureKind.RATE_LIMITED -> "请求限流"

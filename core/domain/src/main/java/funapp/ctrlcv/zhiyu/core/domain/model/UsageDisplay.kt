@@ -39,6 +39,11 @@ fun UsageInfo.primaryMetric(): UsageMetric {
             elapsedPercent = maxItem.elapsedPercent?.takeIf { it.isFinite() }?.coerceIn(0f, 100f),
         )
         else -> {
+            if (platform == Platform.DEVIN || platform == Platform.GITHUB_COPILOT) {
+                items.firstOrNull { it.percent < 0 && it.valueText != null }?.let {
+                    return UsageMetric(it.valueText!!, percent = null, label = it.label)
+                }
+            }
             val unlimited = items.firstOrNull { it.unlimited }
             if (unlimited != null) UsageMetric("无限制", percent = null, label = unlimited.label)
             else UsageMetric("--", percent = null)

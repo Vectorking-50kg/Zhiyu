@@ -7,11 +7,15 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import funapp.ctrlcv.zhiyu.core.domain.model.Account
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
+import funapp.ctrlcv.zhiyu.core.domain.model.messageFor
 import funapp.ctrlcv.zhiyu.core.domain.model.toUsageFailure
 import funapp.ctrlcv.zhiyu.core.domain.usecase.UsageRepository
+import funapp.ctrlcv.zhiyu.core.network.api.DevinOrganizationSelectionRequiredException
+import funapp.ctrlcv.zhiyu.core.network.api.DevinWebSession
 import funapp.ctrlcv.zhiyu.core.network.api.UsageApiService
 import funapp.ctrlcv.zhiyu.core.network.oauth.ClaudeOAuthChallenge
 import funapp.ctrlcv.zhiyu.core.network.oauth.DeviceCodeChallenge
+import funapp.ctrlcv.zhiyu.core.network.oauth.GitHubDeviceAuthorizationException
 import funapp.ctrlcv.zhiyu.core.network.oauth.OAuthLoginExpiredException
 import funapp.ctrlcv.zhiyu.core.network.oauth.OAuthSessionManager
 import funapp.ctrlcv.zhiyu.core.network.oauth.OAuthTokenClient
@@ -37,7 +41,7 @@ data class AuthUiState(
     val platform: Platform = Platform.CLAUDE,
     val mode: AuthMode = AuthMode.COOKIE,
     val isLoading: Boolean = false,
-    val isSuccess: Boolean = false,
+    val connectedAccountId: String? = null,
     val error: String? = null,
     val authorizationUrl: String? = null,
     val deviceChallenge: DeviceCodeChallenge? = null,
@@ -45,6 +49,7 @@ data class AuthUiState(
     val switchNeedsConfirmation: Boolean = false,
     val pageGeneration: Long = 0
 ) {
+    val isSuccess: Boolean get() = connectedAccountId != null
     override fun toString(): String = "AuthUiState(platform=${platform.key}, mode=$mode, loading=$isLoading, success=$isSuccess)"
 }
 
@@ -71,6 +76,11 @@ class AuthViewModel @Inject constructor(
     private var claudeChallenge: ClaudeOAuthChallenge? = null
     private var pending: LoginCandidate? = null
     private var lastAutomaticCookie: String? = null
+    private var lastAutomaticDevinSession: DevinWebSession? = null
+
+    init {
+        if (platform == Platform.GITHUB_COPILOT) startOAuth()
+    }
 
     fun onLoginSuccess(cookie: String, url: String? = null, manual: Boolean = false) {
         if (_uiState.value.mode != AuthMode.COOKIE || _uiState.value.isSuccess) return
@@ -101,8 +111,27 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun onDevinSession(session: DevinWebSession, pageGeneration: Long, manual: Boolean = false) {
+        val state = _uiState.value
+        if (platform != Platform.DEVIN || state.isSuccess || state.pageGeneration != pageGeneration) return
+        if (!manual && lastAutomaticDevinSession == session) return
+        val attempt = attempts.begin() ?: return
+        lastAutomaticDevinSession = session
+        _uiState.update { it.copy(isLoading = true, error = null) }
+        loginJob = viewModelScope.launch {
+            try {
+                val usage = api.getDevinWebUsage(session)
+                offerCandidate(LoginCandidate(
+                    attempt = attempt, cookie = session.accessToken, usage = usage,
+                    providerAccountId = usage.providerAccountId, displayName = null,
+                ))
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { fail(attempt, e) }
+        }
+    }
+
     fun startOAuth() {
-        if (platform !in setOf(Platform.CLAUDE, Platform.CHATGPT) || _uiState.value.isSuccess) return
+        if (platform !in setOf(Platform.CLAUDE, Platform.CHATGPT, Platform.GITHUB_COPILOT) || _uiState.value.isSuccess) return
         cancelCurrentAttempt()
         _uiState.update { AuthUiState(platform = platform, mode = AuthMode.OAUTH, pageGeneration = it.pageGeneration + 1) }
         if (platform == Platform.CLAUDE) {
@@ -113,10 +142,12 @@ class AuthViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             loginJob = viewModelScope.launch {
                 try {
-                    val challenge = oauthTokens.requestCodexDeviceCode()
+                    val github = platform == Platform.GITHUB_COPILOT
+                    val challenge = if (github) oauthTokens.requestGitHubDeviceCode() else oauthTokens.requestCodexDeviceCode()
                     if (!attempts.isCurrent(attempt)) return@launch
                     _uiState.update { it.copy(deviceChallenge = challenge, isLoading = false) }
-                    val credential = oauthTokens.awaitCodexAuthorization(challenge)
+                    val credential = if (github) oauthTokens.awaitGitHubAuthorization(challenge)
+                        else oauthTokens.awaitCodexAuthorization(challenge)
                     if (!attempts.isCurrent(attempt)) return@launch
                     _uiState.update { it.copy(isLoading = true, deviceChallenge = null) }
                     validateOAuth(attempt, credential)
@@ -128,7 +159,7 @@ class AuthViewModel @Inject constructor(
 
     /** A matching callback is consumed before the WebView can send the code anywhere else. */
     fun onOAuthNavigation(url: String): Boolean {
-        if (_uiState.value.mode != AuthMode.OAUTH || !oauthTokens.isClaudeCallback(url)) return false
+        if (platform != Platform.CLAUDE || _uiState.value.mode != AuthMode.OAUTH || !oauthTokens.isClaudeCallback(url)) return false
         val challenge = claudeChallenge ?: return true
         val attempt = attempts.begin() ?: return true
         claudeChallenge = null
@@ -224,7 +255,7 @@ class AuthViewModel @Inject constructor(
             }
         }
         attempts.finish(candidate.attempt)
-        _uiState.update { it.copy(isSuccess = true, isLoading = false, error = null, deviceChallenge = null) }
+        _uiState.update { it.copy(connectedAccountId = accountId, isLoading = false, error = null, deviceChallenge = null) }
     }
 
     fun useWebLogin() {
@@ -241,6 +272,7 @@ class AuthViewModel @Inject constructor(
         pending = null
         claudeChallenge = null
         lastAutomaticCookie = null
+        lastAutomaticDevinSession = null
     }
 
     fun onLoginError(message: String) {
@@ -252,8 +284,10 @@ class AuthViewModel @Inject constructor(
         attempts.finish(attempt)
         val message = when (e) {
             is OAuthLoginExpiredException -> "授权码已过期，请重新获取"
+            is GitHubDeviceAuthorizationException -> e.message ?: "GitHub 授权失败，请重试"
             is AuthSaveException -> e.message ?: "登录状态保存失败，请重试"
-            else -> e.toUsageFailure().message
+            is DevinOrganizationSelectionRequiredException -> "请在要监控的 Devin 组织里打开一个对话，再验证额度"
+            else -> e.toUsageFailure().messageFor(platform)
         }
         _uiState.update { it.copy(error = message, isLoading = false, deviceChallenge = null) }
     }

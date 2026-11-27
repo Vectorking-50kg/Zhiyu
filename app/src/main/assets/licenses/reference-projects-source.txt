@@ -3,6 +3,9 @@ Repository: https://github.com/steipete/CodexBar
 Reference: OpenCode Zen billing retrieval, server-function fallback and signed-out
 recognition in core/network/.../api/UsageApiService.kt; quota-reset alert design
 in core/data/.../notification/UsageAlertManager.kt.
+Devin and GitHub Copilot quota response references:
+https://github.com/steipete/CodexBar/blob/1f6da9bec44455288ddee5ef6f3617a803d8eb2a/Sources/CodexBarCore/Providers/Devin/DevinUsageSnapshot.swift
+https://github.com/steipete/CodexBar/blob/1f6da9bec44455288ddee5ef6f3617a803d8eb2a/Sources/CodexBarCore/CopilotUsageModels.swift
 Local implementation history includes commit 675235f and 4f7505b.
 License: MIT
 Copyright (c) 2026 Peter Steinberger

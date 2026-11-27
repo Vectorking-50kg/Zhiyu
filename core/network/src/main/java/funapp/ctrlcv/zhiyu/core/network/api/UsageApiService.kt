@@ -3,12 +3,15 @@ package funapp.ctrlcv.zhiyu.core.network.api
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import funapp.ctrlcv.zhiyu.core.domain.model.ApiStructureChangedException
 import funapp.ctrlcv.zhiyu.core.domain.model.Platform
+import funapp.ctrlcv.zhiyu.core.domain.model.PermissionDeniedException
 import funapp.ctrlcv.zhiyu.core.domain.model.ResetCredits
 import funapp.ctrlcv.zhiyu.core.domain.model.SessionExpiredException
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageItem
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -17,6 +20,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,6 +32,8 @@ class UsageApiService @Inject constructor(
     private val client: OkHttpClient,
     private val gson: Gson
 ) {
+    private val subscriptionClient = client.newBuilder().followRedirects(false).build()
+
     suspend fun getClaudeOrgInfo(cookie: String): ClaudeOrgInfo = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("https://claude.ai/api/organizations")
@@ -375,6 +381,102 @@ class UsageApiService @Inject constructor(
         client.newCall(request).execute().use { response ->
             OpenCodeGoUsageParser.parse(readOrThrow(response, Platform.OPENCODE_GO), System.currentTimeMillis())
         }
+    }
+
+    suspend fun getManualUsage(platform: Platform, credential: String, organizationId: String? = null): UsageInfo =
+        when (platform) {
+            Platform.DEVIN -> getDevinUsage(credential, organizationId)
+            Platform.GITHUB_COPILOT -> getCopilotUsage(credential)
+            Platform.OPENCODE_GO -> getOpenCodeGoUsage(credential)
+            Platform.MINIMAX -> getMiniMaxUsage(credential)
+            Platform.AIHUBMIX -> getAiHubMixUsage(credential)
+            Platform.DEEPSEEK -> getDeepSeekUsage(credential)
+            else -> error("This platform uses web login")
+        }
+
+    suspend fun getDevinWebUsage(session: DevinWebSession): UsageInfo = withContext(Dispatchers.IO) {
+        val org = session.organizationId ?: getOnlyDevinMembership(session.accessToken)
+            ?: throw DevinOrganizationSelectionRequiredException()
+        getDevinUsage(session.accessToken, org)
+    }
+
+    private fun getOnlyDevinMembership(token: String): String? {
+        val platform = Platform.DEVIN
+        // The web client can list the signed-in user's memberships before a workspace is active.
+        val url = platform.baseUrl.toHttpUrl().newBuilder().addPathSegments("api/organizations")
+            .addQueryParameter("membership_only", "true").build()
+        val request = Request.Builder().url(url)
+            .header("Authorization", "Bearer ${manualToken(platform, token)}")
+            .header("Accept", "application/json")
+            .header("User-Agent", USER_AGENT)
+            .tag(Platform::class.java, platform)
+            .build()
+        return subscriptionClient.newCall(request).execute().use { response ->
+            if (response.code == 403 || response.code == 404) return@use null
+            val body = readOrThrow(response, platform)
+            val organizations = runCatching { JsonParser.parseString(body).asJsonArray }.getOrNull()
+                ?: throw ApiStructureChangedException(platform, "Invalid Devin memberships response")
+            organizations.map { entry ->
+                entry.takeIf { it.isJsonObject }?.asJsonObject?.stringOrNull("org_id")
+                    ?.takeIf(::isDevinOrganizationId)
+                    ?: throw ApiStructureChangedException(platform, "Invalid Devin membership")
+            }.distinct().singleOrNull()
+        }
+    }
+
+    // Devin's dashboard quota endpoint is scoped by the same organization in the path and header.
+    private suspend fun getDevinUsage(rawToken: String, organizationId: String?): UsageInfo = withContext(Dispatchers.IO) {
+        val platform = Platform.DEVIN
+        val org = organizationId?.trim()?.takeIf(::isDevinOrganizationId) ?: throw PermissionDeniedException(platform)
+        val token = manualToken(platform, rawToken)
+        val url = platform.baseUrl.toHttpUrl().newBuilder().addPathSegment("api")
+            .addPathSegment(org).addPathSegments("billing/quota/usage").build()
+        val request = Request.Builder().url(url)
+            .header("Authorization", "Bearer $token")
+            .header("x-cog-org-id", org)
+            .header("Accept", "application/json")
+            .header("User-Agent", USER_AGENT)
+            .tag(Platform::class.java, platform)
+            .build()
+        val usage = subscriptionClient.newCall(request).execute().use { response ->
+            DevinUsageParser.parse(readOrThrow(response, platform), org, System.currentTimeMillis())
+        }
+        if (usage.planLabel != null) usage else usage.copy(planLabel = getDevinPlan(request))
+    }
+
+    private fun getDevinPlan(quotaRequest: Request): String? = try {
+        val request = quotaRequest.newBuilder().url("${Platform.DEVIN.baseUrl}/api/billing/subscription").build()
+        val call = subscriptionClient.newCall(request)
+        call.timeout().timeout(3, TimeUnit.SECONDS)
+        call.execute().use { response ->
+            if (response.isSuccessful) DevinUsageParser.parseSubscriptionPlan(readOrThrow(response, Platform.DEVIN))
+            else null
+        }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        null // This endpoint only supplies the optional plan label.
+    }
+
+    // Same authenticated account entitlement endpoint used by VS Code and github.com usage tools.
+    private suspend fun getCopilotUsage(rawToken: String): UsageInfo = withContext(Dispatchers.IO) {
+        val platform = Platform.GITHUB_COPILOT
+        val token = manualToken(platform, rawToken)
+        val request = Request.Builder().url("${platform.baseUrl}/copilot_internal/user")
+            .header("Authorization", "token $token")
+            .header("Accept", "application/json")
+            .header("User-Agent", "Zhiyu")
+            .tag(Platform::class.java, platform)
+            .build()
+        subscriptionClient.newCall(request).execute().use { response ->
+            CopilotUsageParser.parse(readOrThrow(response, platform), System.currentTimeMillis())
+        }
+    }
+
+    private fun manualToken(platform: Platform, rawToken: String): String {
+        val token = rawToken.trim().replaceFirst(AUTH_HEADER_PREFIX, "").replaceFirst(AUTH_SCHEME_PREFIX, "").trim()
+        if (token.isEmpty() || token.any { it !in '!'..'~' }) throw SessionExpiredException(platform)
+        return token
     }
 
     // ── OpenCode Zen ─────────────────────────────────────────────────────────
@@ -902,6 +1004,12 @@ class UsageApiService @Inject constructor(
     }
 
     companion object {
+        private val DEVIN_ORG_ID = Regex("org[-_][A-Za-z0-9_-]+")
+        private val AUTH_HEADER_PREFIX = Regex("^authorization\\s*:\\s*", RegexOption.IGNORE_CASE)
+        private val AUTH_SCHEME_PREFIX = Regex("^(bearer|token)\\s+", RegexOption.IGNORE_CASE)
+
+        fun isDevinOrganizationId(value: String): Boolean = DEVIN_ORG_ID.matches(value)
+
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
 
         // MiniMax Token Plan：current_*_status == 3 表示该窗口无上限（无限制）

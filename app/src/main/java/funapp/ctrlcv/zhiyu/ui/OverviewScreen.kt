@@ -98,6 +98,9 @@ fun planLabel(row: MonitoredAccount): String = when (row.platform) {
 }
 
 fun mainReading(row: MonitoredAccount): String {
+    if (row.platform == Platform.DEVIN || row.platform == Platform.GITHUB_COPILOT) {
+        return row.usage?.primaryMetricText() ?: "--"
+    }
     if (row.platform.isBalanceProvider()) {
         val text = row.usage?.items?.firstOrNull { it.label == "余额" || it.label == "账户余额" }?.valueText ?: return "--"
         val prefix = text.takeWhile { !it.isDigit() && it != '-' }
@@ -106,6 +109,14 @@ fun mainReading(row: MonitoredAccount): String {
     }
     return row.usage?.items?.filter { it.percent >= 0 && !it.unlimited && it.percent.isFinite() }?.maxOfOrNull { it.percent }
         ?.let { "${it.toInt()}%" } ?: "--"
+}
+
+internal fun mainReadingLabel(row: MonitoredAccount): String {
+    if (row.platform.isBalanceProvider()) return "可用余额"
+    if (row.platform == Platform.DEVIN || row.platform == Platform.GITHUB_COPILOT) {
+        row.usage?.primaryMetric()?.takeIf { it.percent == null }?.label?.let { return it }
+    }
+    return "最高已用"
 }
 
 @Composable
@@ -138,7 +149,7 @@ fun QuotaCard(row: MonitoredAccount, now: Long, onDetail: () -> Unit, onConfigur
             }
             Spacer(Modifier.width(10.dp))
             Column(horizontalAlignment = Alignment.End) {
-                UiText(if (row.platform.isBalanceProvider()) "可用余额" else "最高已用", 9, 14, color = c.muted)
+                UiText(mainReadingLabel(row), 9, 14, color = c.muted)
                 Spacer(Modifier.height(1.dp))
                 UiText(mainReading(row), 29, 33, 600, if (row.platform.isBalanceProvider()) c.text else usageColor(maximum), tracking = -1f)
             }
@@ -191,7 +202,11 @@ fun QuotaCard(row: MonitoredAccount, now: Long, onDetail: () -> Unit, onConfigur
                 val text = "$reason，${if (hasData) "正在显示缓存" else "尚无同步数据"}"
                 UiText(text, 10, 17, color = c.amber, modifier = Modifier.weight(1f))
                 if (row.needsLogin) Box(Modifier.height(24.dp).clickable(role = Role.Button, onClick = onConfigure), contentAlignment = Alignment.Center) {
-                    UiText(if (row.platform.requiresApiKey) "更新密钥" else "重新连接", 10, 17, 500, c.amber)
+                    val action = when {
+                        row.platform.requiresApiKey -> "更新密钥"
+                        else -> "重新连接"
+                    }
+                    UiText(action, 10, 17, 500, c.amber)
                 }
             }
         }
@@ -297,7 +312,7 @@ fun WelcomeScreen(scroll: ScrollState, bottomPadding: Dp, onAdd: () -> Unit, onB
                     UiButton("添加第一个账户", onAdd, Modifier.height(49.dp), icon = AppIcons.Add)
                     Spacer(Modifier.height(5.dp)); TextAction("查看支持的 AI", onBrowse, Modifier.height(44.dp))
                 }
-                Spacer(Modifier.height(11.dp)); UiText("使用已有账户登录，或通过 API 密钥连接", 10, 18, color = c.muted)
+                Spacer(Modifier.height(11.dp)); UiText("支持网页登录、API 密钥和访问令牌", 10, 18, color = c.muted)
             }
         }
     }
@@ -336,7 +351,7 @@ fun AccountDetail(row: MonitoredAccount, now: Long, onConfigure: () -> Unit) {
     val items = row.usage?.items.orEmpty()
     Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 20.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            UiText(if (row.platform.isBalanceProvider()) "可用余额" else "最高已用", 11, 16, color = c.muted, modifier = Modifier.heightIn(min = 16.5.dp))
+            UiText(mainReadingLabel(row), 11, 16, color = c.muted, modifier = Modifier.heightIn(min = 16.5.dp))
             Spacer(Modifier.height(3.dp)); UiText(mainReading(row), 42, 63, 600, usageColor(if (row.platform.isBalanceProvider()) null else items.filter { it.percent >= 0 }.maxOfOrNull { it.percent }), tracking = -1.5f)
         }
         ProviderLogo(row.platform, 42.dp)
@@ -346,11 +361,17 @@ fun AccountDetail(row: MonitoredAccount, now: Long, onConfigure: () -> Unit) {
         InfoLines(lines.map { it.label to (it.valueText ?: "--") })
     } else {
         Column(Modifier.padding(vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) { items.filter { it.percent >= 0 }.forEach { UsageMetric(it) } }
-        Spacer(Modifier.height(12.dp)); UiText("深色表示用量 · 浅色表示时间进度", 10, 15, color = c.muted)
-        val extra = items.filter { it.percent < 0 }.map { it.label to (it.valueText ?: "--") }
+        if (items.any { it.elapsedPercent != null }) {
+            Spacer(Modifier.height(12.dp)); UiText("深色表示用量 · 浅色表示时间进度", 10, 15, color = c.muted)
+        }
+        val extra = items.filter { it.percent < 0 }.map {
+            it.label to listOfNotNull(it.valueText, it.resetCountdown).joinToString(" · ").ifEmpty { "--" }
+        }
         val credits = row.usage?.resetCredits?.credits.orEmpty()
         if (extra.isNotEmpty() || credits.isNotEmpty()) {
-            Spacer(Modifier.height(20.dp)); SettingDivider(); Spacer(Modifier.height(15.dp)); UiText("订阅与重置卡", 12, 18, 500); Spacer(Modifier.height(13.dp))
+            Spacer(Modifier.height(20.dp)); SettingDivider(); Spacer(Modifier.height(15.dp))
+            UiText(if (row.platform == Platform.CHATGPT) "订阅与重置卡" else "订阅信息", 12, 18, 500)
+            Spacer(Modifier.height(13.dp))
             InfoLines(extra + credits.mapIndexed { i, credit -> "重置卡 ${i + 1}" to if (credit.expiresAt <= now) "已到期" else "${ceil((credit.expiresAt - now) / 86400000.0).toInt()} 天后到期" }, gap = 12.dp)
         }
     }

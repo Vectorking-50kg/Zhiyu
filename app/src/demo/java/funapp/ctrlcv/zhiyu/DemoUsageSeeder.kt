@@ -53,6 +53,7 @@ internal object DemoUsageSeeder {
                         Platform.CLAUDE -> "Max 5×"
                         Platform.CHATGPT -> "Plus"
                         Platform.CURSOR -> "Pro"
+                        Platform.DEVIN, Platform.GITHUB_COPILOT -> "Pro"
                         Platform.OPENCODE_GO -> "Go"
                         else -> if (platform.requiresApiKey) "API" else ""
                     },
@@ -117,6 +118,27 @@ internal object DemoUsageSeeder {
                 UsageItem("API 用量", 12f),
             ),
             updatedAt = now - 2 * 60_000,
+        ),
+        UsageInfo(
+            platform = Platform.DEVIN,
+            planLabel = "Pro",
+            items = listOf(
+                UsageItem("日限额", 64f, resetAt = now + DAY_MS / 3, windowDurationSeconds = 86_400,
+                    windowId = "devin.daily"),
+                UsageItem("周限额", 28f, resetAt = now + 3 * DAY_MS, windowDurationSeconds = 604_800,
+                    windowId = "devin.weekly"),
+                UsageItem("额外用量余额", -1f, valueText = "$12.50"),
+            ),
+            updatedAt = now,
+        ),
+        UsageInfo(
+            platform = Platform.GITHUB_COPILOT,
+            planLabel = "Pro",
+            items = listOf(
+                UsageItem("AI 积分", 43f, valueText = "剩余 570 / 1,000", resetAt = now + 12 * DAY_MS,
+                    windowId = "github_copilot.premium_interactions"),
+            ),
+            updatedAt = now,
         ),
         UsageInfo(
             platform = Platform.ZEN,

@@ -44,7 +44,7 @@ fun AppNavGraph(widgetDestination: WidgetDestination? = null, widgetRequestId: I
         )) {
             AuthWebViewScreen(
                 onBack = { navigation.popBackStack() },
-                onSuccess = { viewModel.onAuthorizationSuccess(); navigation.popBackStack() },
+                onSuccess = { accountId -> viewModel.onAuthorizationSuccess(accountId); navigation.popBackStack() },
             )
         }
     }

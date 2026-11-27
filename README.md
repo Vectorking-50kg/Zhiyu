@@ -53,6 +53,8 @@
 | **ChatGPT** | 网页登录；可选设备码授权 | Codex 相关的 5 小时与周限额、附加窗口、Code Review、重置卡、续订信息、额外额度 |
 | **Claude** | 网页登录；可选 OAuth 授权 | 5 小时与周限额、模型分类窗口、Claude Design、额外用量百分比 |
 | **Cursor** | 网页登录 | 本周期用量、Auto 用量、API 用量与套餐信息 |
+| **Devin** | 内置浏览器登录（Google 或邮箱） | 日额度、周额度、重置时间与额外用量余额 |
+| **GitHub Copilot** | GitHub 设备码授权 | AI 积分或高级请求的额度与重置时间，以及套餐提供的聊天和补全额度 |
 | **OpenCode Zen** | 网页登录 | 账户余额 |
 | **OpenCode Go** | OpenCode 控制台的 API Key | 5 小时、周与月订阅额度及重置时间 |
 | **MiniMax** | Token Plan 对应的 API Key | 5 小时与周限额、无限制标识、额度提升（Boost） |
@@ -66,12 +68,19 @@
 ## 开始使用
 
 1. 打开应用，点击「添加第一个账户」；也可以在「账户」页添加更多账户。
-2. 选择平台。ChatGPT、Claude、Cursor、OpenCode Zen 使用网页登录；OpenCode Go、MiniMax、AIHubMix、DeepSeek 填写对应平台的密钥。
+2. 选择平台并按照页面提示连接。Devin 和 GitHub Copilot 都可在手机上发起登录，操作步骤见下方。
 3. 登录或密钥通过校验后，返回「概览」查看额度与余额，点击「查看详情」查看各个窗口与重置时间。
 4. 在「账户」中按需开启监控、提醒和状态栏固定；在「设置」中调整外观、刷新间隔和全局通知。
 5. 如需桌面展示，通过系统的小组件选择器添加知余小组件。
 
 OpenCode Go 与 Zen 在账户页归入同一个 OpenCode 分组。Go 使用控制台中已开通订阅的账户的 API Key，通过官方 `GET https://opencode.ai/zen/go/v1/usage` 查询订阅额度；Zen 单独展示账户余额。密钥获取与订阅说明见 [OpenCode Go 官方文档](https://opencode.ai/docs/go/)，响应字段以 [官方接口源码](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/go/v1/usage.ts) 为准。
+
+### 连接 Devin 与 GitHub Copilot
+
+- **Devin**　在知余打开 Devin 登录页，选择 Google 或邮箱登录。登录后若弹出提醒，请在要监控的组织里打开任意已有对话。还没有对话时，请新建一个并发送一条消息。知余会自动尝试读取额度。 [Devin 用量说明](https://docs.devin.ai/admin/billing/usage) · [CodexBar 接口参考](https://github.com/steipete/CodexBar/blob/main/docs/devin.md)
+- **GitHub Copilot**　在知余复制设备码，打开同一部手机的浏览器，在 GitHub 页面输入设备码并授权知余。返回知余后，应用会确认授权并读取 Copilot 额度。组织席位如果只返回已用积分，界面会显示该数值。 [GitHub 设备流文档](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow) · [GitHub 积分说明](https://docs.github.com/en/copilot/how-tos/manage-and-track-spending/monitor-ai-usage) · [Copilot 额度接口参考](https://github.com/steipete/CodexBar/blob/main/docs/copilot.md)
+
+连接成功后可开启后台监控。Devin 或 GitHub 会话失效时，可以在「账户设置」重新连接。已有令牌也可通过「手动输入令牌」添加。额度查询使用平台的内部接口，实际返回受订阅和授权权限影响。
 
 ## 桌面小组件
 
@@ -99,6 +108,8 @@ OpenCode Go 与 Zen 在账户页归入同一个 OpenCode 分组。Go 使用控�
 
 建议使用 Android Studio，配置 JDK 17 和 Android SDK Platform 35。仓库包含 Gradle Wrapper，无需另行安装 Gradle。
 
+默认构建使用知余的 GitHub OAuth 应用。维护派生版本时，可注册自己的 OAuth App、启用设备流，然后通过 Gradle 的 `zhiyu.githubCopilotClientId` 属性设置公开 Client ID。 [GitHub OAuth 应用注册](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
+
 ```bash
 git clone https://github.com/Vectorking-50kg/Zhiyu.git
 cd Zhiyu
@@ -117,8 +128,8 @@ Debug 和 Release 使用不同包名，可以同时安装，账号与设置各�
 
 | 构建类型 | 应用名称 | 包名 | 版本名称 |
 | --- | --- | --- | --- |
-| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.3` |
-| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.3-debug` |
+| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.4` |
+| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.4-debug` |
 
 基础版本统一在 `app/build.gradle.kts` 的 `defaultConfig` 中维护；Debug 自动追加 `-debug`，Release 不追加后缀。应用内“关于”页也会显示对应版本名称。
 

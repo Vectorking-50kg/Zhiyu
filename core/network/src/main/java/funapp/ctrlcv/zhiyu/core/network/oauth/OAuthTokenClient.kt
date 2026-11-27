@@ -10,6 +10,7 @@ import funapp.ctrlcv.zhiyu.core.domain.model.SessionExpiredException
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageFailure
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageFailureKind
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageRequestException
+import funapp.ctrlcv.zhiyu.core.network.BuildConfig
 import funapp.ctrlcv.zhiyu.core.storage.OAuthCredential
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -58,6 +59,7 @@ class OAuthTokenClient internal constructor(
 
     suspend fun refresh(platform: Platform, previous: OAuthCredential): OAuthCredential {
         val refresh = previous.refreshToken ?: throw SessionExpiredException(platform)
+        if (platform == Platform.GITHUB_COPILOT) return refreshGitHub(previous, refresh)
         return exchange(platform, mapOf("grant_type" to "refresh_token", "refresh_token" to refresh), previous)
     }
 
@@ -113,6 +115,104 @@ class OAuthTokenClient internal constructor(
         throw OAuthLoginExpiredException()
     }
 
+    suspend fun requestGitHubDeviceCode(): DeviceCodeChallenge {
+        val platform = Platform.GITHUB_COPILOT
+        val clientId = endpoints.gitHubClientId.ifBlank {
+            throw GitHubDeviceAuthorizationException("当前构建未配置 GitHub 设备码授权")
+        }
+        val response = post(platform, endpoints.gitHubDevice, mapOf("client_id" to clientId, "scope" to "read:user"), json = false)
+        val body = gitHubResponse(response)
+        if (body.text("verification_uri") != OAuthProtocol.GITHUB_VERIFY) malformed(platform)
+        return DeviceCodeChallenge(
+            userCode = body.text("user_code") ?: malformed(platform),
+            deviceAuthId = body.text("device_code") ?: malformed(platform),
+            verificationUrl = OAuthProtocol.GITHUB_VERIFY,
+            intervalSeconds = body.number("interval")?.coerceIn(1, 900) ?: 5,
+            expiresAt = now() + (body.number("expires_in")?.takeIf { it > 0 }?.coerceAtMost(900) ?: 900) * 1000,
+        )
+    }
+
+    suspend fun awaitGitHubAuthorization(challenge: DeviceCodeChallenge): OAuthCredential {
+        val platform = Platform.GITHUB_COPILOT
+        require(challenge.verificationUrl == OAuthProtocol.GITHUB_VERIFY)
+        var interval = challenge.intervalSeconds
+        while (now() < challenge.expiresAt) {
+            pause(minOf(interval * 1000, (challenge.expiresAt - now()).coerceAtLeast(0)))
+            if (now() >= challenge.expiresAt) break
+            val response = post(platform, endpoints.gitHubToken, mapOf(
+                "client_id" to endpoints.gitHubClientId,
+                "device_code" to challenge.deviceAuthId,
+                "grant_type" to OAuthProtocol.GITHUB_DEVICE_GRANT,
+            ), json = false)
+            val body = runCatching { parse(platform, response.body) }.getOrNull()
+            val error = body?.errorCode()
+            when {
+                error == "slow_down" || response.status == 429 -> {
+                    interval = maxOf(interval + 5, response.retryAfter ?: 0, body?.number("interval") ?: 0)
+                        .coerceAtMost(900)
+                }
+                error == "authorization_pending" && response.status in setOf(200, 400) -> Unit
+                else -> {
+                    val credential = parseGitHubCredential(gitHubResponse(response))
+                    val identity = authenticatedGitHubUser(credential.accessToken)
+                    return credential.copy(providerAccountId = identity.first, displayName = identity.second)
+                }
+            }
+        }
+        throw OAuthLoginExpiredException()
+    }
+
+    private suspend fun authenticatedGitHubUser(accessToken: String): Pair<String, String> {
+        val platform = Platform.GITHUB_COPILOT
+        val request = Request.Builder().url(endpoints.gitHubUser)
+            .header("Authorization", "Bearer $accessToken")
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "Zhiyu/1.0")
+            .build()
+        val response = execute(request)
+        checkStatus(platform, response)
+        val user = parse(platform, response.body)
+        val id = user.number("id")?.takeIf { it > 0 } ?: malformed(platform)
+        val login = user.text("login") ?: malformed(platform)
+        return id.toString() to login
+    }
+
+    private suspend fun refreshGitHub(previous: OAuthCredential, refreshToken: String): OAuthCredential {
+        val platform = Platform.GITHUB_COPILOT
+        if (endpoints.gitHubClientId.isBlank()) throw SessionExpiredException(platform)
+        val response = post(platform, endpoints.gitHubToken, mapOf(
+            "client_id" to endpoints.gitHubClientId,
+            "grant_type" to "refresh_token",
+            "refresh_token" to refreshToken,
+        ), json = false)
+        return parseGitHubCredential(gitHubResponse(response)).copy(
+            providerAccountId = previous.providerAccountId, displayName = previous.displayName,
+        )
+    }
+
+    private fun gitHubResponse(response: SafeResponse): JsonObject {
+        val platform = Platform.GITHUB_COPILOT
+        val body = runCatching { parse(platform, response.body) }.getOrNull()
+        when (body?.errorCode()) {
+            "expired_token", "token_expired" -> throw OAuthLoginExpiredException()
+            "access_denied" -> throw GitHubDeviceAuthorizationException("GitHub 授权已取消，可以重新获取设备码")
+            "bad_refresh_token", "invalid_grant" -> throw SessionExpiredException(platform)
+            "device_flow_disabled", "incorrect_client_credentials" ->
+                throw GitHubDeviceAuthorizationException("GitHub 设备码授权尚未启用")
+        }
+        checkStatus(platform, response)
+        return body?.takeIf { it.errorCode() == null } ?: malformed(platform)
+    }
+
+    private fun parseGitHubCredential(body: JsonObject): OAuthCredential {
+        val platform = Platform.GITHUB_COPILOT
+        val accessToken = body.text("access_token")?.takeIf { it.all { c -> c in '!'..'~' } } ?: malformed(platform)
+        val refreshToken = body.text("refresh_token")
+        val lifetime = body.number("expires_in")?.takeIf { it > 0 }?.coerceAtMost(31_536_000)
+        if (lifetime != null && refreshToken == null) malformed(platform)
+        return OAuthCredential(accessToken, refreshToken, lifetime?.let { now() + it * 1000 }, providerAccountId = null)
+    }
+
     private suspend fun exchange(
         platform: Platform,
         fields: Map<String, String>,
@@ -137,6 +237,10 @@ class OAuthTokenClient internal constructor(
         else FormBody.Builder().apply { fields.forEach { (key, value) -> add(key, value) } }.build()
         val request = Request.Builder().url(url).post(body).header("Accept", "application/json")
             .header("User-Agent", "Zhiyu/1.0").build()
+        return execute(request)
+    }
+
+    private suspend fun execute(request: Request): SafeResponse {
         return suspendCancellableCoroutine { continuation ->
             val call = client.newCall(request)
             continuation.invokeOnCancellation { call.cancel() }
@@ -189,9 +293,14 @@ internal data class OAuthEndpoints(
     val claudeToken: String = OAuthProtocol.CLAUDE_TOKEN,
     val codexToken: String = OAuthProtocol.CODEX_TOKEN,
     val codexDevice: String = OAuthProtocol.CODEX_DEVICE,
-    val codexPoll: String = OAuthProtocol.CODEX_POLL
+    val codexPoll: String = OAuthProtocol.CODEX_POLL,
+    val gitHubDevice: String = OAuthProtocol.GITHUB_DEVICE,
+    val gitHubToken: String = OAuthProtocol.GITHUB_TOKEN,
+    val gitHubUser: String = OAuthProtocol.GITHUB_USER,
+    val gitHubClientId: String = BuildConfig.GITHUB_COPILOT_CLIENT_ID,
 )
 
 class OAuthLoginExpiredException : Exception("授权码已过期，请重新获取")
+class GitHubDeviceAuthorizationException(message: String) : Exception(message)
 private fun JsonObject.errorCode(): String? = text("error") ?: obj("error")?.text("code")
     ?: obj("error")?.text("type") ?: text("error_code")

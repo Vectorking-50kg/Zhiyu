@@ -74,12 +74,15 @@ fun platformIcon(platform: Platform): Int = when (platform) {
     Platform.MINIMAX -> R.drawable.ic_brand_minimax
     Platform.AIHUBMIX -> R.drawable.ic_brand_aihubmix
     Platform.DEEPSEEK -> R.drawable.ic_brand_deepseek
+    Platform.DEVIN -> R.drawable.ic_brand_devin
+    Platform.GITHUB_COPILOT -> R.drawable.ic_brand_githubcopilot
 }
 
 @Composable
 fun ProviderLogo(platform: Platform, size: Dp = 34.dp, modifier: Modifier = Modifier, framed: Boolean = true) {
     Image(painterResource(platformIcon(platform)), null, modifier.size(size).then(
-        if (platform == Platform.CURSOR || platform.isOpenCodeProvider())
+        if (platform == Platform.CURSOR || platform.isOpenCodeProvider() ||
+            platform == Platform.DEVIN || platform == Platform.GITHUB_COPILOT)
             if (framed) Modifier.clip(RoundedCornerShape(8.dp)).background(Color.White).padding(3.dp).clip(RoundedCornerShape(5.dp))
             else Modifier.clip(RoundedCornerShape(4.dp)).background(Color.White)
         else Modifier
@@ -92,6 +95,8 @@ fun Platform.monitorDescription() = when (this) {
     Platform.CHATGPT -> "5 小时、每周用量与重置卡"
     Platform.CLAUDE -> "5 小时、每周及模型用量"
     Platform.CURSOR -> "套餐用量、Auto 与 API 用量"
+    Platform.DEVIN -> "日额度、周额度与额外用量余额"
+    Platform.GITHUB_COPILOT -> "AI 积分与高级请求额度"
     Platform.ZEN -> "账户余额"
     Platform.OPENCODE_GO -> "5 小时、每周与每月订阅额度"
     Platform.MINIMAX -> "Token Plan 限额"

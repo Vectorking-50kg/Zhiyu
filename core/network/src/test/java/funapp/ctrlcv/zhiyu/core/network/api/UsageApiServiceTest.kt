@@ -24,24 +24,159 @@ import java.util.Base64
 class UsageApiServiceTest {
     private val server = MockWebServer()
     private val responses = mutableMapOf<String, Pair<Int, String>>()
+    private val responseHeaders = mutableMapOf<String, Map<String, String>>()
     private lateinit var service: UsageApiService
 
     @Before fun setUp() {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val (code, body) = responses[request.path] ?: (403 to "<html>Unavailable optional endpoint</html>")
-                return MockResponse().setResponseCode(code).setBody(body)
+                return MockResponse().setResponseCode(code).setBody(body).apply {
+                    responseHeaders[request.path]?.forEach { (name, value) -> setHeader(name, value) }
+                }
             }
         }
         server.start()
         // Rewrite only in tests. Production endpoints remain fixed HTTPS provider addresses.
         val client = OkHttpClient.Builder().addInterceptor { chain ->
-            chain.proceed(chain.request().newBuilder().url(server.url(chain.request().url.encodedPath)).build())
+            val original = chain.request()
+            val url = server.url(original.url.encodedPath).newBuilder().encodedQuery(original.url.encodedQuery).build()
+            chain.proceed(original.newBuilder().url(url).build())
         }.build()
         service = UsageApiService(client, Gson())
     }
 
     @After fun tearDown() { server.shutdown() }
+
+    @Test fun `Devin homepage uses its only membership before requesting quota`() = runBlocking {
+        responses["/api/organizations?membership_only=true"] =
+            200 to """[{"org_id":"org-test","name":"Personal"}]"""
+        responses["/api/org-test/billing/quota/usage"] = 200 to """{"weekly_percentage":34,"plan_name":"Pro"}"""
+        val session = checkNotNull(DevinWebSession.fromWebViewResult("""{"accessToken":"auth1_fixture","organizationId":null}"""))
+
+        val usage = service.getDevinWebUsage(session)
+
+        assertEquals("org-test", usage.providerAccountId)
+        assertEquals(34f, usage.items.single().percent, 0.01f)
+        val memberships = server.takeRequest()
+        assertEquals("GET", memberships.method)
+        assertEquals("/api/organizations?membership_only=true", memberships.path)
+        assertEquals("Bearer auth1_fixture", memberships.getHeader("Authorization"))
+        assertNull(memberships.getHeader("x-cog-org-id"))
+        val quota = server.takeRequest()
+        assertEquals("GET", quota.method)
+        assertEquals("/api/org-test/billing/quota/usage", quota.path)
+        assertEquals("org-test", quota.getHeader("x-cog-org-id"))
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test fun `Devin homepage does not choose among multiple memberships`() {
+        responses["/api/organizations?membership_only=true"] =
+            200 to """[{"org_id":"org-one"},{"org_id":"org-two"}]"""
+        val session = checkNotNull(DevinWebSession.fromWebViewResult("""{"accessToken":"auth1_fixture"}"""))
+
+        assertThrows(DevinOrganizationSelectionRequiredException::class.java) {
+            runBlocking { service.getDevinWebUsage(session) }
+        }
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test fun `Devin keeps the webpage organization when already selected`() = runBlocking {
+        responses["/api/org_selected/billing/quota/usage"] = 200 to """{"weekly_percentage":42,"plan_name":"Pro"}"""
+        val session = checkNotNull(DevinWebSession.fromWebViewResult("""{"accessToken":"auth1_fixture","organizationId":"org_selected"}"""))
+
+        val usage = service.getDevinWebUsage(session)
+
+        assertEquals("org_selected", usage.providerAccountId)
+        assertEquals("/api/org_selected/billing/quota/usage", server.takeRequest().path)
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test fun `Devin requests quota and optional plan in the same organization`() = runBlocking {
+        responses["/api/org-test/billing/quota/usage"] = 200 to """{"weekly_percentage":34}"""
+        responses["/api/billing/subscription"] = 200 to """{"slug":"teams-v2"}"""
+
+        val usage = service.getManualUsage(Platform.DEVIN, "Authorization: Bearer fake-token", " org-test ")
+
+        assertEquals("org-test", usage.providerAccountId)
+        assertEquals("Teams", usage.planLabel)
+        assertEquals(34f, usage.items.single().percent, 0.01f)
+        val requests = listOf(server.takeRequest(), server.takeRequest())
+        assertEquals(listOf("/api/org-test/billing/quota/usage", "/api/billing/subscription"), requests.map { it.path })
+        requests.forEach { request ->
+            assertEquals("GET", request.method)
+            assertEquals("Bearer fake-token", request.getHeader("Authorization"))
+            assertEquals("org-test", request.getHeader("x-cog-org-id"))
+            assertNull(request.getHeader("Cookie"))
+        }
+    }
+
+    @Test fun `Devin keeps quota when the optional plan request fails`() = runBlocking {
+        responses["/api/org-test/billing/quota/usage"] = 200 to """{"weekly_percentage":34}"""
+        responses["/api/billing/subscription"] = 503 to "{}"
+
+        val usage = service.getManualUsage(Platform.DEVIN, "fake-token", "org-test")
+
+        assertEquals(34f, usage.items.single().percent, 0.01f)
+        assertNull(usage.planLabel)
+    }
+
+    @Test fun `invalid Devin organization is rejected before any network request`() {
+        assertThrows(PermissionDeniedException::class.java) {
+            runBlocking { service.getManualUsage(Platform.DEVIN, "fake-token", "org-test/other") }
+        }
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test fun `Copilot queries the GitHub account using a read-only token request`() = runBlocking {
+        responses["/copilot_internal/user"] = 200 to """{"copilot_plan":"individual","quota_snapshots":{
+            "premium_interactions":{"entitlement":300,"remaining":275}
+        }}"""
+
+        val usage = service.getManualUsage(Platform.GITHUB_COPILOT, "gho_example")
+
+        assertEquals("Pro", usage.planLabel)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/copilot_internal/user", request.path)
+        assertEquals("token gho_example", request.getHeader("Authorization"))
+        assertNull(request.getHeader("Cookie"))
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test fun `Copilot distinguishes an invalid token from a GitHub rate limit`() {
+        val path = "/copilot_internal/user"
+        responses[path] = 401 to "{}"
+        assertThrows(SessionExpiredException::class.java) {
+            runBlocking { service.getManualUsage(Platform.GITHUB_COPILOT, "gho_example") }
+        }
+        responses[path] = 403 to "{}"
+        assertThrows(PermissionDeniedException::class.java) {
+            runBlocking { service.getManualUsage(Platform.GITHUB_COPILOT, "gho_example") }
+        }
+        responseHeaders[path] = mapOf("Retry-After" to "60")
+        val limited = assertThrows(RateLimitException::class.java) {
+            runBlocking { service.getManualUsage(Platform.GITHUB_COPILOT, "gho_example") }
+        }
+        assertEquals(60L, limited.retryAfterSeconds)
+        assertEquals(403, limited.httpStatus)
+    }
+
+    @Test fun `Devin and Copilot requests do not follow redirects`() {
+        val requests = mapOf(
+            Platform.DEVIN to "/api/org-test/billing/quota/usage",
+            Platform.GITHUB_COPILOT to "/copilot_internal/user",
+        )
+        requests.forEach { (platform, path) ->
+            responses[path] = 302 to ""
+            responseHeaders[path] = mapOf("Location" to "/unexpected")
+            assertThrows(UsageRequestException::class.java) {
+                runBlocking { service.getManualUsage(platform, "fake-token", "org-test") }
+            }
+            assertEquals(path, server.takeRequest().path)
+        }
+        assertEquals(requests.size, server.requestCount)
+    }
 
     @Test fun `Go validates a subscription using one read only Bearer request`() = runBlocking {
         responses["/zen/go/v1/usage"] = 200 to """{"usage":{

@@ -37,12 +37,23 @@ fun AccountEditorScreen(state: MonitorState, vm: MonitorViewModel, requestNotifi
         Spacer(Modifier.height(22.dp))
         FormInput("账户名称", draft.name, { value -> vm.updateDraft { it.copy(name = value.take(32)) } }, "给这个账户起个名字")
         Spacer(Modifier.height(18.dp))
-        if (draft.platform.requiresApiKey) {
-            FormInput(if (draft.platform == funapp.ctrlcv.zhiyu.core.domain.model.Platform.MINIMAX) "Token Plan API Key" else "API Key",
-                draft.apiKey, { value -> vm.updateDraft { it.copy(apiKey = value) } }, if (adding) "请输入 API Key" else "保留当前密钥，或输入新密钥", password = true,
+        if (draft.usesCredentialForm) {
+            if (draft.platform == Platform.DEVIN) {
+                FormInput("Devin 组织 ID", draft.organizationId,
+                    { value -> vm.updateDraft { it.copy(organizationId = value) } }, "org_…",
+                    hint = "填写额度请求的 x-cog-org-id 值。")
+                Spacer(Modifier.height(18.dp))
+            }
+            val label = draft.platform.manualTokenLabel
+                ?: if (draft.platform == Platform.MINIMAX) "Token Plan API Key" else "API Key"
+            FormInput(label,
+                draft.credential, { value -> vm.updateDraft { it.copy(credential = value) } },
+                if (adding) "请输入 ${draft.platform.manualTokenLabel ?: "API Key"}" else "留空则保留当前凭据",
+                password = true,
                 hint = when (draft.platform) {
                     Platform.MINIMAX -> "使用 Token Plan 专属密钥，与普通按量 API Key 不同。"
                     Platform.OPENCODE_GO -> "在 OpenCode 控制台开通 Go 后，复制对应账户的 API Key。Go 订阅额度与 Zen 账户余额可分别添加。"
+                    Platform.DEVIN, Platform.GITHUB_COPILOT -> null
                     else -> "密钥仅用于连接当前供应商。"
                 })
         } else {
@@ -50,9 +61,21 @@ fun AccountEditorScreen(state: MonitorState, vm: MonitorViewModel, requestNotifi
             Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clip(RoundedCornerShape(13.dp)).background(c.surface)
                 .border(1.dp, c.line, RoundedCornerShape(13.dp)).padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
                 AppIcon(AppIcons.Language, null, size = 18.dp, tint = c.muted)
-                Spacer(Modifier.width(9.dp)); UiText("官方网页登录", 12, 18, modifier = Modifier.weight(1f))
+                Spacer(Modifier.width(9.dp))
+                val method = when (draft.platform) {
+                    Platform.DEVIN -> "通过 Devin 网页登录"
+                    Platform.GITHUB_COPILOT -> "GitHub 设备码授权"
+                    else -> "官方网页登录"
+                }
+                UiText(method, 12, 18, modifier = Modifier.weight(1f))
                 if (!adding) SmallAction("重新连接", vm::authorize)
             }
+        }
+        if (draft.platform.manualTokenLabel != null) {
+            Spacer(Modifier.height(8.dp))
+            TextAction(if (draft.manualTokenEntry) "使用${draft.platform.connectionMethod()}" else "手动输入令牌", {
+                vm.updateDraft { it.copy(manualTokenEntry = !it.manualTokenEntry, credential = "") }
+            }, Modifier.height(40.dp), c.muted)
         }
         Spacer(Modifier.height(22.dp)); SectionCaption("显示与提醒"); Spacer(Modifier.height(11.dp))
         SettingGroup {
@@ -75,17 +98,17 @@ fun AccountEditorScreen(state: MonitorState, vm: MonitorViewModel, requestNotifi
         }
         state.formError?.let { Spacer(Modifier.height(8.dp)); UiText(it, 11, 19, color = c.red) }
         Spacer(Modifier.height(22.dp))
-        UiButton(if (state.saving) "正在验证…" else if (adding) if (draft.platform.requiresApiKey) "验证并添加" else "连接账户" else "保存设置",
+        UiButton(if (state.saving) "正在验证…" else if (adding) if (draft.usesCredentialForm) "验证并添加" else "连接账户" else "保存设置",
             vm::saveEditor, enabled = !state.saving)
         Spacer(Modifier.height(13.dp))
-        UiText("登录信息与密钥加密保存在本设备", 10, 19, color = c.subtle, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        UiText("连接凭据加密保存在本设备", 10, 19, color = c.subtle, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         if (!adding) { Spacer(Modifier.height(12.dp)); TextAction("移除监控", { vm.showPanel(PanelKind.REMOVE, draft.platform, draft.accountId) }, Modifier.fillMaxWidth().height(44.dp), c.red) }
         }
     }
 }
 
 @Composable
-fun ProviderHero(platform: funapp.ctrlcv.zhiyu.core.domain.model.Platform, row: MonitoredAccount? = null) {
+fun ProviderHero(platform: Platform, row: MonitoredAccount? = null) {
     val c = LocalMonitorPalette.current
     val shape = LocalMonitorStyle.current.cardShape
     Column(Modifier.fillMaxWidth().clip(shape).background(c.surface)
@@ -95,7 +118,7 @@ fun ProviderHero(platform: funapp.ctrlcv.zhiyu.core.domain.model.Platform, row: 
         UiText(platform.monitorDescription(), 12, 20, color = c.muted, align = TextAlign.Center); Spacer(Modifier.height(12.dp))
         if (row != null) StatusBadge(row.status, row.attention, row.paused, compact = false)
         else Box(Modifier.clip(RoundedCornerShape(6.dp)).background(c.soft).padding(horizontal = 8.dp, vertical = 4.dp)) {
-            UiText(if (platform.requiresApiKey) "通过 API 密钥连接" else "通过官方网页登录", 10, 16, 500, c.muted)
+            UiText("通过${platform.connectionMethod()}连接", 10, 16, 500, c.muted)
         }
     }
 }

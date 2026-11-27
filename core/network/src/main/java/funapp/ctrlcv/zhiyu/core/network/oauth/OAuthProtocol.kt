@@ -21,6 +21,11 @@ internal object OAuthProtocol {
     const val CODEX_POLL = "https://auth.openai.com/api/accounts/deviceauth/token"
     const val CODEX_VERIFY = "https://auth.openai.com/codex/device"
     const val CODEX_CALLBACK = "https://auth.openai.com/deviceauth/callback"
+    const val GITHUB_DEVICE = "https://github.com/login/device/code"
+    const val GITHUB_TOKEN = "https://github.com/login/oauth/access_token"
+    const val GITHUB_VERIFY = "https://github.com/login/device"
+    const val GITHUB_USER = "https://api.github.com/user"
+    const val GITHUB_DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
 
     fun clientId(platform: Platform): String = when (platform) {
         Platform.CLAUDE -> CLAUDE_CLIENT_ID

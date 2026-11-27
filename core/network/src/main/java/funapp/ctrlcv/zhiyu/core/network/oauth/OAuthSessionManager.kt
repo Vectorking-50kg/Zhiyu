@@ -34,6 +34,9 @@ class OAuthSessionManager internal constructor(
             when (platform) {
                 Platform.CLAUDE -> api.getClaudeOAuthUsage(credential.accessToken)
                 Platform.CHATGPT -> api.getCodexOAuthUsage(credential.accessToken, credential.providerAccountId)
+                // GitHub identity is bound to the OAuth grant via /user at sign-in.
+                // The quota endpoint's optional login is a username, not the numeric account ID.
+                Platform.GITHUB_COPILOT -> api.getManualUsage(platform, credential.accessToken).copy(providerAccountId = null)
                 else -> throw SessionExpiredException(platform)
             }
         }

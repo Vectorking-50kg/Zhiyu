@@ -204,7 +204,7 @@ private fun MonitorPanelHost(panel: MonitorPanel, state: MonitorState, vm: Monit
                     Spacer(Modifier.height(8.dp)); UiText("你可以在概览查看余额和用量，\n也可以随时回到账户页修改配置。", 12, 22, color = c.muted, align = TextAlign.Center)
                 }
                 Spacer(Modifier.height(20.dp)); Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(13.dp)).background(c.soft).padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
-                    UiText(if (panel.platform?.isBalanceProvider() == true) "当前可用余额" else "当前最高已用", 12, 18, modifier = Modifier.weight(1f))
+                    UiText(row?.let { "当前${mainReadingLabel(it)}" } ?: "当前用量", 12, 18, modifier = Modifier.weight(1f))
                     UiText(row?.let(::mainReading) ?: "等待同步", 23, 34, 600, tracking = -.5f)
                 }
                 Spacer(Modifier.height(20.dp)); UiButton("去概览查看", { vm.selectPage(MonitorPage.OVERVIEW) })

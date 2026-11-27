@@ -33,14 +33,22 @@ data class MonitoredAccount(val account: Account, val usage: UsageInfo?, val vis
     val attention get() = usage?.refreshFailure != null
     val needsLogin get() = usage?.refreshFailure?.requiresLogin == true
     val paused get() = !account.monitoringEnabled
-    val status get() = when { needsLogin -> if (platform.requiresApiKey) "需更新密钥" else "需重新登录"; attention -> "待更新"; paused -> "已暂停"; else -> "已连接" }
+    val status get() = when {
+        needsLogin && platform.requiresApiKey -> "需更新密钥"
+        needsLogin -> "需重新登录"
+        attention -> "待更新"
+        paused -> "已暂停"
+        else -> "已连接"
+    }
 }
 
 data class AccountDraft(
     val platform: Platform, val accountId: String?, val name: String,
     val visible: Boolean = true, val monitoring: Boolean = true, val alerts: Boolean = true,
-    val pinned: Boolean = false, val apiKey: String = "",
+    val pinned: Boolean = false, val credential: String = "", val organizationId: String = "",
+    val manualTokenEntry: Boolean = false,
 ) {
+    val usesCredentialForm: Boolean get() = platform.requiresApiKey || manualTokenEntry
     override fun toString() = "AccountDraft(${platform.key}, [REDACTED])"
 }
 
@@ -153,7 +161,9 @@ class MonitorViewModel @Inject constructor(
         val row = _state.value.accounts.firstOrNull { it.platform == platform && (accountId == null || it.account.id == accountId) }
         _state.update { it.copy(panel = null, saving = false, formError = null, editor = AccountDraft(platform,
             row?.account?.id, row?.account?.displayName ?: "${platform.displayName} ${if (platform.requiresApiKey) "API" else "账户"}",
-            row?.visible ?: true, row?.account?.monitoringEnabled ?: true, row?.account?.usageAlertEnabled ?: true, row?.pinned ?: false)) }
+            row?.visible ?: true, row?.account?.monitoringEnabled ?: true, row?.account?.usageAlertEnabled ?: true, row?.pinned ?: false,
+            organizationId = if (platform == Platform.DEVIN) row?.account?.providerAccountId.orEmpty() else "",
+        )) }
     }
     fun closeEditor() { editorJob?.cancel(); _state.update { it.copy(editor = null, panel = null, saving = false, formError = null) } }
     fun updateDraft(transform: (AccountDraft) -> AccountDraft) = _state.update { state ->
@@ -184,10 +194,16 @@ class MonitorViewModel @Inject constructor(
 
     fun saveEditor() {
         val draft = _state.value.editor ?: return
+        val platform = draft.platform
+        val inputCredential = if (draft.usesCredentialForm) draft.credential.trim() else ""
+        val organizationId = draft.organizationId.trim()
         if (draft.name.isBlank()) { _state.update { it.copy(formError = "请填写账户名称。") }; return }
-        if (draft.accountId == null && !draft.platform.requiresApiKey) { authorize(); return }
-        if (draft.platform.requiresApiKey && draft.accountId == null && draft.apiKey.isBlank()) {
-            _state.update { it.copy(formError = "请填写 API Key。") }; return
+        if (draft.accountId == null && !draft.usesCredentialForm) { authorize(); return }
+        if (draft.usesCredentialForm && draft.accountId == null && inputCredential.isEmpty()) {
+            _state.update { it.copy(formError = "请填写 ${platform.manualTokenLabel ?: "API Key"}。") }; return
+        }
+        if (platform == Platform.DEVIN && draft.manualTokenEntry && !UsageApiService.isDevinOrganizationId(organizationId)) {
+            _state.update { it.copy(formError = "请填写以 org_ 或 org- 开头的 Devin 组织 ID。") }; return
         }
         editorJob?.cancel()
         editorJob = viewModelScope.launch {
@@ -196,14 +212,18 @@ class MonitorViewModel @Inject constructor(
                 val adding = draft.accountId == null
                 val id = draft.accountId ?: UUID.randomUUID().toString()
                 withContext(Dispatchers.IO) {
-                    val before = accountStore.getAccounts(draft.platform).firstOrNull { it.id == id }
-                    val validated = if (draft.apiKey.isNotBlank()) {
-                        validateApi(draft.platform, draft.apiKey.trim())
-                    } else null
+                    val before = accountStore.getAccounts(platform).firstOrNull { it.id == id }
+                    val credential = when {
+                        inputCredential.isNotEmpty() -> inputCredential
+                        platform == Platform.DEVIN && draft.manualTokenEntry && organizationId != before?.providerAccountId ->
+                            tokenStore.get(platform, id) ?: throw NoCookieException(platform)
+                        else -> null
+                    }
+                    val validated = credential?.let { api.getManualUsage(platform, it, organizationId) }
                     currentCoroutineContext().ensureActive()
                     val account = makeAccount(draft, id, before, validated)
-                    if (validated != null) repository.updateAccount(draft.platform, id, validated) {
-                        commitCredentials(account) { tokenStore.save(draft.platform, id, draft.apiKey.trim(), durable = true) }
+                    if (validated != null) repository.updateAccount(platform, id, validated) {
+                        commitCredentials(account) { tokenStore.save(platform, id, credential, durable = true) }
                     } else accountStore.saveAccount(account, durable = true)
                     if (draft.pinned) notifications.persistentEnabled = true
                 }
@@ -218,16 +238,10 @@ class MonitorViewModel @Inject constructor(
         }
     }
 
-    private suspend fun validateApi(platform: Platform, key: String): UsageInfo = when (platform) {
-        Platform.OPENCODE_GO -> api.getOpenCodeGoUsage(key)
-        Platform.MINIMAX -> api.getMiniMaxUsage(key)
-        Platform.AIHUBMIX -> api.getAiHubMixUsage(key)
-        Platform.DEEPSEEK -> api.getDeepSeekUsage(key)
-        else -> error("该平台需要网页登录")
-    }
     private fun makeAccount(draft: AccountDraft, id: String, before: Account?, usage: UsageInfo?) = Account(
         id, draft.platform, draft.name.trim(), usage?.planLabel ?: before?.planType ?: if (draft.platform.requiresApiKey) "API" else "",
-        usage?.providerAccountId ?: before?.providerAccountId, draft.monitoring, draft.visible, draft.alerts, draft.pinned,
+        if (usage == null) before?.providerAccountId else usage.providerAccountId,
+        draft.monitoring, draft.visible, draft.alerts, draft.pinned,
     )
     /** Caller holds the repository account gate. Roll back both encrypted stores together. */
     private fun commitCredentials(next: Account, saveToken: () -> Unit) {
@@ -246,16 +260,17 @@ class MonitorViewModel @Inject constructor(
 
     fun authorize() {
         val draft = _state.value.editor ?: return
+        if (draft.platform.requiresApiKey) return
         if (draft.name.isBlank()) { _state.update { it.copy(formError = "请填写账户名称。") }; return }
         viewModelScope.launch { eventChannel.send(MonitorEvent.Authorize(draft.platform, draft.accountId)) }
     }
-    fun onAuthorizationSuccess() {
+    fun onAuthorizationSuccess(accountId: String) {
         val draft = _state.value.editor ?: return
         _state.update { it.copy(saving = true) }
         editorJob = viewModelScope.launch {
             try {
                 val account = withContext(Dispatchers.IO) {
-                    val account = accountStore.getAccounts(draft.platform).firstOrNull { draft.accountId == null || it.id == draft.accountId }
+                    val account = accountStore.getAccounts(draft.platform).firstOrNull { it.id == accountId }
                         ?: error("未找到已连接账户")
                     account.copy(displayName = draft.name.trim(), monitoringEnabled = draft.monitoring,
                         showOnOverview = draft.visible, usageAlertEnabled = draft.alerts, pinned = draft.pinned)

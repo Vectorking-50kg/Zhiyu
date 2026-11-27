@@ -52,6 +52,8 @@ Get the latest APK from [GitHub Releases](https://github.com/Vectorking-50kg/Zhi
 | **ChatGPT** | Web login; optional device-code authorization | Codex-related five-hour and weekly limits, additional windows, Code Review, reset credits, renewal information, and extra credits |
 | **Claude** | Web login; optional OAuth authorization | Five-hour and weekly limits, model-specific windows, Claude Design, and extra usage percentages |
 | **Cursor** | Web login | Current billing-period usage, Auto usage, API usage, and plan information |
+| **Devin** | In-app browser sign-in (Google or email) | Daily and weekly quotas, reset times, and extra-usage balance |
+| **GitHub Copilot** | GitHub device-code authorization | AI credit or premium request allowances and reset times, plus chat and completion quotas when available |
 | **OpenCode Zen** | Web login | Account balance |
 | **OpenCode Go** | API key from the OpenCode console | Five-hour, weekly, and monthly subscription usage and reset times |
 | **MiniMax** | API key for the corresponding Token Plan | Five-hour and weekly limits, unlimited-quota indicators, and quota boosts |
@@ -65,12 +67,19 @@ Some integrations depend on internal interfaces or console pages available after
 ## Getting Started
 
 1. Open the app and tap **添加第一个账户** (Add your first account). You can also add more accounts from **账户** (Accounts).
-2. Choose a platform. Use web login for ChatGPT, Claude, Cursor, and OpenCode Zen, or enter the appropriate API key for OpenCode Go, MiniMax, AIHubMix, and DeepSeek.
+2. Choose a platform and follow the connection instructions. See below for the Devin and GitHub Copilot sign-in steps on Android.
 3. Once the login or API key is validated, return to **概览** (Overview) to view quotas and balances. Tap **查看详情** (View details) to inspect individual usage windows and reset times.
 4. In **账户** (Accounts), enable monitoring, alerts, and persistent notifications as needed. Use **设置** (Settings) to adjust appearance, refresh intervals, and global notification preferences.
 5. To display usage on your home screen, add the Zhiyu widget through your launcher's widget picker.
 
 OpenCode Go and Zen share an OpenCode group on the Accounts page. Go uses an API key belonging to an account with an active subscription and queries the official `GET https://opencode.ai/zen/go/v1/usage` endpoint. Zen displays the account balance separately. See the [official OpenCode Go documentation](https://opencode.ai/docs/go/) for subscription and API key setup, and the [official endpoint source](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/go/v1/usage.ts) for response fields.
+
+### Connect Devin and GitHub Copilot
+
+- **Devin.** Open the Devin sign-in page in Zhiyu and use Google or email. If a reminder appears after sign-in, open any existing conversation in the organization you want to monitor. If there are no conversations yet, start one and send a message. Zhiyu will automatically try to read your quota. [Devin usage documentation](https://docs.devin.ai/admin/billing/usage) · [CodexBar integration](https://github.com/steipete/CodexBar/blob/main/docs/devin.md)
+- **GitHub Copilot.** Copy the device code in Zhiyu, open GitHub in the browser on the same phone, and enter the code to authorize Zhiyu. Return to the app to confirm the connection and fetch your Copilot quota. For organization seats that report only credits used, Zhiyu displays that usage. [GitHub device flow](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow) · [GitHub AI credit documentation](https://docs.github.com/en/copilot/how-tos/manage-and-track-spending/monitor-ai-usage) · [Copilot quota reference](https://github.com/steipete/CodexBar/blob/main/docs/copilot.md)
+
+Once connected, you can enable background monitoring. Reconnect from Account Settings if the session expires. The manual token option remains available. Quota queries use internal endpoints whose responses depend on the subscription and its permissions.
 
 ## Home Screen Widgets
 
@@ -98,6 +107,8 @@ Design and configuration references: [Breezy Weather widgets](https://github.com
 
 Android Studio with JDK 17 and Android SDK Platform 35 is recommended. The repository includes the Gradle Wrapper, so a separate Gradle installation is not required.
 
+The default build uses Zhiyu's GitHub OAuth App. To use a different registration for a fork, enable device flow on your OAuth App and set the public Client ID with the Gradle property `zhiyu.githubCopilotClientId`. [Creating a GitHub OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
+
 ```bash
 git clone https://github.com/Vectorking-50kg/Zhiyu.git
 cd Zhiyu
@@ -116,8 +127,8 @@ Debug and Release use different application IDs, so both can be installed side b
 
 | Build type | App name | Application ID | Version name |
 | --- | --- | --- | --- |
-| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.3` |
-| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.3-debug` |
+| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.4` |
+| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.4-debug` |
 
 Maintain the base version in `defaultConfig` in `app/build.gradle.kts`. Debug automatically appends `-debug`; Release has no suffix. The in-app About page displays the corresponding version name.
 

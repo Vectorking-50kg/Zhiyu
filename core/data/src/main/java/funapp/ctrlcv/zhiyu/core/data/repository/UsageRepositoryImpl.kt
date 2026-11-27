@@ -56,7 +56,7 @@ class UsageRepositoryImpl internal constructor(
     ) : this(
         fetchUsage = { platform, accountId ->
             if (oauth.hasSession(platform, accountId)) oauth.getUsage(platform, accountId)
-            else fetchLegacyUsage(api, tokenStore, platform, accountId)
+            else fetchLegacyUsage(api, tokenStore, accountStore, platform, accountId)
         },
         accounts = accountStore::getAllAccounts,
         cache = cache,
@@ -182,6 +182,7 @@ class UsageRepositoryImpl internal constructor(
 private suspend fun fetchLegacyUsage(
     api: UsageApiService,
     tokenStore: SecureTokenStore,
+    accountStore: AccountStore,
     platform: Platform,
     accountId: String,
 ): UsageInfo {
@@ -194,9 +195,10 @@ private suspend fun fetchLegacyUsage(
             credential,
             tokenStore.getExtra(platform, accountId, SecureTokenStore.EXTRA_ZEN_WORKSPACE_ID),
         )
-        Platform.MINIMAX -> api.getMiniMaxUsage(credential)
-        Platform.AIHUBMIX -> api.getAiHubMixUsage(credential)
-        Platform.DEEPSEEK -> api.getDeepSeekUsage(credential)
-        Platform.OPENCODE_GO -> api.getOpenCodeGoUsage(credential)
+        Platform.DEVIN -> api.getManualUsage(
+            platform, credential,
+            accountStore.getAccounts(platform).firstOrNull { it.id == accountId }?.providerAccountId,
+        )
+        else -> api.getManualUsage(platform, credential)
     }
 }

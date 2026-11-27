@@ -366,6 +366,7 @@ fun progressColor(percent: Float): ColorProvider = ColorProvider(when {
 private fun shortName(item: WidgetPlatformItem): String = when (item.platform) {
     Platform.ZEN -> "Zen"
     Platform.OPENCODE_GO -> "Go"
+    Platform.GITHUB_COPILOT -> "Copilot"
     else -> item.name
 }
 

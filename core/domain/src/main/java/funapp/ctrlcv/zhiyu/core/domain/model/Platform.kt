@@ -5,7 +5,8 @@ enum class Platform(
     val displayName: String,
     val loginUrl: String,
     val baseUrl: String,
-    val requiresApiKey: Boolean = false
+    val requiresApiKey: Boolean = false,
+    val manualTokenLabel: String? = null,
 ) {
     CLAUDE(
         key = "claude",
@@ -64,12 +65,26 @@ enum class Platform(
         loginUrl = "",
         baseUrl = "https://opencode.ai/zen/go/v1",
         requiresApiKey = true
+    ),
+    DEVIN(
+        key = "devin",
+        displayName = "Devin",
+        loginUrl = "https://app.devin.ai/login",
+        baseUrl = "https://app.devin.ai",
+        manualTokenLabel = "Devin 会话令牌",
+    ),
+    GITHUB_COPILOT(
+        key = "github_copilot",
+        displayName = "GitHub Copilot",
+        loginUrl = "",
+        baseUrl = "https://api.github.com",
+        manualTokenLabel = "GitHub 访问令牌",
     );
 
     companion object {
         // Keep enum ordinals stable: existing notifications use them as persistent IDs.
         val displayOrder: List<Platform> = listOf(
-            CHATGPT, CLAUDE, CURSOR, ZEN, OPENCODE_GO, MINIMAX, AIHUBMIX, DEEPSEEK,
+            CHATGPT, CLAUDE, CURSOR, DEVIN, GITHUB_COPILOT, ZEN, OPENCODE_GO, MINIMAX, AIHUBMIX, DEEPSEEK,
         )
     }
 
@@ -84,7 +99,7 @@ enum class Platform(
         // Zen 的 auth Cookie 在 OAuth 握手阶段就被写入，无法用 Cookie 判定登录；
         // 只有真正登录后才会进入 workspace 仪表盘，用该 URL 作为唯一可靠的成功信号。
         ZEN -> url.contains("opencode.ai") && url.contains("/workspace")
-        MINIMAX, AIHUBMIX, DEEPSEEK, OPENCODE_GO -> false
+        MINIMAX, AIHUBMIX, DEEPSEEK, OPENCODE_GO, DEVIN, GITHUB_COPILOT -> false
     }
 
     fun getCookieName(): String = when (this) {
@@ -95,6 +110,7 @@ enum class Platform(
         // 二者都包含 "auth"，用作 WebView 中的存在性匹配子串。
         ZEN -> "auth"
         MINIMAX, AIHUBMIX, DEEPSEEK, OPENCODE_GO -> "api_key"
+        DEVIN, GITHUB_COPILOT -> ""
     }
 
     fun getCookieDomains(): List<String> = when (this) {
@@ -102,7 +118,7 @@ enum class Platform(
         CHATGPT -> listOf("https://chatgpt.com", "https://chat.openai.com")
         CURSOR -> listOf("https://cursor.sh", "https://authenticator.cursor.sh", "https://api2.cursor.sh", "https://www.cursor.com", "https://cursor.com")
         ZEN -> listOf("https://opencode.ai")
-        MINIMAX, AIHUBMIX, DEEPSEEK, OPENCODE_GO -> emptyList()
+        MINIMAX, AIHUBMIX, DEEPSEEK, OPENCODE_GO, DEVIN, GITHUB_COPILOT -> emptyList()
     }
 
     /**
@@ -115,7 +131,7 @@ enum class Platform(
      * 改由到达 workspace 仪表盘（[isLoggedIn]）来确认登录。
      */
     fun hasSessionCookie(cookieHeader: String): Boolean = when (this) {
-        ZEN -> false
+        ZEN, DEVIN, GITHUB_COPILOT -> false
         else -> cookieHeader.contains(getCookieName())
     }
 }

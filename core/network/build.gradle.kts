@@ -5,13 +5,21 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// Public OAuth client identifier for the project's GitHub device authorization.
+val githubCopilotClientId = providers.gradleProperty("zhiyu.githubCopilotClientId")
+    .orElse("Ov23likb98EbcFlQMBsQ").get().trim()
+require(githubCopilotClientId.matches(Regex("[A-Za-z0-9._]*"))) { "Invalid GitHub OAuth Client ID" }
+
 android {
     namespace = "funapp.ctrlcv.zhiyu.core.network"
     compileSdk = 35
 
     defaultConfig {
         minSdk = 26
+        buildConfigField("String", "GITHUB_COPILOT_CLIENT_ID", "\"$githubCopilotClientId\"")
     }
+
+    buildFeatures { buildConfig = true }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

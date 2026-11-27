@@ -34,9 +34,14 @@ data class UsageFailure(
 }
 
 fun UsageFailure.messageFor(platform: Platform): String = when {
+    requiresLogin && platform.manualTokenLabel != null -> "连接已失效，请重新连接"
     requiresLogin && platform.requiresApiKey -> "API 密钥无效，请检查后重试"
+    kind == UsageFailureKind.PERMISSION_DENIED && platform == Platform.DEVIN -> "无法读取 Devin 额度，请检查令牌权限和组织 ID"
+    kind == UsageFailureKind.PERMISSION_DENIED && platform == Platform.GITHUB_COPILOT -> "GitHub 未允许读取 Copilot 额度，请检查订阅与授权权限"
     kind == UsageFailureKind.SUBSCRIPTION_REQUIRED && platform == Platform.OPENCODE_GO ->
         "未开通 OpenCode Go 订阅，请检查密钥对应的账户"
+    kind == UsageFailureKind.SUBSCRIPTION_REQUIRED && platform == Platform.DEVIN ->
+        "该 Devin 组织没有可读取的订阅额度"
     else -> message
 }
 
@@ -47,7 +52,7 @@ fun Throwable.toUsageFailure(now: Long = System.currentTimeMillis()): UsageFailu
     is PermissionDeniedException -> UsageFailure(UsageFailureKind.PERMISSION_DENIED, 403, occurredAt = now)
     is RateLimitException -> UsageFailure(
         UsageFailureKind.RATE_LIMITED,
-        httpStatus = 429,
+        httpStatus = httpStatus,
         retryAt = retryAfterSeconds?.coerceAtLeast(0)?.let { seconds ->
             runCatching { Math.addExact(now, Math.multiplyExact(seconds, 1000L)) }.getOrDefault(Long.MAX_VALUE)
         },
