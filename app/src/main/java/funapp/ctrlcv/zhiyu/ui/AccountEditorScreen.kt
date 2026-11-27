@@ -65,6 +65,7 @@ fun AccountEditorScreen(state: MonitorState, vm: MonitorViewModel, requestNotifi
                 val method = when (draft.platform) {
                     Platform.DEVIN -> "通过 Devin 网页登录"
                     Platform.GITHUB_COPILOT -> "GitHub 设备码授权"
+                    Platform.ANTIGRAVITY -> "Google 账号授权"
                     else -> "官方网页登录"
                 }
                 UiText(method, 12, 18, modifier = Modifier.weight(1f))

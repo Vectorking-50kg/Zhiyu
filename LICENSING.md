@@ -21,6 +21,7 @@ MIT 允许使用、复制、修改、合并、发布、分发、再许可和商�
 | Material Symbols                            | 通用图标                                      | [Apache-2.0](app/src/main/assets/licenses/material-symbols.txt)、[来源](app/src/main/assets/licenses/material-symbols-source.txt)                                                                                                          |
 | CodexMeter                                  | 认证校验、会话续期与快照设计参考                          | [MIT](app/src/main/assets/licenses/codexmeter.txt)、[来源](app/src/main/assets/licenses/reference-projects-source.txt)                                                                                                                     |
 | CodexBar                                    | OpenCode Zen 余额读取相关的源码参考与适配，并非 Gradle 库依赖 | [MIT](app/src/main/assets/licenses/codexbar.txt)、[来源](app/src/main/assets/licenses/reference-projects-source.txt)                                                                                                                       |
+| TokenTracker                               | Antigravity 额度接口、订阅回退及续期参数参考 | [MIT](app/src/main/assets/licenses/tokentracker.txt)、[来源](app/src/main/assets/licenses/reference-projects-source.txt) |
 
 
 Kotlin、kotlinx.coroutines、AndroidX、Dagger/Hilt、OkHttp 和 Gson 等基础依赖的主要许可为 Apache-2.0，具体版本以 [Gradle 版本目录](gradle/libs.versions.toml)及各模块构建声明为准。本表不声称已穷举最终 APK 的所有传递依赖。

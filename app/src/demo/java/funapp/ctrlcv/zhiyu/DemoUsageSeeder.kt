@@ -53,6 +53,7 @@ internal object DemoUsageSeeder {
                         Platform.CLAUDE -> "Max 5×"
                         Platform.CHATGPT -> "Plus"
                         Platform.CURSOR -> "Pro"
+                        Platform.ANTIGRAVITY -> "Google AI Pro"
                         Platform.DEVIN, Platform.GITHUB_COPILOT -> "Pro"
                         Platform.OPENCODE_GO -> "Go"
                         else -> if (platform.requiresApiKey) "API" else ""
@@ -118,6 +119,21 @@ internal object DemoUsageSeeder {
                 UsageItem("API 用量", 12f),
             ),
             updatedAt = now - 2 * 60_000,
+        ),
+        UsageInfo(
+            platform = Platform.ANTIGRAVITY,
+            planLabel = "Google AI Pro",
+            items = listOf(
+                UsageItem("Gemini · 5 小时", 35f, resetAt = now + 2L * 60 * 60 * 1_000,
+                    windowDurationSeconds = 18_000, windowId = "antigravity.gemini-5h"),
+                UsageItem("Gemini · 每周", 52f, resetAt = now + 4 * DAY_MS,
+                    windowDurationSeconds = 604_800, windowId = "antigravity.gemini-weekly"),
+                UsageItem("Claude and GPT · 5 小时", 72f, resetAt = now + 60L * 60 * 1_000,
+                    windowDurationSeconds = 18_000, windowId = "antigravity.3p-5h"),
+                UsageItem("Claude and GPT · 每周", 40f, resetAt = now + 3 * DAY_MS,
+                    windowDurationSeconds = 604_800, windowId = "antigravity.3p-weekly"),
+            ),
+            updatedAt = now,
         ),
         UsageInfo(
             platform = Platform.DEVIN,

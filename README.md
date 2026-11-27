@@ -53,6 +53,7 @@
 | **ChatGPT** | 网页登录；可选设备码授权 | Codex 相关的 5 小时与周限额、附加窗口、Code Review、重置卡、续订信息、额外额度 |
 | **Claude** | 网页登录；可选 OAuth 授权 | 5 小时与周限额、模型分类窗口、Claude Design、额外用量百分比 |
 | **Cursor** | 网页登录 | 本周期用量、Auto 用量、API 用量与套餐信息 |
+| **Antigravity（Google AI）** | 应用内 Google 授权；可手动改用浏览器 | Gemini、Claude and GPT 两组的 5 小时与周额度、各模型额度、重置时间及订阅名称 |
 | **Devin** | 内置浏览器登录（Google 或邮箱） | 日额度、周额度、重置时间与额外用量余额 |
 | **GitHub Copilot** | GitHub 设备码授权 | AI 积分或高级请求额度及重置时间、聊天和补全额度，以及接口提供的额外用量金额和预算 |
 | **OpenCode Zen** | 网页登录 | 账户余额 |
@@ -68,12 +69,18 @@
 ## 开始使用
 
 1. 打开应用，点击「添加第一个账户」；也可以在「账户」页添加更多账户。
-2. 选择平台并按照页面提示连接。Devin 和 GitHub Copilot 都可在手机上发起登录，操作步骤见下方。
+2. 选择平台并按照页面提示连接。Antigravity、Devin 和 GitHub Copilot 均可在手机上发起登录，操作步骤见下方。
 3. 登录或密钥通过校验后，返回「概览」查看额度与余额，点击「查看详情」查看各个窗口与重置时间。
 4. 在「账户」中按需开启监控、提醒和状态栏固定；在「设置」中调整外观、刷新间隔和全局通知。
 5. 如需桌面展示，通过系统的小组件选择器添加知余小组件。
 
 OpenCode Go 与 Zen 在账户页归入同一个 OpenCode 分组。Go 使用控制台中已开通订阅的账户的 API Key，通过官方 `GET https://opencode.ai/zen/go/v1/usage` 查询订阅额度；Zen 单独展示账户余额。密钥获取与订阅说明见 [OpenCode Go 官方文档](https://opencode.ai/docs/go/)，响应字段以 [官方接口源码](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/go/v1/usage.ts) 为准。
+
+### 连接 Antigravity（Google AI）
+
+选择 Antigravity 后，在知余的内置网页中登录用于 Antigravity 的 Google 账号并授权。知余会自动截获授权回调，验证账号和额度后加密保存，无需切换到外部浏览器再返回。若 Google 阻止内嵌登录，可手动选择「改用浏览器」；备用流程在同一部手机完成，回调 5 分钟内有效。连接后可自动续期和后台刷新，无需从电脑复制令牌。
+
+付费订阅优先显示接口明确提供的 Gemini、Claude and GPT 两组的 5 小时与周额度；免费账户或不支持汇总接口的账户显示各模型额度，不推测窗口时长。订阅名称按 Google 实际返回的名称显示。这些是 Antigravity 的额度，不代表 Gemini App、AI Studio 或 Google One 的全部权益。接口参考 [TokenTracker](https://github.com/xiufengsun/TokenTracker/blob/a3f10f2289c24f6612f26b8becbba4ff797c7754/src/lib/usage-limits.js)，实现细节与验证范围见 [Antigravity 接入说明](ANTIGRAVITY.md)。
 
 ### 连接 Devin 与 GitHub Copilot
 
@@ -110,6 +117,8 @@ OpenCode Go 与 Zen 在账户页归入同一个 OpenCode 分组。Go 使用控�
 
 默认构建使用知余的 GitHub OAuth 应用。维护派生版本时，可注册自己的 OAuth App、启用设备流，然后通过 Gradle 的 `zhiyu.githubCopilotClientId` 属性设置公开 Client ID。 [GitHub OAuth 应用注册](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
 
+Antigravity 的 OAuth 注册配置在构建时注入，仓库不保存实际值。本地可在已忽略的 `local.properties` 中配置 `zhiyu.antigravityClientId` 和 `zhiyu.antigravityClientSecret`，也可使用同名 Gradle 属性，或环境变量 `ANTIGRAVITY_OAUTH_CLIENT_ID` / `ANTIGRAVITY_OAUTH_CLIENT_SECRET`。注册参数来源见 [Antigravity 接入说明](ANTIGRAVITY.md)。未配置时其他平台仍可使用，Antigravity 登录页会提示配置缺失。
+
 ```bash
 git clone https://github.com/Vectorking-50kg/Zhiyu.git
 cd Zhiyu
@@ -128,8 +137,8 @@ Debug 和 Release 使用不同包名，可以同时安装，账号与设置各�
 
 | 构建类型 | 应用名称 | 包名 | 版本名称 |
 | --- | --- | --- | --- |
-| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.5` |
-| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.5-debug` |
+| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.6` |
+| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.6-debug` |
 
 基础版本统一在 `app/build.gradle.kts` 的 `defaultConfig` 中维护；Debug 自动追加 `-debug`，Release 不追加后缀。应用内“关于”页也会显示对应版本名称。
 
@@ -151,10 +160,12 @@ Debug 和 Release 使用不同包名，可以同时安装，账号与设置各�
 
 把 `app/build.gradle.kts` 中提高后的 `versionName` 和 `versionCode` 推到 `main`，**Android Release** 工作流会依次发布上一个正式版之后尚未发布的版本。每个版本都从版本号生效的提交构建，测试和覆盖安装通过后发布 `vX.Y.Z`，附带 `Zhiyu-X.Y.Z.apk` 和从提交标题生成的更新日志。
 
-在仓库的 **Settings → Secrets and variables → Actions** 一次性添加以下仓库 Secrets。使用之前给正式版 APK 签名的同一份 `.jks` 或 `.keystore`。[GitHub Actions Secrets 文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets#storing-base64-binary-blobs-as-secrets)
+在仓库的 **Settings → Secrets and variables → Actions** 配置以下构建与签名 Secrets。签名使用之前给正式版 APK 签名的同一份 `.jks` 或 `.keystore`。[GitHub Actions Secrets 文档](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets#storing-base64-binary-blobs-as-secrets)
 
 | Secret | 填写内容 |
 | --- | --- |
+| `ANTIGRAVITY_OAUTH_CLIENT_ID` | Antigravity installed-app OAuth 注册的 Client ID |
+| `ANTIGRAVITY_OAUTH_CLIENT_SECRET` | 与上述注册匹配的 OAuth client secret；用于构建注入 |
 | `ANDROID_RELEASE_KEYSTORE_BASE64` | 签名文件的 Base64 文本 |
 | `ANDROID_RELEASE_STORE_PASSWORD` | 签名文件密码 |
 | `ANDROID_RELEASE_KEY_ALIAS` | 密钥别名 |

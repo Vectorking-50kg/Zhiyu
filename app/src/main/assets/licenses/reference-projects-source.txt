@@ -15,11 +15,27 @@ The full text is reproduced without modification in codexbar.txt.
 The original upstream implementation revision was not recorded; the license
 review snapshot is not asserted to be that original reference revision.
 
+TokenTracker
+Repository: https://github.com/xiufengsun/TokenTracker
+Reference: Antigravity daily-cloudcode quota summary, per-model fallback,
+subscription metadata and public installed-app OAuth refresh parameters.
+Source: https://github.com/xiufengsun/TokenTracker/blob/a3f10f2289c24f6612f26b8becbba4ff797c7754/src/lib/usage-limits.js
+Reference commit: a3f10f2289c24f6612f26b8becbba4ff797c7754
+License: MIT
+Copyright (c) 2026 xiufengsun
+License source: https://github.com/xiufengsun/TokenTracker/blob/a3f10f2289c24f6612f26b8becbba4ff797c7754/LICENSE
+The full text is reproduced without modification in tokentracker.txt.
+
 CodexMeter
 Repository: https://github.com/KyoMio/CodexMeter
 Reference: credential validation, session refresh and snapshot design documented
 in IMPLEMENTATION_NOTES.md and implemented in Zhiyu's network/data/auth layers.
 Recorded reference commit: e0c42ff651b7f50813109c4be6b9708cd18c395c
+Additional Antigravity embedded OAuth reference commit: 7e9a4ce350717a0efc6186654ee0b3e206ce8878
+Source: https://github.com/KyoMio/CodexMeter/blob/7e9a4ce350717a0efc6186654ee0b3e206ce8878/app/src/main/java/com/kmnexus/codexmeter/ui/auth/WebViewAuthScreen.kt
+Reference: in-app redirect interception, once-only callback handling, WebView
+viewport sizing, focus and compatibility configuration. Existing MIT text
+matches this additional reference revision.
 License: MIT
 Copyright (c) 2026 KyoMio
 License source: https://github.com/KyoMio/CodexMeter/blob/e0c42ff651b7f50813109c4be6b9708cd18c395c/LICENSE

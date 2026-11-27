@@ -14,8 +14,8 @@ android {
         applicationId = "funapp.ctrlcv.zhiyu"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.1.5"
+        versionCode = 8
+        versionName = "0.1.6"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("boolean", "USE_DEMO_DATA", "false")
     }
@@ -81,6 +81,7 @@ dependencies {
     androidTestImplementation(libs.android.test.junit)
     androidTestImplementation(libs.android.test.runner)
     androidTestImplementation(libs.gson)
+    androidTestImplementation(libs.okhttp)
 
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.viewmodel.compose)

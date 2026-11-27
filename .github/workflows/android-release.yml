@@ -61,7 +61,12 @@ jobs:
           printf '%s\n' "$sdk_bin" "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
       - name: Test and build the release APKs
         if: steps.plan.outputs.ready == 'true'
-        run: python3 .github/scripts/android_release.py build
+        env:
+          ANTIGRAVITY_OAUTH_CLIENT_ID: ${{ secrets.ANTIGRAVITY_OAUTH_CLIENT_ID }}
+          ANTIGRAVITY_OAUTH_CLIENT_SECRET: ${{ secrets.ANTIGRAVITY_OAUTH_CLIENT_SECRET }}
+        run: |
+          test -n "$ANTIGRAVITY_OAUTH_CLIENT_ID" && test -n "$ANTIGRAVITY_OAUTH_CLIENT_SECRET"
+          python3 .github/scripts/android_release.py build
       - name: Sign release APKs and verify their certificates and versions
         if: steps.plan.outputs.ready == 'true'
         env:

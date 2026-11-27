@@ -78,12 +78,18 @@ fun AccountsScreen(state: MonitorState, vm: MonitorViewModel, scroll: ScrollStat
 }
 
 fun matchesProvider(platform: Platform, query: String): Boolean {
-    val text = "${platform.displayName} ${platform.monitorDescription()} ${if (platform == Platform.CHATGPT) "OpenAI" else if (platform == Platform.CLAUDE) "Anthropic" else ""}"
+    val text = "${platform.displayName} ${platform.monitorDescription()} ${when (platform) {
+        Platform.CHATGPT -> "OpenAI"
+        Platform.CLAUDE -> "Anthropic"
+        Platform.ANTIGRAVITY -> "AntiGravity Google One Pro Ultra"
+        else -> ""
+    }}"
     return text.contains(query.trim(), ignoreCase = true)
 }
 
 internal fun Platform.connectionMethod(): String = when {
     this == Platform.GITHUB_COPILOT -> "设备码授权"
+    this == Platform.ANTIGRAVITY -> "Google 授权"
     requiresApiKey -> "API 密钥"
     else -> "网页登录"
 }

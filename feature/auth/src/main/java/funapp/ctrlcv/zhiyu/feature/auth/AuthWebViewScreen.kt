@@ -13,7 +13,9 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebSettings
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +24,11 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import funapp.ctrlcv.zhiyu.core.ui.components.ScaledAlertDialog as AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -48,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -61,6 +69,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcon
 import funapp.ctrlcv.zhiyu.core.ui.icons.AppIcons
+import funapp.ctrlcv.zhiyu.core.ui.components.UiButton
+import funapp.ctrlcv.zhiyu.core.ui.components.UiText
+import funapp.ctrlcv.zhiyu.core.ui.theme.LocalMonitorPalette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +87,13 @@ fun AuthWebViewScreen(
     LaunchedEffect(state.connectedAccountId) { state.connectedAccountId?.let(onSuccess) }
     if (state.isSuccess) return
 
-    Column(Modifier.fillMaxSize()) {
+    val google = state.platform == Platform.ANTIGRAVITY
+    val palette = LocalMonitorPalette.current
+    val contentModifier = if (google) Modifier.fillMaxSize().background(palette.background).padding(
+        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+    ) else Modifier.fillMaxSize()
+    Column(contentModifier) {
         TopAppBar(
             title = { Text("登录 ${state.platform.displayName}") },
             navigationIcon = { IconButton(onClick = leave) {
@@ -92,11 +109,22 @@ fun AuthWebViewScreen(
                 }
             }
         }
+        if (google) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = viewModel::startOAuth,
+                    enabled = state.googleExternalBrowser || state.error != null) { Text("应用内登录") }
+                TextButton(onClick = viewModel::startGoogleBrowserOAuth,
+                    enabled = !state.googleExternalBrowser || state.error != null) { Text("改用浏览器") }
+            }
+        }
         state.error?.let {
             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
             if (state.mode == AuthMode.COOKIE) TextButton(onClick = viewModel::useWebLogin) { Text("重新加载登录页") }
+            else if (google && !state.googleExternalBrowser) TextButton(onClick = viewModel::startOAuth) { Text("重新授权") }
         }
-        if (state.mode == AuthMode.OAUTH && state.platform in setOf(Platform.CHATGPT, Platform.GITHUB_COPILOT)) {
+        if (google && state.googleExternalBrowser) {
+            GoogleLogin(state, viewModel)
+        } else if (state.mode == AuthMode.OAUTH && state.platform in setOf(Platform.CHATGPT, Platform.GITHUB_COPILOT)) {
             DeviceLogin(state, viewModel)
         } else {
             key(state.pageGeneration) {
@@ -105,7 +133,7 @@ fun AuthWebViewScreen(
         }
     }
     if (state.switchNeedsConfirmation) {
-        val dismiss = if (state.platform == Platform.GITHUB_COPILOT) leave else viewModel::useWebLogin
+        val dismiss = if (state.platform in setOf(Platform.GITHUB_COPILOT, Platform.ANTIGRAVITY)) leave else viewModel::useWebLogin
         AlertDialog(
             onDismissRequest = dismiss,
             title = { Text("替换当前登录？") },
@@ -117,6 +145,39 @@ fun AuthWebViewScreen(
             confirmButton = { TextButton(onClick = viewModel::confirmAccountSwitch) { Text("确认替换") } },
             dismissButton = { TextButton(onClick = dismiss) { Text("取消") } }
         )
+    }
+}
+
+@Composable
+private fun GoogleLogin(state: AuthUiState, viewModel: AuthViewModel) {
+    val context = LocalContext.current
+    val palette = LocalMonitorPalette.current
+    var browserError by remember(state.pageGeneration) { mutableStateOf<String?>(null) }
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        UiText("连接 Google 账号", 22, 30, 600)
+        UiText("在这部手机的浏览器中登录用于 Antigravity 的 Google 账号并授权，然后返回知余。",
+            14, 24, color = palette.muted, align = TextAlign.Center)
+        UiText("连接后自动同步 Gemini、Claude and GPT 额度和重置时间。", 12, 20,
+            color = palette.muted, align = TextAlign.Center)
+        state.authorizationUrl?.let { url ->
+            UiButton("使用 Google 账号授权", onClick = {
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    browserError = null
+                } catch (_: android.content.ActivityNotFoundException) { browserError = "未找到可用浏览器，请安装浏览器后重试" }
+            }, enabled = !state.isLoading && !state.switchNeedsConfirmation)
+            UiText("正在等待授权，5 分钟内有效。", 12, 20, color = palette.muted)
+        }
+        if (state.isLoading) {
+            CircularProgressIndicator(color = palette.primary)
+            UiText("正在验证账号和额度…", 14, 24, color = palette.muted)
+        }
+        browserError?.let { UiText(it, 14, 24, color = palette.red) }
+        if (state.error != null) UiButton("重新连接 Google", onClick = viewModel::startGoogleBrowserOAuth)
     }
 }
 
@@ -166,12 +227,19 @@ private fun LoginBrowser(state: AuthUiState, viewModel: AuthViewModel, modifier:
     var devinReminderDismissed by rememberSaveable { mutableStateOf(false) }
     val isOAuth = state.mode == AuthMode.OAUTH
     val isDevin = state.platform == Platform.DEVIN
+    val isGoogle = state.platform == Platform.ANTIGRAVITY
     val initialUrl = if (isOAuth) state.authorizationUrl else state.platform.loginUrl
     val scope = rememberCoroutineScope()
     val canReadDevinSession = isDevin && !pageLoading && popupWebView == null &&
         !state.isLoading && !state.switchNeedsConfirmation
     val canConfirmDevinSession = canReadDevinSession && DevinWebSession.isDevinPage(currentUrl) &&
         Uri.parse(currentUrl).pathSegments.firstOrNull() !in setOf("login", "signup", "auth")
+
+    fun consumeOAuthCallback(url: String): Boolean {
+        if (!isOAuth || !viewModel.onOAuthNavigation(url, state.pageGeneration)) return false
+        pageLoading = false
+        return true
+    }
 
     LaunchedEffect(mainWebView, canReadDevinSession, state.pageGeneration) {
         val browser = mainWebView ?: return@LaunchedEffect
@@ -190,34 +258,52 @@ private fun LoginBrowser(state: AuthUiState, viewModel: AuthViewModel, modifier:
     } }
     Column(modifier) {
         if (pageLoading || state.isLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if (isOAuth) Text("授权后将验证账号和额度，验证成功才会保存登录。",
-            style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(12.dp))
+        if (isOAuth) UiText("授权后将验证账号和额度，验证成功才会保存登录。",
+            12, 20, color = LocalMonitorPalette.current.muted, modifier = Modifier.padding(12.dp))
         Box(Modifier.fillMaxSize()) {
             if (initialUrl != null) AndroidView(
                 factory = { context ->
                     WebView(context).apply {
                         mainWebView = this
-                        configureForLogin()
+                        configureForLogin(googleOAuth = isGoogle)
                         CookieManager.getInstance().setAcceptCookie(true)
                         CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                         webChromeClient = object : WebChromeClient() {
                             override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?): Boolean {
                                 if (!isUserGesture) return false
                                 val popup = WebView(context).apply {
-                                    configureForLogin()
+                                    configureForLogin(googleOAuth = isGoogle)
                                     CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                                     webViewClient = object : WebViewClient() {
                                         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                             val url = request?.url?.toString() ?: return false
-                                            return (isOAuth && request.isForMainFrame && viewModel.onOAuthNavigation(url)) ||
+                                            return (request.isForMainFrame && consumeOAuthCallback(url)) ||
                                                 (request.url.scheme != "https" && url != "about:blank")
                                         }
+                                        override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                                            if (url != null && consumeOAuthCallback(url)) {
+                                                view?.stopLoading()
+                                            }
+                                        }
                                         override fun onPageFinished(view: WebView?, url: String?) {
+                                            if (isOAuth && url != null) {
+                                                view?.requestFocus()
+                                                consumeOAuthCallback(url)
+                                                return
+                                            }
                                             val uri = url?.let(Uri::parse)
                                             if (uri?.host == "accounts.google.com" && uri.path == "/gsi/transform") {
                                                 // Google normally calls window.close after posting to the opener.
                                                 // Keep the existing delayed-close fallback for WebView versions that miss it.
                                                 view?.postDelayed({ if (popupWebView === view) popupWebView = null }, 2000)
+                                            }
+                                        }
+                                        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                                            if (request?.isForMainFrame == true && isOAuth) {
+                                                pageLoading = false
+                                                if (!consumeOAuthCallback(request.url.toString())) {
+                                                    viewModel.onLoginError("登录页面加载失败，请检查网络后重试", state.pageGeneration)
+                                                }
                                             }
                                         }
                                     }
@@ -238,11 +324,14 @@ private fun LoginBrowser(state: AuthUiState, viewModel: AuthViewModel, modifier:
                             }
                             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                 val url = request?.url?.toString() ?: return false
-                                return (isOAuth && request.isForMainFrame && viewModel.onOAuthNavigation(url)) ||
+                                return (request.isForMainFrame && consumeOAuthCallback(url)) ||
                                     (request.url.scheme != "https" && url != "about:blank")
                             }
                             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                                if (isOAuth && url != null && viewModel.onOAuthNavigation(url)) { view?.stopLoading(); return }
+                                if (url != null && consumeOAuthCallback(url)) {
+                                    view?.stopLoading()
+                                    return
+                                }
                                 pageLoading = true
                                 currentUrl = url.orEmpty()
                             }
@@ -250,7 +339,7 @@ private fun LoginBrowser(state: AuthUiState, viewModel: AuthViewModel, modifier:
                                 pageLoading = false
                                 url ?: return
                                 currentUrl = url
-                                if (isOAuth) { view?.requestFocus(); viewModel.onOAuthNavigation(url); return }
+                                if (isOAuth) { view?.requestFocus(); consumeOAuthCallback(url); return }
                                 if (Uri.parse(url).host == "accounts.google.com" && Uri.parse(url).path == "/gsi/transform") {
                                     view?.loadUrl(state.platform.loginUrl)
                                     return
@@ -267,13 +356,14 @@ private fun LoginBrowser(state: AuthUiState, viewModel: AuthViewModel, modifier:
                             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                                 if (request?.isForMainFrame == true) {
                                     pageLoading = false
+                                    if (consumeOAuthCallback(request.url.toString())) return
                                     // WebView error descriptions can embed the full redirect URL; don't surface them.
-                                    viewModel.onLoginError("登录页面加载失败，请检查网络后重试")
+                                    viewModel.onLoginError("登录页面加载失败，请检查网络后重试", state.pageGeneration)
                                 }
                             }
                         }
                         val target = this
-                        if (isDevin) {
+                        if (isDevin || isGoogle) {
                             target.loadUrl(initialUrl)
                         } else {
                             // Load only after cookie cleanup completes.
@@ -380,7 +470,9 @@ private suspend fun WebView.readDevinSession(): DevinWebSession? {
     return DevinWebSession.fromWebViewResult(result)
 }
 
-private fun WebView.configureForLogin() {
+private fun WebView.configureForLogin(googleOAuth: Boolean = false) {
+    layoutParams = android.view.ViewGroup.LayoutParams(
+        android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
     isFocusable = true
     isFocusableInTouchMode = true
     settings.javaScriptEnabled = true
@@ -389,7 +481,9 @@ private fun WebView.configureForLogin() {
     settings.setSupportMultipleWindows(true)
     settings.allowFileAccess = false
     settings.allowContentAccess = false
-    settings.userAgentString = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+    settings.userAgentString = if (googleOAuth) WebSettings.getDefaultUserAgent(context)
+        .replace("; wv", "").replace(Regex("Version/\\d+\\.\\d+ "), "")
+    else "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
 }
 
 private fun readLoginCookie(platform: Platform, currentUrl: String): String? =

@@ -52,6 +52,7 @@ Get the latest APK from [GitHub Releases](https://github.com/Vectorking-50kg/Zhi
 | **ChatGPT** | Web login; optional device-code authorization | Codex-related five-hour and weekly limits, additional windows, Code Review, reset credits, renewal information, and extra credits |
 | **Claude** | Web login; optional OAuth authorization | Five-hour and weekly limits, model-specific windows, Claude Design, and extra usage percentages |
 | **Cursor** | Web login | Current billing-period usage, Auto usage, API usage, and plan information |
+| **Antigravity (Google AI)** | In-app Google authorization; optional browser fallback | Five-hour and weekly quotas for the Gemini and "Claude and GPT" model groups, per-model quotas, reset times, and subscription name |
 | **Devin** | In-app browser sign-in (Google or email) | Daily and weekly quotas, reset times, and extra-usage balance |
 | **GitHub Copilot** | GitHub device-code authorization | AI credit or premium request allowances and reset times, chat and completion quotas, and additional spending and budget when available |
 | **OpenCode Zen** | Web login | Account balance |
@@ -67,12 +68,18 @@ Some integrations depend on internal interfaces or console pages available after
 ## Getting Started
 
 1. Open the app and tap **添加第一个账户** (Add your first account). You can also add more accounts from **账户** (Accounts).
-2. Choose a platform and follow the connection instructions. See below for the Devin and GitHub Copilot sign-in steps on Android.
+2. Choose a platform and follow the connection instructions. See below for the Antigravity, Devin, and GitHub Copilot sign-in steps on Android.
 3. Once the login or API key is validated, return to **概览** (Overview) to view quotas and balances. Tap **查看详情** (View details) to inspect individual usage windows and reset times.
 4. In **账户** (Accounts), enable monitoring, alerts, and persistent notifications as needed. Use **设置** (Settings) to adjust appearance, refresh intervals, and global notification preferences.
 5. To display usage on your home screen, add the Zhiyu widget through your launcher's widget picker.
 
 OpenCode Go and Zen share an OpenCode group on the Accounts page. Go uses an API key belonging to an account with an active subscription and queries the official `GET https://opencode.ai/zen/go/v1/usage` endpoint. Zen displays the account balance separately. See the [official OpenCode Go documentation](https://opencode.ai/docs/go/) for subscription and API key setup, and the [official endpoint source](https://github.com/anomalyco/opencode/blob/dev/packages/console/app/src/routes/zen/go/v1/usage.ts) for response fields.
+
+### Connect Antigravity (Google AI)
+
+Choose Antigravity and sign in with the Google account used for Antigravity inside Zhiyu. The app intercepts the authorization callback and encrypts credentials only after account and quota validation, without a browser round trip. If Google blocks embedded sign-in, manually choose **改用浏览器** (Use browser); that fallback stays on the same phone and its callback expires after five minutes. Subsequent refreshes renew the access token automatically. No desktop token copying is required.
+
+Paid accounts display explicit five-hour/weekly buckets for the Gemini and "Claude and GPT" model groups when available. Free accounts or accounts without the summary endpoint use per-model quotas without guessing window durations. Plan names come from Google's response. These are Antigravity quotas, not all Gemini App, AI Studio, or Google One benefits. See the [TokenTracker reference](https://github.com/xiufengsun/TokenTracker/blob/a3f10f2289c24f6612f26b8becbba4ff797c7754/src/lib/usage-limits.js) and [integration and verification notes (Chinese)](ANTIGRAVITY.md).
 
 ### Connect Devin and GitHub Copilot
 
@@ -109,6 +116,8 @@ Android Studio with JDK 17 and Android SDK Platform 35 is recommended. The repos
 
 The default build uses Zhiyu's GitHub OAuth App. To use a different registration for a fork, enable device flow on your OAuth App and set the public Client ID with the Gradle property `zhiyu.githubCopilotClientId`. [Creating a GitHub OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
 
+Antigravity OAuth registration values are injected at build time and are not stored in the repository. Configure `zhiyu.antigravityClientId` and `zhiyu.antigravityClientSecret` in the ignored `local.properties` file or as Gradle properties, or use the environment variables `ANTIGRAVITY_OAUTH_CLIENT_ID` / `ANTIGRAVITY_OAUTH_CLIENT_SECRET`. See the [integration notes](ANTIGRAVITY.md) for the registration source. Without this configuration, other providers still work and the Antigravity sign-in screen explains what is missing.
+
 ```bash
 git clone https://github.com/Vectorking-50kg/Zhiyu.git
 cd Zhiyu
@@ -127,8 +136,8 @@ Debug and Release use different application IDs, so both can be installed side b
 
 | Build type | App name | Application ID | Version name |
 | --- | --- | --- | --- |
-| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.5` |
-| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.5-debug` |
+| Release | 知余 | `funapp.ctrlcv.zhiyu` | `0.1.6` |
+| Debug | 知余 Debug | `funapp.ctrlcv.zhiyu.debug` | `0.1.6-debug` |
 
 Maintain the base version in `defaultConfig` in `app/build.gradle.kts`. Debug automatically appends `-debug`; Release has no suffix. The in-app About page displays the corresponding version name.
 
@@ -154,6 +163,8 @@ In **Settings → Secrets and variables → Actions**, add these repository secr
 
 | Secret | Value |
 | --- | --- |
+| `ANTIGRAVITY_OAUTH_CLIENT_ID` | Antigravity installed-app OAuth client ID |
+| `ANTIGRAVITY_OAUTH_CLIENT_SECRET` | Matching OAuth client secret, injected during the build |
 | `ANDROID_RELEASE_KEYSTORE_BASE64` | The `.jks` or `.keystore` file encoded as Base64 |
 | `ANDROID_RELEASE_STORE_PASSWORD` | Keystore password |
 | `ANDROID_RELEASE_KEY_ALIAS` | Signing key alias |

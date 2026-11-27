@@ -1,36 +1,56 @@
-Lobe Icons — OpenAI (ChatGPT)
+Lobe Icons — all provider brand icons
 Repository: https://github.com/lobehub/lobe-icons
-Package: @lobehub/icons-static-svg@1.95.0
-Source: https://unpkg.com/@lobehub/icons-static-svg@1.95.0/icons/openai.svg
-Git commit: 53ead06d734cc6c003db5a87860907c4bbadfbc0
-License: MIT, Copyright (c) 2023 LobeHub
-Adaptation: unchanged OpenAI path on a white rounded tile; rasterized to 256 x 256 PNG.
-
-Additional retained brand PNGs
-Repository: https://github.com/lobehub/lobe-icons
-License: MIT, Copyright (c) 2023 LobeHub; see lobe-icons.txt.
-Claude, Cursor, MiniMax, AIHubMix, DeepSeek: @lobehub/icons-static-png
-Local source commit: 26dcfdcc8b640e0e10d1d7fa8a5640e5a4c4ebf3
-OpenCode: Lobe Icons static-avatar
-Local source commit: 01bf921a4eb5aa69b0021d470b727d13080b292b
-Exact npm versions were not recorded in those historical commits.
-The resources retained in core/ui match the corresponding historical
-feature/dashboard PNGs byte for byte.
-Files and SHA-256:
-core/ui/src/main/res/drawable/ic_brand_anthropic.png  97b53fb85b3bf401ffeb8ee7c5ebad734ce9f6edc3038f242021c53bcc18e23d
-core/ui/src/main/res/drawable/ic_brand_cursor.png  783ac5ded2079c86a2741af24f1d168ea1b7d12846feea4bac54d79ffb061062
-core/ui/src/main/res/drawable/ic_brand_minimax.png  9e596627348deb4030938a948243cc94e96cc1548d645ce4faf1de0e51b9043a
-core/ui/src/main/res/drawable/ic_brand_aihubmix.png  f6f91d8949259753237bf244c19e461c2d3840ab26a56e0fe6e1f6460ec1fab4
-core/ui/src/main/res/drawable/ic_brand_deepseek.png  f98596fd7802ca0c5290c498fec578fa823988646332ee36c43b7920dc4936eb
-core/ui/src/main/res/drawable/ic_brand_opencode.png  3180ae52ecc8dd1ebb1e6b21a8cff6d29657e1ebf6e06c62ecaecdd78cfc247d
-
-Devin and GitHub Copilot
 Package: @lobehub/icons-static-png@1.95.0
 License: MIT, Copyright (c) 2023 LobeHub; see lobe-icons.txt.
-Adaptation: resized to 256 x 256 PNG.
-Sources:
-https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/devin.png
-https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/githubcopilot.png
-Files and SHA-256:
-core/ui/src/main/res/drawable/ic_brand_devin.png  de278d697a3beae9aafd641a3acfffaeee793f17eba5145a951aaeb06c2f65a9
-core/ui/src/main/res/drawable/ic_brand_githubcopilot.png  723c8dbe56065fc6b6dd901ae2f39746f7ab8fc0b6ffe73e784f5dd4afefe52a
+Official usage: https://github.com/lobehub/lobe-icons/tree/master/packages/static-png
+
+All files are unmodified 640 x 640 PNG assets from this published package.
+Every SHA-256 was checked against the package metadata integrity values.
+Color variants are used wherever supplied for these providers: Antigravity,
+Devin, Claude, MiniMax, AIHubMix, and DeepSeek. OpenAI, Cursor, OpenCode, and
+GitHub Copilot use their standard monochrome icons; this version has no
+separate Color asset for them. Light assets are used with a white tile for
+monochrome glyphs so they remain visible in both app themes.
+OpenCode Zen and OpenCode Go share the official OpenCode icon.
+
+Files, sources, and SHA-256:
+
+core/ui/src/main/res/drawable/ic_brand_chatgpt.png
+Source: https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/openai.png
+SHA-256: 8a33312f6bb17c1edddf8f9d7fbac09ce1d1d697d6601f37227afa879e94c52e
+
+core/ui/src/main/res/drawable/ic_brand_anthropic.png
+Source: https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/claude-color.png
+SHA-256: 97b53fb85b3bf401ffeb8ee7c5ebad734ce9f6edc3038f242021c53bcc18e23d
+
+core/ui/src/main/res/drawable/ic_brand_cursor.png
+Source: https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/cursor.png
+SHA-256: 783ac5ded2079c86a2741af24f1d168ea1b7d12846feea4bac54d79ffb061062
+
+core/ui/src/main/res/drawable/ic_brand_opencode.png
+Source: https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/opencode.png
+SHA-256: 8dd736cfa2628863a6e008a134d2094da69727d7359caca5bd05fe322ab13905
+
+core/ui/src/main/res/drawable/ic_brand_minimax.png
+Source: https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/minimax-color.png
+SHA-256: 9e596627348deb4030938a948243cc94e96cc1548d645ce4faf1de0e51b9043a
+
+core/ui/src/main/res/drawable/ic_brand_aihubmix.png
+Source: https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/aihubmix-color.png
+SHA-256: f6f91d8949259753237bf244c19e461c2d3840ab26a56e0fe6e1f6460ec1fab4
+
+core/ui/src/main/res/drawable/ic_brand_deepseek.png
+Source: https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/deepseek-color.png
+SHA-256: f98596fd7802ca0c5290c498fec578fa823988646332ee36c43b7920dc4936eb
+
+core/ui/src/main/res/drawable/ic_brand_devin.png
+Source: https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/devin-color.png
+SHA-256: b9eef69b9ff7ba543a0e2ac13783aeee896b9b0fdc023372a68ae930a6a80061
+
+core/ui/src/main/res/drawable/ic_brand_githubcopilot.png
+Source: https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/githubcopilot.png
+SHA-256: 984fc3fb2708c83fcc870eabfb2a9a4cd4a2a059ac18f78200119dc37f95ce8c
+
+core/ui/src/main/res/drawable/ic_brand_antigravity.png
+Source: https://unpkg.com/@lobehub/icons-static-png@1.95.0/light/antigravity-color.png
+SHA-256: ac20d11802a405491048957d68c84f7303ceaf682a95cf890263452ccdd97897

@@ -19,6 +19,10 @@ class PlatformDisplayOrderTest {
         assertEquals("zen", Platform.ZEN.key)
         assertEquals(3, Platform.ZEN.ordinal)
         assertEquals(6, Platform.DEEPSEEK.ordinal)
+        assertEquals(8, Platform.DEVIN.ordinal)
+        assertEquals(9, Platform.GITHUB_COPILOT.ordinal)
+        assertEquals(10, Platform.ANTIGRAVITY.ordinal)
+        assertEquals("antigravity", Platform.ANTIGRAVITY.key)
     }
 
     @Test fun `Go is adjacent to Zen in display order without changing existing ordinals`() {

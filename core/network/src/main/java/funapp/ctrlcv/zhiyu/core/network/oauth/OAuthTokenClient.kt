@@ -47,6 +47,22 @@ class OAuthTokenClient internal constructor(
 
     fun newClaudeChallenge(): ClaudeOAuthChallenge = OAuthProtocol.newClaudeChallenge()
     fun isClaudeCallback(url: String): Boolean = OAuthProtocol.isClaudeCallback(url)
+    fun newAntigravityChallenge(redirectUri: String = AntigravityOAuth.EMBEDDED_CALLBACK): AntigravityOAuthChallenge {
+        requireAntigravityConfiguration()
+        return AntigravityOAuth.challenge(redirectUri, endpoints.googleClientId)
+    }
+    fun isAntigravityCallback(url: String, challenge: AntigravityOAuthChallenge? = null): Boolean =
+        AntigravityOAuth.isCallback(url, challenge?.redirectUri ?: AntigravityOAuth.EMBEDDED_CALLBACK)
+
+    suspend fun exchangeAntigravity(challenge: AntigravityOAuthChallenge, callback: String): OAuthCredential {
+        val code = AntigravityOAuth.callbackCode(callback, challenge)
+        val credential = exchangeGoogle(mapOf(
+            "grant_type" to "authorization_code", "code" to code,
+            "code_verifier" to challenge.verifier, "redirect_uri" to challenge.redirectUri,
+        ))
+        val identity = authenticatedGoogleUser(credential.accessToken)
+        return credential.copy(providerAccountId = identity.first, displayName = identity.second)
+    }
 
     suspend fun exchangeClaude(challenge: ClaudeOAuthChallenge, callback: String): OAuthCredential {
         val code = OAuthProtocol.callbackCode(callback, challenge)
@@ -60,7 +76,41 @@ class OAuthTokenClient internal constructor(
     suspend fun refresh(platform: Platform, previous: OAuthCredential): OAuthCredential {
         val refresh = previous.refreshToken ?: throw SessionExpiredException(platform)
         if (platform == Platform.GITHUB_COPILOT) return refreshGitHub(previous, refresh)
+        if (platform == Platform.ANTIGRAVITY) return exchangeGoogle(
+            mapOf("grant_type" to "refresh_token", "refresh_token" to refresh), previous,
+        )
         return exchange(platform, mapOf("grant_type" to "refresh_token", "refresh_token" to refresh), previous)
+    }
+
+    private suspend fun exchangeGoogle(fields: Map<String, String>, previous: OAuthCredential? = null): OAuthCredential {
+        requireAntigravityConfiguration()
+        val platform = Platform.ANTIGRAVITY
+        val response = post(platform, endpoints.googleToken, fields + mapOf(
+            "client_id" to endpoints.googleClientId, "client_secret" to endpoints.googleClientSecret,
+        ), json = false)
+        checkStatus(platform, response)
+        val body = parse(platform, response.body)
+        val access = body.text("access_token")?.takeIf { it.all { c -> c in '!'..'~' } } ?: malformed(platform)
+        val refresh = body.text("refresh_token") ?: previous?.refreshToken ?: malformed(platform)
+        val lifetime = body.number("expires_in")?.takeIf { it in 1..31_536_000 } ?: malformed(platform)
+        if (!body.text("token_type").equals("Bearer", ignoreCase = true)) malformed(platform)
+        return OAuthCredential(access, refresh, now() + lifetime * 1000, previous?.providerAccountId, previous?.displayName)
+    }
+
+    private fun requireAntigravityConfiguration() {
+        if (endpoints.googleClientId.isBlank() || endpoints.googleClientSecret.isBlank()) {
+            throw AntigravityAuthorizationException("当前构建未配置 Google 授权，请安装正式版或配置 Antigravity OAuth 构建参数")
+        }
+    }
+
+    private suspend fun authenticatedGoogleUser(accessToken: String): Pair<String, String?> {
+        val platform = Platform.ANTIGRAVITY
+        val response = execute(Request.Builder().url(endpoints.googleUser)
+            .header("Authorization", "Bearer $accessToken").header("Accept", "application/json").build())
+        checkStatus(platform, response)
+        val user = parse(platform, response.body)
+        val id = user.text("id") ?: malformed(platform)
+        return id to (user.text("email") ?: user.text("name"))
     }
 
     suspend fun requestCodexDeviceCode(): DeviceCodeChallenge {
@@ -298,7 +348,13 @@ internal data class OAuthEndpoints(
     val gitHubToken: String = OAuthProtocol.GITHUB_TOKEN,
     val gitHubUser: String = OAuthProtocol.GITHUB_USER,
     val gitHubClientId: String = BuildConfig.GITHUB_COPILOT_CLIENT_ID,
-)
+    val googleToken: String = AntigravityOAuth.TOKEN_URL,
+    val googleUser: String = AntigravityOAuth.USER_INFO_URL,
+    val googleClientId: String = BuildConfig.ANTIGRAVITY_OAUTH_CLIENT_ID,
+    val googleClientSecret: String = BuildConfig.ANTIGRAVITY_OAUTH_CLIENT_SECRET,
+) {
+    override fun toString(): String = "OAuthEndpoints([REDACTED])"
+}
 
 class OAuthLoginExpiredException : Exception("授权码已过期，请重新获取")
 class GitHubDeviceAuthorizationException(message: String) : Exception(message)

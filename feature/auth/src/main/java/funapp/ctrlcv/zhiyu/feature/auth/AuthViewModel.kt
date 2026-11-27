@@ -14,6 +14,9 @@ import funapp.ctrlcv.zhiyu.core.network.api.DevinOrganizationSelectionRequiredEx
 import funapp.ctrlcv.zhiyu.core.network.api.DevinWebSession
 import funapp.ctrlcv.zhiyu.core.network.api.UsageApiService
 import funapp.ctrlcv.zhiyu.core.network.oauth.ClaudeOAuthChallenge
+import funapp.ctrlcv.zhiyu.core.network.oauth.AntigravityAuthorizationException
+import funapp.ctrlcv.zhiyu.core.network.oauth.AntigravityOAuthChallenge
+import funapp.ctrlcv.zhiyu.core.network.oauth.LoopbackOAuthReceiver
 import funapp.ctrlcv.zhiyu.core.network.oauth.DeviceCodeChallenge
 import funapp.ctrlcv.zhiyu.core.network.oauth.GitHubDeviceAuthorizationException
 import funapp.ctrlcv.zhiyu.core.network.oauth.OAuthLoginExpiredException
@@ -44,6 +47,7 @@ data class AuthUiState(
     val connectedAccountId: String? = null,
     val error: String? = null,
     val authorizationUrl: String? = null,
+    val googleExternalBrowser: Boolean = false,
     val deviceChallenge: DeviceCodeChallenge? = null,
     val switchAccountName: String? = null,
     val switchNeedsConfirmation: Boolean = false,
@@ -74,12 +78,14 @@ class AuthViewModel @Inject constructor(
     private val attempts = AuthAttemptGate()
     private var loginJob: Job? = null
     private var claudeChallenge: ClaudeOAuthChallenge? = null
+    private var antigravityChallenge: AntigravityOAuthChallenge? = null
+    private var antigravityCallbackHandled = false
     private var pending: LoginCandidate? = null
     private var lastAutomaticCookie: String? = null
     private var lastAutomaticDevinSession: DevinWebSession? = null
 
     init {
-        if (platform == Platform.GITHUB_COPILOT) startOAuth()
+        if (platform in setOf(Platform.GITHUB_COPILOT, Platform.ANTIGRAVITY)) startOAuth()
     }
 
     fun onLoginSuccess(cookie: String, url: String? = null, manual: Boolean = false) {
@@ -130,18 +136,46 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun startOAuth() {
-        if (platform !in setOf(Platform.CLAUDE, Platform.CHATGPT, Platform.GITHUB_COPILOT) || _uiState.value.isSuccess) return
+    fun startOAuth() = beginOAuth(externalGoogle = false)
+
+    fun startGoogleBrowserOAuth() {
+        if (platform == Platform.ANTIGRAVITY) beginOAuth(externalGoogle = true)
+    }
+
+    private fun beginOAuth(externalGoogle: Boolean) {
+        if (platform !in setOf(Platform.CLAUDE, Platform.CHATGPT, Platform.GITHUB_COPILOT, Platform.ANTIGRAVITY) || _uiState.value.isSuccess) return
         cancelCurrentAttempt()
-        _uiState.update { AuthUiState(platform = platform, mode = AuthMode.OAUTH, pageGeneration = it.pageGeneration + 1) }
+        _uiState.update { AuthUiState(platform = platform, mode = AuthMode.OAUTH,
+            googleExternalBrowser = externalGoogle, pageGeneration = it.pageGeneration + 1) }
         if (platform == Platform.CLAUDE) {
             claudeChallenge = oauthTokens.newClaudeChallenge()
             _uiState.update { it.copy(authorizationUrl = claudeChallenge?.authorizationUrl) }
+        } else if (platform == Platform.ANTIGRAVITY && !externalGoogle) {
+            try {
+                antigravityChallenge = oauthTokens.newAntigravityChallenge()
+                _uiState.update { it.copy(authorizationUrl = antigravityChallenge?.authorizationUrl) }
+            } catch (e: AntigravityAuthorizationException) {
+                _uiState.update { it.copy(error = e.message, isLoading = false) }
+            }
         } else {
             val attempt = attempts.begin() ?: return
             _uiState.update { it.copy(isLoading = true) }
             loginJob = viewModelScope.launch {
                 try {
+                    if (platform == Platform.ANTIGRAVITY) {
+                        withContext(Dispatchers.IO) {
+                            LoopbackOAuthReceiver.open().use { receiver ->
+                                val challenge = oauthTokens.newAntigravityChallenge(receiver.redirectUri)
+                                currentCoroutineContext().ensureActive()
+                                _uiState.update { it.copy(authorizationUrl = challenge.authorizationUrl, isLoading = false) }
+                                val callback = receiver.awaitCallback(challenge)
+                                if (!attempts.isCurrent(attempt)) throw CancellationException("Login changed")
+                                _uiState.update { it.copy(isLoading = true, authorizationUrl = null) }
+                                oauthTokens.exchangeAntigravity(challenge, callback)
+                            }
+                        }.let { credential -> validateOAuth(attempt, credential) }
+                        return@launch
+                    }
                     val github = platform == Platform.GITHUB_COPILOT
                     val challenge = if (github) oauthTokens.requestGitHubDeviceCode() else oauthTokens.requestCodexDeviceCode()
                     if (!attempts.isCurrent(attempt)) return@launch
@@ -158,7 +192,22 @@ class AuthViewModel @Inject constructor(
     }
 
     /** A matching callback is consumed before the WebView can send the code anywhere else. */
-    fun onOAuthNavigation(url: String): Boolean {
+    fun onOAuthNavigation(url: String, pageGeneration: Long = _uiState.value.pageGeneration): Boolean {
+        if (platform == Platform.ANTIGRAVITY && _uiState.value.mode == AuthMode.OAUTH) {
+            if (!oauthTokens.isAntigravityCallback(url, antigravityChallenge)) return false
+            // Consume stale/duplicate callbacks too, so codes never reach a dead loopback port.
+            if (pageGeneration != _uiState.value.pageGeneration || antigravityCallbackHandled || _uiState.value.isSuccess) return true
+            val challenge = antigravityChallenge ?: return true
+            val attempt = attempts.begin() ?: return true
+            antigravityCallbackHandled = true
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            loginJob = viewModelScope.launch {
+                try { validateOAuth(attempt, oauthTokens.exchangeAntigravity(challenge, url)) }
+                catch (e: CancellationException) { throw e }
+                catch (e: Exception) { fail(attempt, e) }
+            }
+            return true
+        }
         if (platform != Platform.CLAUDE || _uiState.value.mode != AuthMode.OAUTH || !oauthTokens.isClaudeCallback(url)) return false
         val challenge = claudeChallenge ?: return true
         val attempt = attempts.begin() ?: return true
@@ -255,10 +304,14 @@ class AuthViewModel @Inject constructor(
             }
         }
         attempts.finish(candidate.attempt)
-        _uiState.update { it.copy(connectedAccountId = accountId, isLoading = false, error = null, deviceChallenge = null) }
+        _uiState.update { it.copy(connectedAccountId = accountId, isLoading = false, error = null, deviceChallenge = null, authorizationUrl = null) }
     }
 
     fun useWebLogin() {
+        if (platform == Platform.ANTIGRAVITY) {
+            startOAuth()
+            return
+        }
         cancelCurrentAttempt()
         _uiState.update { AuthUiState(platform = platform, pageGeneration = it.pageGeneration + 1) }
     }
@@ -271,11 +324,14 @@ class AuthViewModel @Inject constructor(
         loginJob = null
         pending = null
         claudeChallenge = null
+        antigravityChallenge = null
+        antigravityCallbackHandled = false
         lastAutomaticCookie = null
         lastAutomaticDevinSession = null
     }
 
-    fun onLoginError(message: String) {
+    fun onLoginError(message: String, pageGeneration: Long = _uiState.value.pageGeneration) {
+        if (pageGeneration != _uiState.value.pageGeneration) return
         if (!attempts.busy) _uiState.update { it.copy(error = message, isLoading = false) }
     }
 
@@ -285,11 +341,13 @@ class AuthViewModel @Inject constructor(
         val message = when (e) {
             is OAuthLoginExpiredException -> "授权码已过期，请重新获取"
             is GitHubDeviceAuthorizationException -> e.message ?: "GitHub 授权失败，请重试"
+            is AntigravityAuthorizationException -> e.message ?: "Google 授权失败，请重新连接"
             is AuthSaveException -> e.message ?: "登录状态保存失败，请重试"
             is DevinOrganizationSelectionRequiredException -> "请在要监控的 Devin 组织里打开一个对话，再验证额度"
             else -> e.toUsageFailure().messageFor(platform)
         }
-        _uiState.update { it.copy(error = message, isLoading = false, deviceChallenge = null) }
+        _uiState.update { it.copy(error = message, isLoading = false, deviceChallenge = null,
+            authorizationUrl = if (platform == Platform.ANTIGRAVITY) null else it.authorizationUrl) }
     }
 
     override fun onCleared() {

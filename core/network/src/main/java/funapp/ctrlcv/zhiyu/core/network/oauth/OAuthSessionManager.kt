@@ -4,6 +4,7 @@ import funapp.ctrlcv.zhiyu.core.domain.model.Platform
 import funapp.ctrlcv.zhiyu.core.domain.model.SessionExpiredException
 import funapp.ctrlcv.zhiyu.core.domain.model.UsageInfo
 import funapp.ctrlcv.zhiyu.core.network.api.UsageApiService
+import funapp.ctrlcv.zhiyu.core.network.api.AntigravityApiClient
 import funapp.ctrlcv.zhiyu.core.storage.OAuthCredential
 import funapp.ctrlcv.zhiyu.core.storage.SecureTokenStore
 import kotlinx.coroutines.CancellationException
@@ -26,7 +27,7 @@ class OAuthSessionManager internal constructor(
     private val fetch: suspend (Platform, OAuthCredential) -> UsageInfo,
     private val now: () -> Long = System::currentTimeMillis
 ) {
-    @Inject constructor(tokens: OAuthTokenClient, store: SecureTokenStore, api: UsageApiService) : this(
+    @Inject constructor(tokens: OAuthTokenClient, store: SecureTokenStore, api: UsageApiService, antigravity: AntigravityApiClient) : this(
         tokens = tokens,
         load = store::getOAuth,
         replace = store::replaceOAuthIfCurrent,
@@ -37,6 +38,7 @@ class OAuthSessionManager internal constructor(
                 // GitHub identity is bound to the OAuth grant via /user at sign-in.
                 // The quota endpoint's optional login is a username, not the numeric account ID.
                 Platform.GITHUB_COPILOT -> api.getManualUsage(platform, credential.accessToken).copy(providerAccountId = null)
+                Platform.ANTIGRAVITY -> antigravity.getUsage(credential.accessToken)
                 else -> throw SessionExpiredException(platform)
             }
         }
